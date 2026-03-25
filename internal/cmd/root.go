@@ -101,4 +101,6 @@ func init() {
 	rootCmd.AddCommand(newAuthCmd())
 	rootCmd.AddCommand(newAppsCmd())
 	rootCmd.AddCommand(newAppProxyCmd())
+	rootCmd.AddCommand(newMessagesCmd())
+	rootCmd.AddCommand(newThreadsCmd())
 }
