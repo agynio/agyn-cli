@@ -1,0 +1,5 @@
+syntax = "proto3";
+
+package agyn.cli.v1;
+
+message Placeholder {}

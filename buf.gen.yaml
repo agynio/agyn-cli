@@ -1,0 +1,24 @@
+version: v2
+managed:
+  enabled: true
+  override:
+    - file_option: go_package_prefix
+      value: github.com/agynio/agyn-cli/gen
+plugins:
+  - remote: buf.build/protocolbuffers/go
+    out: gen
+    opt:
+      - paths=source_relative
+  - remote: buf.build/connectrpc/go
+    out: gen
+    opt:
+      - paths=source_relative
+inputs:
+  - module: buf.build/agynio/api
+    paths:
+      - agynio/api/gateway/v1/apps.proto
+      - agynio/api/gateway/v1/threads.proto
+      - agynio/api/gateway/v1/users.proto
+      - agynio/api/apps/v1/apps.proto
+      - agynio/api/threads/v1/threads.proto
+      - agynio/api/users/v1/users.proto
