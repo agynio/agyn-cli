@@ -12,8 +12,11 @@ import (
 )
 
 type threadOutput struct {
-	ID        string `json:"id" yaml:"id"`
-	CreatedAt string `json:"created_at" yaml:"created_at"`
+	ID           string   `json:"id" yaml:"id"`
+	Status       string   `json:"status" yaml:"status"`
+	Participants []string `json:"participants" yaml:"participants"`
+	CreatedAt    string   `json:"created_at" yaml:"created_at"`
+	UpdatedAt    string   `json:"updated_at,omitempty" yaml:"updated_at,omitempty"`
 }
 
 func newThreadsCmd() *cobra.Command {
@@ -43,7 +46,7 @@ func newThreadsCreateCmd() *cobra.Command {
 				return fmt.Errorf("gateway client unavailable")
 			}
 
-			normalized, err := normalizeIDs(participantIDs)
+			normalized, err := normalizeParticipantIDs(participantIDs)
 			if err != nil {
 				return err
 			}
@@ -67,10 +70,13 @@ func newThreadsCreateCmd() *cobra.Command {
 
 			if runContext.OutputFormat == output.FormatTable {
 				table := output.Table{
-					Headers: []string{"ID", "CREATED_AT"},
+					Headers: []string{"ID", "STATUS", "PARTICIPANTS", "CREATED_AT", "UPDATED_AT"},
 					Rows: [][]string{{
 						thread.ID,
+						thread.Status,
+						strings.Join(thread.Participants, ","),
 						thread.CreatedAt,
+						thread.UpdatedAt,
 					}},
 				}
 				return output.Print(runContext.OutputFormat, table)
@@ -131,13 +137,16 @@ func newThreadsListCmd() *cobra.Command {
 				outputs = append(outputs, outputData)
 				rows = append(rows, []string{
 					outputData.ID,
+					outputData.Status,
+					strings.Join(outputData.Participants, ","),
 					outputData.CreatedAt,
+					outputData.UpdatedAt,
 				})
 			}
 
 			if runContext.OutputFormat == output.FormatTable {
 				table := output.Table{
-					Headers: []string{"ID", "CREATED_AT"},
+					Headers: []string{"ID", "STATUS", "PARTICIPANTS", "CREATED_AT", "UPDATED_AT"},
 					Rows:    rows,
 				}
 				return output.Print(runContext.OutputFormat, table)
@@ -155,7 +164,7 @@ func newThreadsListCmd() *cobra.Command {
 	return cmd
 }
 
-func normalizeIDs(values []string) ([]string, error) {
+func normalizeParticipantIDs(values []string) ([]string, error) {
 	normalized := make([]string, 0, len(values))
 	for _, value := range values {
 		trimmed := strings.TrimSpace(value)
@@ -174,8 +183,25 @@ func threadOutputFrom(thread *threadsv1.Thread) (threadOutput, error) {
 	if thread == nil {
 		return threadOutput{}, fmt.Errorf("thread missing from response")
 	}
+	participants := thread.GetParticipants()
+	participantIDs := make([]string, 0, len(participants))
+	for _, participant := range participants {
+		if participant == nil {
+			continue
+		}
+		participantIDs = append(participantIDs, participant.GetId())
+	}
 	return threadOutput{
-		ID:        thread.GetId(),
-		CreatedAt: formatTimestamp(thread.GetCreatedAt()),
+		ID:           thread.GetId(),
+		Status:       formatThreadStatus(thread.GetStatus()),
+		Participants: participantIDs,
+		CreatedAt:    formatTimestamp(thread.GetCreatedAt()),
+		UpdatedAt:    formatTimestamp(thread.GetUpdatedAt()),
 	}, nil
+}
+
+func formatThreadStatus(status threadsv1.ThreadStatus) string {
+	value := status.String()
+	const prefix = "THREAD_STATUS_"
+	return strings.TrimPrefix(value, prefix)
 }

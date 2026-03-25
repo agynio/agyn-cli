@@ -1,0 +1,10 @@
+.git/
+.github/
+.devspace/
+.idea/
+.vscode/
+.DS_Store
+.env
+.env.*
+dist/
+gen/

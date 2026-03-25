@@ -1,6 +1,6 @@
 FROM golang:1.24-alpine AS generate
 WORKDIR /src
-RUN go install github.com/bufbuild/buf/cmd/buf@latest
+RUN go install github.com/bufbuild/buf/cmd/buf@v1.66.1
 COPY go.mod go.sum ./
 RUN go mod download
 COPY . .

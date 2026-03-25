@@ -22,12 +22,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Set up Buf
-        uses: bufbuild/buf-setup-action@v1
-
-      - name: Generate
-        run: buf generate
-
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
         with:
