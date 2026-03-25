@@ -42,13 +42,16 @@ var rootCmd = &cobra.Command{
 			return err
 		}
 
-		token, err := auth.LoadToken()
-		if err != nil {
-			return err
-		}
+		var clients *gateway.Clients
+		if requiresAuth(cmd) {
+			token, err := auth.LoadToken()
+			if err != nil {
+				return err
+			}
 
-		baseURL := cfg.ResolveGatewayURL(gatewayURLFlag)
-		clients := gateway.NewClients(baseURL, token)
+			baseURL := cfg.ResolveGatewayURL(gatewayURLFlag)
+			clients = gateway.NewClients(baseURL, token)
+		}
 
 		runContext := &RunContext{
 			Config:       cfg,
@@ -81,8 +84,21 @@ func withRunContext(ctx context.Context, runContext *RunContext) context.Context
 	return context.WithValue(ctx, contextKey{}, runContext)
 }
 
+func requiresAuth(cmd *cobra.Command) bool {
+	if cmd.Name() == "auth" {
+		return false
+	}
+	if cmd.Name() == "login" && cmd.Parent() != nil && cmd.Parent().Name() == "auth" {
+		return false
+	}
+	return true
+}
+
 func init() {
 	rootCmd.PersistentFlags().StringVar(&gatewayURLFlag, "gateway-url", "", "Gateway base URL")
 	rootCmd.PersistentFlags().StringVarP(&outputFlag, "output", "o", string(output.FormatTable), "Output format: table, json, or yaml")
 	rootCmd.PersistentFlags().BoolVar(&noColorFlag, "no-color", false, "Disable color output")
+	rootCmd.AddCommand(newAuthCmd())
+	rootCmd.AddCommand(newAppsCmd())
+	rootCmd.AddCommand(newAppProxyCmd())
 }
