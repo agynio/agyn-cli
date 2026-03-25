@@ -1,0 +1,19 @@
+version: v2beta1
+
+vars:
+  AGYN_NAMESPACE: platform
+  DEV_IMAGE: ghcr.io/agynio/devcontainer-go:1
+
+dev:
+  agyn-cli:
+    namespace: ${AGYN_NAMESPACE}
+    labelSelector:
+      app.kubernetes.io/name: agyn-cli
+    command: ["sleep", "infinity"]
+    workingDir: /opt/app/data
+    sync:
+      - path: ./:/opt/app/data
+        excludePaths:
+          - .git/
+          - .devspace/
+          - /gen/

@@ -1,0 +1,9 @@
+/agyn
+/dist/
+.idea/
+.vscode/
+.DS_Store
+gen/
+.devspace/
+.env
+.env.*
