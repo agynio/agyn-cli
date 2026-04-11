@@ -56,7 +56,7 @@ func newAppsRegisterCmd() *cobra.Command {
 				runContext.Clients.BaseURL,
 				runContext.Clients.ConnectOpts()...,
 			)
-			response, err := client.RegisterApp(cmd.Context(), connect.NewRequest(&appsv1.RegisterAppRequest{
+			response, err := client.CreateApp(cmd.Context(), connect.NewRequest(&appsv1.CreateAppRequest{
 				Slug:        slug,
 				Name:        name,
 				Description: description,
