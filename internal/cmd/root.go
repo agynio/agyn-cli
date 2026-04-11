@@ -103,4 +103,5 @@ func init() {
 	rootCmd.AddCommand(newAppProxyCmd())
 	rootCmd.AddCommand(newMessagesCmd())
 	rootCmd.AddCommand(newThreadsCmd())
+	rootCmd.AddCommand(newExposeCmd())
 }
