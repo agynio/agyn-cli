@@ -33,8 +33,10 @@ const (
 // reflection-formatted method names, remove the leading slash and convert the remaining slash to a
 // period.
 const (
-	// AppsServiceRegisterAppProcedure is the fully-qualified name of the AppsService's RegisterApp RPC.
-	AppsServiceRegisterAppProcedure = "/agynio.api.apps.v1.AppsService/RegisterApp"
+	// AppsServiceCreateAppProcedure is the fully-qualified name of the AppsService's CreateApp RPC.
+	AppsServiceCreateAppProcedure = "/agynio.api.apps.v1.AppsService/CreateApp"
+	// AppsServiceUpdateAppProcedure is the fully-qualified name of the AppsService's UpdateApp RPC.
+	AppsServiceUpdateAppProcedure = "/agynio.api.apps.v1.AppsService/UpdateApp"
 	// AppsServiceGetAppProcedure is the fully-qualified name of the AppsService's GetApp RPC.
 	AppsServiceGetAppProcedure = "/agynio.api.apps.v1.AppsService/GetApp"
 	// AppsServiceGetAppBySlugProcedure is the fully-qualified name of the AppsService's GetAppBySlug
@@ -50,11 +52,34 @@ const (
 	// AppsServiceValidateServiceTokenProcedure is the fully-qualified name of the AppsService's
 	// ValidateServiceToken RPC.
 	AppsServiceValidateServiceTokenProcedure = "/agynio.api.apps.v1.AppsService/ValidateServiceToken"
+	// AppsServiceEnrollAppProcedure is the fully-qualified name of the AppsService's EnrollApp RPC.
+	AppsServiceEnrollAppProcedure = "/agynio.api.apps.v1.AppsService/EnrollApp"
+	// AppsServiceInstallAppProcedure is the fully-qualified name of the AppsService's InstallApp RPC.
+	AppsServiceInstallAppProcedure = "/agynio.api.apps.v1.AppsService/InstallApp"
+	// AppsServiceGetInstallationProcedure is the fully-qualified name of the AppsService's
+	// GetInstallation RPC.
+	AppsServiceGetInstallationProcedure = "/agynio.api.apps.v1.AppsService/GetInstallation"
+	// AppsServiceGetInstallationBySlugProcedure is the fully-qualified name of the AppsService's
+	// GetInstallationBySlug RPC.
+	AppsServiceGetInstallationBySlugProcedure = "/agynio.api.apps.v1.AppsService/GetInstallationBySlug"
+	// AppsServiceListInstallationsProcedure is the fully-qualified name of the AppsService's
+	// ListInstallations RPC.
+	AppsServiceListInstallationsProcedure = "/agynio.api.apps.v1.AppsService/ListInstallations"
+	// AppsServiceUpdateInstallationProcedure is the fully-qualified name of the AppsService's
+	// UpdateInstallation RPC.
+	AppsServiceUpdateInstallationProcedure = "/agynio.api.apps.v1.AppsService/UpdateInstallation"
+	// AppsServiceUninstallAppProcedure is the fully-qualified name of the AppsService's UninstallApp
+	// RPC.
+	AppsServiceUninstallAppProcedure = "/agynio.api.apps.v1.AppsService/UninstallApp"
+	// AppsServiceGetInstallationConfigurationProcedure is the fully-qualified name of the AppsService's
+	// GetInstallationConfiguration RPC.
+	AppsServiceGetInstallationConfigurationProcedure = "/agynio.api.apps.v1.AppsService/GetInstallationConfiguration"
 )
 
 // AppsServiceClient is a client for the agynio.api.apps.v1.AppsService service.
 type AppsServiceClient interface {
-	RegisterApp(context.Context, *connect.Request[v1.RegisterAppRequest]) (*connect.Response[v1.RegisterAppResponse], error)
+	CreateApp(context.Context, *connect.Request[v1.CreateAppRequest]) (*connect.Response[v1.CreateAppResponse], error)
+	UpdateApp(context.Context, *connect.Request[v1.UpdateAppRequest]) (*connect.Response[v1.UpdateAppResponse], error)
 	GetApp(context.Context, *connect.Request[v1.GetAppRequest]) (*connect.Response[v1.GetAppResponse], error)
 	// Resolve an app by slug.
 	GetAppBySlug(context.Context, *connect.Request[v1.GetAppBySlugRequest]) (*connect.Response[v1.GetAppBySlugResponse], error)
@@ -64,6 +89,24 @@ type AppsServiceClient interface {
 	GetAppProfile(context.Context, *connect.Request[v1.GetAppProfileRequest]) (*connect.Response[v1.GetAppProfileResponse], error)
 	// Validate a service token hash and resolve its app.
 	ValidateServiceToken(context.Context, *connect.Request[v1.ValidateServiceTokenRequest]) (*connect.Response[v1.ValidateServiceTokenResponse], error)
+	// Self-enrollment: app calls at startup with its service_token.
+	// Creates (or re-creates) the OpenZiti identity + service for the app.
+	// Idempotent: cleans up old ziti resources and creates fresh ones on each call.
+	EnrollApp(context.Context, *connect.Request[v1.EnrollAppRequest]) (*connect.Response[v1.EnrollAppResponse], error)
+	// Install an app for an organization.
+	InstallApp(context.Context, *connect.Request[v1.InstallAppRequest]) (*connect.Response[v1.InstallAppResponse], error)
+	// Fetch an installation by ID.
+	GetInstallation(context.Context, *connect.Request[v1.GetInstallationRequest]) (*connect.Response[v1.GetInstallationResponse], error)
+	// Resolve an installation by slug within an organization.
+	GetInstallationBySlug(context.Context, *connect.Request[v1.GetInstallationBySlugRequest]) (*connect.Response[v1.GetInstallationBySlugResponse], error)
+	// List installations with optional filters.
+	ListInstallations(context.Context, *connect.Request[v1.ListInstallationsRequest]) (*connect.Response[v1.ListInstallationsResponse], error)
+	// Update an installation's metadata.
+	UpdateInstallation(context.Context, *connect.Request[v1.UpdateInstallationRequest]) (*connect.Response[v1.UpdateInstallationResponse], error)
+	// Uninstall an app by installation ID.
+	UninstallApp(context.Context, *connect.Request[v1.UninstallAppRequest]) (*connect.Response[v1.UninstallAppResponse], error)
+	// Fetch only the installation configuration for scoped access.
+	GetInstallationConfiguration(context.Context, *connect.Request[v1.GetInstallationConfigurationRequest]) (*connect.Response[v1.GetInstallationConfigurationResponse], error)
 }
 
 // NewAppsServiceClient constructs a client for the agynio.api.apps.v1.AppsService service. By
@@ -77,10 +120,16 @@ func NewAppsServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 	baseURL = strings.TrimRight(baseURL, "/")
 	appsServiceMethods := v1.File_agynio_api_apps_v1_apps_proto.Services().ByName("AppsService").Methods()
 	return &appsServiceClient{
-		registerApp: connect.NewClient[v1.RegisterAppRequest, v1.RegisterAppResponse](
+		createApp: connect.NewClient[v1.CreateAppRequest, v1.CreateAppResponse](
 			httpClient,
-			baseURL+AppsServiceRegisterAppProcedure,
-			connect.WithSchema(appsServiceMethods.ByName("RegisterApp")),
+			baseURL+AppsServiceCreateAppProcedure,
+			connect.WithSchema(appsServiceMethods.ByName("CreateApp")),
+			connect.WithClientOptions(opts...),
+		),
+		updateApp: connect.NewClient[v1.UpdateAppRequest, v1.UpdateAppResponse](
+			httpClient,
+			baseURL+AppsServiceUpdateAppProcedure,
+			connect.WithSchema(appsServiceMethods.ByName("UpdateApp")),
 			connect.WithClientOptions(opts...),
 		),
 		getApp: connect.NewClient[v1.GetAppRequest, v1.GetAppResponse](
@@ -119,23 +168,85 @@ func NewAppsServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(appsServiceMethods.ByName("ValidateServiceToken")),
 			connect.WithClientOptions(opts...),
 		),
+		enrollApp: connect.NewClient[v1.EnrollAppRequest, v1.EnrollAppResponse](
+			httpClient,
+			baseURL+AppsServiceEnrollAppProcedure,
+			connect.WithSchema(appsServiceMethods.ByName("EnrollApp")),
+			connect.WithClientOptions(opts...),
+		),
+		installApp: connect.NewClient[v1.InstallAppRequest, v1.InstallAppResponse](
+			httpClient,
+			baseURL+AppsServiceInstallAppProcedure,
+			connect.WithSchema(appsServiceMethods.ByName("InstallApp")),
+			connect.WithClientOptions(opts...),
+		),
+		getInstallation: connect.NewClient[v1.GetInstallationRequest, v1.GetInstallationResponse](
+			httpClient,
+			baseURL+AppsServiceGetInstallationProcedure,
+			connect.WithSchema(appsServiceMethods.ByName("GetInstallation")),
+			connect.WithClientOptions(opts...),
+		),
+		getInstallationBySlug: connect.NewClient[v1.GetInstallationBySlugRequest, v1.GetInstallationBySlugResponse](
+			httpClient,
+			baseURL+AppsServiceGetInstallationBySlugProcedure,
+			connect.WithSchema(appsServiceMethods.ByName("GetInstallationBySlug")),
+			connect.WithClientOptions(opts...),
+		),
+		listInstallations: connect.NewClient[v1.ListInstallationsRequest, v1.ListInstallationsResponse](
+			httpClient,
+			baseURL+AppsServiceListInstallationsProcedure,
+			connect.WithSchema(appsServiceMethods.ByName("ListInstallations")),
+			connect.WithClientOptions(opts...),
+		),
+		updateInstallation: connect.NewClient[v1.UpdateInstallationRequest, v1.UpdateInstallationResponse](
+			httpClient,
+			baseURL+AppsServiceUpdateInstallationProcedure,
+			connect.WithSchema(appsServiceMethods.ByName("UpdateInstallation")),
+			connect.WithClientOptions(opts...),
+		),
+		uninstallApp: connect.NewClient[v1.UninstallAppRequest, v1.UninstallAppResponse](
+			httpClient,
+			baseURL+AppsServiceUninstallAppProcedure,
+			connect.WithSchema(appsServiceMethods.ByName("UninstallApp")),
+			connect.WithClientOptions(opts...),
+		),
+		getInstallationConfiguration: connect.NewClient[v1.GetInstallationConfigurationRequest, v1.GetInstallationConfigurationResponse](
+			httpClient,
+			baseURL+AppsServiceGetInstallationConfigurationProcedure,
+			connect.WithSchema(appsServiceMethods.ByName("GetInstallationConfiguration")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // appsServiceClient implements AppsServiceClient.
 type appsServiceClient struct {
-	registerApp          *connect.Client[v1.RegisterAppRequest, v1.RegisterAppResponse]
-	getApp               *connect.Client[v1.GetAppRequest, v1.GetAppResponse]
-	getAppBySlug         *connect.Client[v1.GetAppBySlugRequest, v1.GetAppBySlugResponse]
-	listApps             *connect.Client[v1.ListAppsRequest, v1.ListAppsResponse]
-	deleteApp            *connect.Client[v1.DeleteAppRequest, v1.DeleteAppResponse]
-	getAppProfile        *connect.Client[v1.GetAppProfileRequest, v1.GetAppProfileResponse]
-	validateServiceToken *connect.Client[v1.ValidateServiceTokenRequest, v1.ValidateServiceTokenResponse]
+	createApp                    *connect.Client[v1.CreateAppRequest, v1.CreateAppResponse]
+	updateApp                    *connect.Client[v1.UpdateAppRequest, v1.UpdateAppResponse]
+	getApp                       *connect.Client[v1.GetAppRequest, v1.GetAppResponse]
+	getAppBySlug                 *connect.Client[v1.GetAppBySlugRequest, v1.GetAppBySlugResponse]
+	listApps                     *connect.Client[v1.ListAppsRequest, v1.ListAppsResponse]
+	deleteApp                    *connect.Client[v1.DeleteAppRequest, v1.DeleteAppResponse]
+	getAppProfile                *connect.Client[v1.GetAppProfileRequest, v1.GetAppProfileResponse]
+	validateServiceToken         *connect.Client[v1.ValidateServiceTokenRequest, v1.ValidateServiceTokenResponse]
+	enrollApp                    *connect.Client[v1.EnrollAppRequest, v1.EnrollAppResponse]
+	installApp                   *connect.Client[v1.InstallAppRequest, v1.InstallAppResponse]
+	getInstallation              *connect.Client[v1.GetInstallationRequest, v1.GetInstallationResponse]
+	getInstallationBySlug        *connect.Client[v1.GetInstallationBySlugRequest, v1.GetInstallationBySlugResponse]
+	listInstallations            *connect.Client[v1.ListInstallationsRequest, v1.ListInstallationsResponse]
+	updateInstallation           *connect.Client[v1.UpdateInstallationRequest, v1.UpdateInstallationResponse]
+	uninstallApp                 *connect.Client[v1.UninstallAppRequest, v1.UninstallAppResponse]
+	getInstallationConfiguration *connect.Client[v1.GetInstallationConfigurationRequest, v1.GetInstallationConfigurationResponse]
 }
 
-// RegisterApp calls agynio.api.apps.v1.AppsService.RegisterApp.
-func (c *appsServiceClient) RegisterApp(ctx context.Context, req *connect.Request[v1.RegisterAppRequest]) (*connect.Response[v1.RegisterAppResponse], error) {
-	return c.registerApp.CallUnary(ctx, req)
+// CreateApp calls agynio.api.apps.v1.AppsService.CreateApp.
+func (c *appsServiceClient) CreateApp(ctx context.Context, req *connect.Request[v1.CreateAppRequest]) (*connect.Response[v1.CreateAppResponse], error) {
+	return c.createApp.CallUnary(ctx, req)
+}
+
+// UpdateApp calls agynio.api.apps.v1.AppsService.UpdateApp.
+func (c *appsServiceClient) UpdateApp(ctx context.Context, req *connect.Request[v1.UpdateAppRequest]) (*connect.Response[v1.UpdateAppResponse], error) {
+	return c.updateApp.CallUnary(ctx, req)
 }
 
 // GetApp calls agynio.api.apps.v1.AppsService.GetApp.
@@ -168,9 +279,50 @@ func (c *appsServiceClient) ValidateServiceToken(ctx context.Context, req *conne
 	return c.validateServiceToken.CallUnary(ctx, req)
 }
 
+// EnrollApp calls agynio.api.apps.v1.AppsService.EnrollApp.
+func (c *appsServiceClient) EnrollApp(ctx context.Context, req *connect.Request[v1.EnrollAppRequest]) (*connect.Response[v1.EnrollAppResponse], error) {
+	return c.enrollApp.CallUnary(ctx, req)
+}
+
+// InstallApp calls agynio.api.apps.v1.AppsService.InstallApp.
+func (c *appsServiceClient) InstallApp(ctx context.Context, req *connect.Request[v1.InstallAppRequest]) (*connect.Response[v1.InstallAppResponse], error) {
+	return c.installApp.CallUnary(ctx, req)
+}
+
+// GetInstallation calls agynio.api.apps.v1.AppsService.GetInstallation.
+func (c *appsServiceClient) GetInstallation(ctx context.Context, req *connect.Request[v1.GetInstallationRequest]) (*connect.Response[v1.GetInstallationResponse], error) {
+	return c.getInstallation.CallUnary(ctx, req)
+}
+
+// GetInstallationBySlug calls agynio.api.apps.v1.AppsService.GetInstallationBySlug.
+func (c *appsServiceClient) GetInstallationBySlug(ctx context.Context, req *connect.Request[v1.GetInstallationBySlugRequest]) (*connect.Response[v1.GetInstallationBySlugResponse], error) {
+	return c.getInstallationBySlug.CallUnary(ctx, req)
+}
+
+// ListInstallations calls agynio.api.apps.v1.AppsService.ListInstallations.
+func (c *appsServiceClient) ListInstallations(ctx context.Context, req *connect.Request[v1.ListInstallationsRequest]) (*connect.Response[v1.ListInstallationsResponse], error) {
+	return c.listInstallations.CallUnary(ctx, req)
+}
+
+// UpdateInstallation calls agynio.api.apps.v1.AppsService.UpdateInstallation.
+func (c *appsServiceClient) UpdateInstallation(ctx context.Context, req *connect.Request[v1.UpdateInstallationRequest]) (*connect.Response[v1.UpdateInstallationResponse], error) {
+	return c.updateInstallation.CallUnary(ctx, req)
+}
+
+// UninstallApp calls agynio.api.apps.v1.AppsService.UninstallApp.
+func (c *appsServiceClient) UninstallApp(ctx context.Context, req *connect.Request[v1.UninstallAppRequest]) (*connect.Response[v1.UninstallAppResponse], error) {
+	return c.uninstallApp.CallUnary(ctx, req)
+}
+
+// GetInstallationConfiguration calls agynio.api.apps.v1.AppsService.GetInstallationConfiguration.
+func (c *appsServiceClient) GetInstallationConfiguration(ctx context.Context, req *connect.Request[v1.GetInstallationConfigurationRequest]) (*connect.Response[v1.GetInstallationConfigurationResponse], error) {
+	return c.getInstallationConfiguration.CallUnary(ctx, req)
+}
+
 // AppsServiceHandler is an implementation of the agynio.api.apps.v1.AppsService service.
 type AppsServiceHandler interface {
-	RegisterApp(context.Context, *connect.Request[v1.RegisterAppRequest]) (*connect.Response[v1.RegisterAppResponse], error)
+	CreateApp(context.Context, *connect.Request[v1.CreateAppRequest]) (*connect.Response[v1.CreateAppResponse], error)
+	UpdateApp(context.Context, *connect.Request[v1.UpdateAppRequest]) (*connect.Response[v1.UpdateAppResponse], error)
 	GetApp(context.Context, *connect.Request[v1.GetAppRequest]) (*connect.Response[v1.GetAppResponse], error)
 	// Resolve an app by slug.
 	GetAppBySlug(context.Context, *connect.Request[v1.GetAppBySlugRequest]) (*connect.Response[v1.GetAppBySlugResponse], error)
@@ -180,6 +332,24 @@ type AppsServiceHandler interface {
 	GetAppProfile(context.Context, *connect.Request[v1.GetAppProfileRequest]) (*connect.Response[v1.GetAppProfileResponse], error)
 	// Validate a service token hash and resolve its app.
 	ValidateServiceToken(context.Context, *connect.Request[v1.ValidateServiceTokenRequest]) (*connect.Response[v1.ValidateServiceTokenResponse], error)
+	// Self-enrollment: app calls at startup with its service_token.
+	// Creates (or re-creates) the OpenZiti identity + service for the app.
+	// Idempotent: cleans up old ziti resources and creates fresh ones on each call.
+	EnrollApp(context.Context, *connect.Request[v1.EnrollAppRequest]) (*connect.Response[v1.EnrollAppResponse], error)
+	// Install an app for an organization.
+	InstallApp(context.Context, *connect.Request[v1.InstallAppRequest]) (*connect.Response[v1.InstallAppResponse], error)
+	// Fetch an installation by ID.
+	GetInstallation(context.Context, *connect.Request[v1.GetInstallationRequest]) (*connect.Response[v1.GetInstallationResponse], error)
+	// Resolve an installation by slug within an organization.
+	GetInstallationBySlug(context.Context, *connect.Request[v1.GetInstallationBySlugRequest]) (*connect.Response[v1.GetInstallationBySlugResponse], error)
+	// List installations with optional filters.
+	ListInstallations(context.Context, *connect.Request[v1.ListInstallationsRequest]) (*connect.Response[v1.ListInstallationsResponse], error)
+	// Update an installation's metadata.
+	UpdateInstallation(context.Context, *connect.Request[v1.UpdateInstallationRequest]) (*connect.Response[v1.UpdateInstallationResponse], error)
+	// Uninstall an app by installation ID.
+	UninstallApp(context.Context, *connect.Request[v1.UninstallAppRequest]) (*connect.Response[v1.UninstallAppResponse], error)
+	// Fetch only the installation configuration for scoped access.
+	GetInstallationConfiguration(context.Context, *connect.Request[v1.GetInstallationConfigurationRequest]) (*connect.Response[v1.GetInstallationConfigurationResponse], error)
 }
 
 // NewAppsServiceHandler builds an HTTP handler from the service implementation. It returns the path
@@ -189,10 +359,16 @@ type AppsServiceHandler interface {
 // and JSON codecs. They also support gzip compression.
 func NewAppsServiceHandler(svc AppsServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
 	appsServiceMethods := v1.File_agynio_api_apps_v1_apps_proto.Services().ByName("AppsService").Methods()
-	appsServiceRegisterAppHandler := connect.NewUnaryHandler(
-		AppsServiceRegisterAppProcedure,
-		svc.RegisterApp,
-		connect.WithSchema(appsServiceMethods.ByName("RegisterApp")),
+	appsServiceCreateAppHandler := connect.NewUnaryHandler(
+		AppsServiceCreateAppProcedure,
+		svc.CreateApp,
+		connect.WithSchema(appsServiceMethods.ByName("CreateApp")),
+		connect.WithHandlerOptions(opts...),
+	)
+	appsServiceUpdateAppHandler := connect.NewUnaryHandler(
+		AppsServiceUpdateAppProcedure,
+		svc.UpdateApp,
+		connect.WithSchema(appsServiceMethods.ByName("UpdateApp")),
 		connect.WithHandlerOptions(opts...),
 	)
 	appsServiceGetAppHandler := connect.NewUnaryHandler(
@@ -231,10 +407,60 @@ func NewAppsServiceHandler(svc AppsServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(appsServiceMethods.ByName("ValidateServiceToken")),
 		connect.WithHandlerOptions(opts...),
 	)
+	appsServiceEnrollAppHandler := connect.NewUnaryHandler(
+		AppsServiceEnrollAppProcedure,
+		svc.EnrollApp,
+		connect.WithSchema(appsServiceMethods.ByName("EnrollApp")),
+		connect.WithHandlerOptions(opts...),
+	)
+	appsServiceInstallAppHandler := connect.NewUnaryHandler(
+		AppsServiceInstallAppProcedure,
+		svc.InstallApp,
+		connect.WithSchema(appsServiceMethods.ByName("InstallApp")),
+		connect.WithHandlerOptions(opts...),
+	)
+	appsServiceGetInstallationHandler := connect.NewUnaryHandler(
+		AppsServiceGetInstallationProcedure,
+		svc.GetInstallation,
+		connect.WithSchema(appsServiceMethods.ByName("GetInstallation")),
+		connect.WithHandlerOptions(opts...),
+	)
+	appsServiceGetInstallationBySlugHandler := connect.NewUnaryHandler(
+		AppsServiceGetInstallationBySlugProcedure,
+		svc.GetInstallationBySlug,
+		connect.WithSchema(appsServiceMethods.ByName("GetInstallationBySlug")),
+		connect.WithHandlerOptions(opts...),
+	)
+	appsServiceListInstallationsHandler := connect.NewUnaryHandler(
+		AppsServiceListInstallationsProcedure,
+		svc.ListInstallations,
+		connect.WithSchema(appsServiceMethods.ByName("ListInstallations")),
+		connect.WithHandlerOptions(opts...),
+	)
+	appsServiceUpdateInstallationHandler := connect.NewUnaryHandler(
+		AppsServiceUpdateInstallationProcedure,
+		svc.UpdateInstallation,
+		connect.WithSchema(appsServiceMethods.ByName("UpdateInstallation")),
+		connect.WithHandlerOptions(opts...),
+	)
+	appsServiceUninstallAppHandler := connect.NewUnaryHandler(
+		AppsServiceUninstallAppProcedure,
+		svc.UninstallApp,
+		connect.WithSchema(appsServiceMethods.ByName("UninstallApp")),
+		connect.WithHandlerOptions(opts...),
+	)
+	appsServiceGetInstallationConfigurationHandler := connect.NewUnaryHandler(
+		AppsServiceGetInstallationConfigurationProcedure,
+		svc.GetInstallationConfiguration,
+		connect.WithSchema(appsServiceMethods.ByName("GetInstallationConfiguration")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/agynio.api.apps.v1.AppsService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
-		case AppsServiceRegisterAppProcedure:
-			appsServiceRegisterAppHandler.ServeHTTP(w, r)
+		case AppsServiceCreateAppProcedure:
+			appsServiceCreateAppHandler.ServeHTTP(w, r)
+		case AppsServiceUpdateAppProcedure:
+			appsServiceUpdateAppHandler.ServeHTTP(w, r)
 		case AppsServiceGetAppProcedure:
 			appsServiceGetAppHandler.ServeHTTP(w, r)
 		case AppsServiceGetAppBySlugProcedure:
@@ -247,6 +473,22 @@ func NewAppsServiceHandler(svc AppsServiceHandler, opts ...connect.HandlerOption
 			appsServiceGetAppProfileHandler.ServeHTTP(w, r)
 		case AppsServiceValidateServiceTokenProcedure:
 			appsServiceValidateServiceTokenHandler.ServeHTTP(w, r)
+		case AppsServiceEnrollAppProcedure:
+			appsServiceEnrollAppHandler.ServeHTTP(w, r)
+		case AppsServiceInstallAppProcedure:
+			appsServiceInstallAppHandler.ServeHTTP(w, r)
+		case AppsServiceGetInstallationProcedure:
+			appsServiceGetInstallationHandler.ServeHTTP(w, r)
+		case AppsServiceGetInstallationBySlugProcedure:
+			appsServiceGetInstallationBySlugHandler.ServeHTTP(w, r)
+		case AppsServiceListInstallationsProcedure:
+			appsServiceListInstallationsHandler.ServeHTTP(w, r)
+		case AppsServiceUpdateInstallationProcedure:
+			appsServiceUpdateInstallationHandler.ServeHTTP(w, r)
+		case AppsServiceUninstallAppProcedure:
+			appsServiceUninstallAppHandler.ServeHTTP(w, r)
+		case AppsServiceGetInstallationConfigurationProcedure:
+			appsServiceGetInstallationConfigurationHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -256,8 +498,12 @@ func NewAppsServiceHandler(svc AppsServiceHandler, opts ...connect.HandlerOption
 // UnimplementedAppsServiceHandler returns CodeUnimplemented from all methods.
 type UnimplementedAppsServiceHandler struct{}
 
-func (UnimplementedAppsServiceHandler) RegisterApp(context.Context, *connect.Request[v1.RegisterAppRequest]) (*connect.Response[v1.RegisterAppResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("agynio.api.apps.v1.AppsService.RegisterApp is not implemented"))
+func (UnimplementedAppsServiceHandler) CreateApp(context.Context, *connect.Request[v1.CreateAppRequest]) (*connect.Response[v1.CreateAppResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("agynio.api.apps.v1.AppsService.CreateApp is not implemented"))
+}
+
+func (UnimplementedAppsServiceHandler) UpdateApp(context.Context, *connect.Request[v1.UpdateAppRequest]) (*connect.Response[v1.UpdateAppResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("agynio.api.apps.v1.AppsService.UpdateApp is not implemented"))
 }
 
 func (UnimplementedAppsServiceHandler) GetApp(context.Context, *connect.Request[v1.GetAppRequest]) (*connect.Response[v1.GetAppResponse], error) {
@@ -282,4 +528,36 @@ func (UnimplementedAppsServiceHandler) GetAppProfile(context.Context, *connect.R
 
 func (UnimplementedAppsServiceHandler) ValidateServiceToken(context.Context, *connect.Request[v1.ValidateServiceTokenRequest]) (*connect.Response[v1.ValidateServiceTokenResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("agynio.api.apps.v1.AppsService.ValidateServiceToken is not implemented"))
+}
+
+func (UnimplementedAppsServiceHandler) EnrollApp(context.Context, *connect.Request[v1.EnrollAppRequest]) (*connect.Response[v1.EnrollAppResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("agynio.api.apps.v1.AppsService.EnrollApp is not implemented"))
+}
+
+func (UnimplementedAppsServiceHandler) InstallApp(context.Context, *connect.Request[v1.InstallAppRequest]) (*connect.Response[v1.InstallAppResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("agynio.api.apps.v1.AppsService.InstallApp is not implemented"))
+}
+
+func (UnimplementedAppsServiceHandler) GetInstallation(context.Context, *connect.Request[v1.GetInstallationRequest]) (*connect.Response[v1.GetInstallationResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("agynio.api.apps.v1.AppsService.GetInstallation is not implemented"))
+}
+
+func (UnimplementedAppsServiceHandler) GetInstallationBySlug(context.Context, *connect.Request[v1.GetInstallationBySlugRequest]) (*connect.Response[v1.GetInstallationBySlugResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("agynio.api.apps.v1.AppsService.GetInstallationBySlug is not implemented"))
+}
+
+func (UnimplementedAppsServiceHandler) ListInstallations(context.Context, *connect.Request[v1.ListInstallationsRequest]) (*connect.Response[v1.ListInstallationsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("agynio.api.apps.v1.AppsService.ListInstallations is not implemented"))
+}
+
+func (UnimplementedAppsServiceHandler) UpdateInstallation(context.Context, *connect.Request[v1.UpdateInstallationRequest]) (*connect.Response[v1.UpdateInstallationResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("agynio.api.apps.v1.AppsService.UpdateInstallation is not implemented"))
+}
+
+func (UnimplementedAppsServiceHandler) UninstallApp(context.Context, *connect.Request[v1.UninstallAppRequest]) (*connect.Response[v1.UninstallAppResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("agynio.api.apps.v1.AppsService.UninstallApp is not implemented"))
+}
+
+func (UnimplementedAppsServiceHandler) GetInstallationConfiguration(context.Context, *connect.Request[v1.GetInstallationConfigurationRequest]) (*connect.Response[v1.GetInstallationConfigurationResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("agynio.api.apps.v1.AppsService.GetInstallationConfiguration is not implemented"))
 }

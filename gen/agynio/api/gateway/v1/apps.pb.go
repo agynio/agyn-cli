@@ -25,38 +25,85 @@ var File_agynio_api_gateway_v1_apps_proto protoreflect.FileDescriptor
 
 const file_agynio_api_gateway_v1_apps_proto_rawDesc = "" +
 	"\n" +
-	" agynio/api/gateway/v1/apps.proto\x12\x15agynio.api.gateway.v1\x1a\x1dagynio/api/apps/v1/apps.proto2\xef\x02\n" +
-	"\vAppsGateway\x12^\n" +
-	"\vRegisterApp\x12&.agynio.api.apps.v1.RegisterAppRequest\x1a'.agynio.api.apps.v1.RegisterAppResponse\x12O\n" +
-	"\x06GetApp\x12!.agynio.api.apps.v1.GetAppRequest\x1a\".agynio.api.apps.v1.GetAppResponse\x12U\n" +
+	" agynio/api/gateway/v1/apps.proto\x12\x15agynio.api.gateway.v1\x1a\x1dagynio/api/apps/v1/apps.proto2\x91\n" +
+	"\n" +
+	"\vAppsGateway\x12X\n" +
+	"\tCreateApp\x12$.agynio.api.apps.v1.CreateAppRequest\x1a%.agynio.api.apps.v1.CreateAppResponse\x12X\n" +
+	"\tUpdateApp\x12$.agynio.api.apps.v1.UpdateAppRequest\x1a%.agynio.api.apps.v1.UpdateAppResponse\x12O\n" +
+	"\x06GetApp\x12!.agynio.api.apps.v1.GetAppRequest\x1a\".agynio.api.apps.v1.GetAppResponse\x12a\n" +
+	"\fGetAppBySlug\x12'.agynio.api.apps.v1.GetAppBySlugRequest\x1a(.agynio.api.apps.v1.GetAppBySlugResponse\x12U\n" +
 	"\bListApps\x12#.agynio.api.apps.v1.ListAppsRequest\x1a$.agynio.api.apps.v1.ListAppsResponse\x12X\n" +
-	"\tDeleteApp\x12$.agynio.api.apps.v1.DeleteAppRequest\x1a%.agynio.api.apps.v1.DeleteAppResponseB\xdd\x01\n" +
+	"\tDeleteApp\x12$.agynio.api.apps.v1.DeleteAppRequest\x1a%.agynio.api.apps.v1.DeleteAppResponse\x12X\n" +
+	"\tEnrollApp\x12$.agynio.api.apps.v1.EnrollAppRequest\x1a%.agynio.api.apps.v1.EnrollAppResponse\x12[\n" +
+	"\n" +
+	"InstallApp\x12%.agynio.api.apps.v1.InstallAppRequest\x1a&.agynio.api.apps.v1.InstallAppResponse\x12j\n" +
+	"\x0fGetInstallation\x12*.agynio.api.apps.v1.GetInstallationRequest\x1a+.agynio.api.apps.v1.GetInstallationResponse\x12|\n" +
+	"\x15GetInstallationBySlug\x120.agynio.api.apps.v1.GetInstallationBySlugRequest\x1a1.agynio.api.apps.v1.GetInstallationBySlugResponse\x12p\n" +
+	"\x11ListInstallations\x12,.agynio.api.apps.v1.ListInstallationsRequest\x1a-.agynio.api.apps.v1.ListInstallationsResponse\x12s\n" +
+	"\x12UpdateInstallation\x12-.agynio.api.apps.v1.UpdateInstallationRequest\x1a..agynio.api.apps.v1.UpdateInstallationResponse\x12a\n" +
+	"\fUninstallApp\x12'.agynio.api.apps.v1.UninstallAppRequest\x1a(.agynio.api.apps.v1.UninstallAppResponseB\xdd\x01\n" +
 	"\x19com.agynio.api.gateway.v1B\tAppsProtoP\x01Z>github.com/agynio/agyn-cli/gen/agynio/api/gateway/v1;gatewayv1\xa2\x02\x03AAG\xaa\x02\x15Agynio.Api.Gateway.V1\xca\x02\x15Agynio\\Api\\Gateway\\V1\xe2\x02!Agynio\\Api\\Gateway\\V1\\GPBMetadata\xea\x02\x18Agynio::Api::Gateway::V1b\x06proto3"
 
 var file_agynio_api_gateway_v1_apps_proto_goTypes = []any{
-	(*v1.RegisterAppRequest)(nil),  // 0: agynio.api.apps.v1.RegisterAppRequest
-	(*v1.GetAppRequest)(nil),       // 1: agynio.api.apps.v1.GetAppRequest
-	(*v1.ListAppsRequest)(nil),     // 2: agynio.api.apps.v1.ListAppsRequest
-	(*v1.DeleteAppRequest)(nil),    // 3: agynio.api.apps.v1.DeleteAppRequest
-	(*v1.RegisterAppResponse)(nil), // 4: agynio.api.apps.v1.RegisterAppResponse
-	(*v1.GetAppResponse)(nil),      // 5: agynio.api.apps.v1.GetAppResponse
-	(*v1.ListAppsResponse)(nil),    // 6: agynio.api.apps.v1.ListAppsResponse
-	(*v1.DeleteAppResponse)(nil),   // 7: agynio.api.apps.v1.DeleteAppResponse
+	(*v1.CreateAppRequest)(nil),              // 0: agynio.api.apps.v1.CreateAppRequest
+	(*v1.UpdateAppRequest)(nil),              // 1: agynio.api.apps.v1.UpdateAppRequest
+	(*v1.GetAppRequest)(nil),                 // 2: agynio.api.apps.v1.GetAppRequest
+	(*v1.GetAppBySlugRequest)(nil),           // 3: agynio.api.apps.v1.GetAppBySlugRequest
+	(*v1.ListAppsRequest)(nil),               // 4: agynio.api.apps.v1.ListAppsRequest
+	(*v1.DeleteAppRequest)(nil),              // 5: agynio.api.apps.v1.DeleteAppRequest
+	(*v1.EnrollAppRequest)(nil),              // 6: agynio.api.apps.v1.EnrollAppRequest
+	(*v1.InstallAppRequest)(nil),             // 7: agynio.api.apps.v1.InstallAppRequest
+	(*v1.GetInstallationRequest)(nil),        // 8: agynio.api.apps.v1.GetInstallationRequest
+	(*v1.GetInstallationBySlugRequest)(nil),  // 9: agynio.api.apps.v1.GetInstallationBySlugRequest
+	(*v1.ListInstallationsRequest)(nil),      // 10: agynio.api.apps.v1.ListInstallationsRequest
+	(*v1.UpdateInstallationRequest)(nil),     // 11: agynio.api.apps.v1.UpdateInstallationRequest
+	(*v1.UninstallAppRequest)(nil),           // 12: agynio.api.apps.v1.UninstallAppRequest
+	(*v1.CreateAppResponse)(nil),             // 13: agynio.api.apps.v1.CreateAppResponse
+	(*v1.UpdateAppResponse)(nil),             // 14: agynio.api.apps.v1.UpdateAppResponse
+	(*v1.GetAppResponse)(nil),                // 15: agynio.api.apps.v1.GetAppResponse
+	(*v1.GetAppBySlugResponse)(nil),          // 16: agynio.api.apps.v1.GetAppBySlugResponse
+	(*v1.ListAppsResponse)(nil),              // 17: agynio.api.apps.v1.ListAppsResponse
+	(*v1.DeleteAppResponse)(nil),             // 18: agynio.api.apps.v1.DeleteAppResponse
+	(*v1.EnrollAppResponse)(nil),             // 19: agynio.api.apps.v1.EnrollAppResponse
+	(*v1.InstallAppResponse)(nil),            // 20: agynio.api.apps.v1.InstallAppResponse
+	(*v1.GetInstallationResponse)(nil),       // 21: agynio.api.apps.v1.GetInstallationResponse
+	(*v1.GetInstallationBySlugResponse)(nil), // 22: agynio.api.apps.v1.GetInstallationBySlugResponse
+	(*v1.ListInstallationsResponse)(nil),     // 23: agynio.api.apps.v1.ListInstallationsResponse
+	(*v1.UpdateInstallationResponse)(nil),    // 24: agynio.api.apps.v1.UpdateInstallationResponse
+	(*v1.UninstallAppResponse)(nil),          // 25: agynio.api.apps.v1.UninstallAppResponse
 }
 var file_agynio_api_gateway_v1_apps_proto_depIdxs = []int32{
-	0, // 0: agynio.api.gateway.v1.AppsGateway.RegisterApp:input_type -> agynio.api.apps.v1.RegisterAppRequest
-	1, // 1: agynio.api.gateway.v1.AppsGateway.GetApp:input_type -> agynio.api.apps.v1.GetAppRequest
-	2, // 2: agynio.api.gateway.v1.AppsGateway.ListApps:input_type -> agynio.api.apps.v1.ListAppsRequest
-	3, // 3: agynio.api.gateway.v1.AppsGateway.DeleteApp:input_type -> agynio.api.apps.v1.DeleteAppRequest
-	4, // 4: agynio.api.gateway.v1.AppsGateway.RegisterApp:output_type -> agynio.api.apps.v1.RegisterAppResponse
-	5, // 5: agynio.api.gateway.v1.AppsGateway.GetApp:output_type -> agynio.api.apps.v1.GetAppResponse
-	6, // 6: agynio.api.gateway.v1.AppsGateway.ListApps:output_type -> agynio.api.apps.v1.ListAppsResponse
-	7, // 7: agynio.api.gateway.v1.AppsGateway.DeleteApp:output_type -> agynio.api.apps.v1.DeleteAppResponse
-	4, // [4:8] is the sub-list for method output_type
-	0, // [0:4] is the sub-list for method input_type
-	0, // [0:0] is the sub-list for extension type_name
-	0, // [0:0] is the sub-list for extension extendee
-	0, // [0:0] is the sub-list for field type_name
+	0,  // 0: agynio.api.gateway.v1.AppsGateway.CreateApp:input_type -> agynio.api.apps.v1.CreateAppRequest
+	1,  // 1: agynio.api.gateway.v1.AppsGateway.UpdateApp:input_type -> agynio.api.apps.v1.UpdateAppRequest
+	2,  // 2: agynio.api.gateway.v1.AppsGateway.GetApp:input_type -> agynio.api.apps.v1.GetAppRequest
+	3,  // 3: agynio.api.gateway.v1.AppsGateway.GetAppBySlug:input_type -> agynio.api.apps.v1.GetAppBySlugRequest
+	4,  // 4: agynio.api.gateway.v1.AppsGateway.ListApps:input_type -> agynio.api.apps.v1.ListAppsRequest
+	5,  // 5: agynio.api.gateway.v1.AppsGateway.DeleteApp:input_type -> agynio.api.apps.v1.DeleteAppRequest
+	6,  // 6: agynio.api.gateway.v1.AppsGateway.EnrollApp:input_type -> agynio.api.apps.v1.EnrollAppRequest
+	7,  // 7: agynio.api.gateway.v1.AppsGateway.InstallApp:input_type -> agynio.api.apps.v1.InstallAppRequest
+	8,  // 8: agynio.api.gateway.v1.AppsGateway.GetInstallation:input_type -> agynio.api.apps.v1.GetInstallationRequest
+	9,  // 9: agynio.api.gateway.v1.AppsGateway.GetInstallationBySlug:input_type -> agynio.api.apps.v1.GetInstallationBySlugRequest
+	10, // 10: agynio.api.gateway.v1.AppsGateway.ListInstallations:input_type -> agynio.api.apps.v1.ListInstallationsRequest
+	11, // 11: agynio.api.gateway.v1.AppsGateway.UpdateInstallation:input_type -> agynio.api.apps.v1.UpdateInstallationRequest
+	12, // 12: agynio.api.gateway.v1.AppsGateway.UninstallApp:input_type -> agynio.api.apps.v1.UninstallAppRequest
+	13, // 13: agynio.api.gateway.v1.AppsGateway.CreateApp:output_type -> agynio.api.apps.v1.CreateAppResponse
+	14, // 14: agynio.api.gateway.v1.AppsGateway.UpdateApp:output_type -> agynio.api.apps.v1.UpdateAppResponse
+	15, // 15: agynio.api.gateway.v1.AppsGateway.GetApp:output_type -> agynio.api.apps.v1.GetAppResponse
+	16, // 16: agynio.api.gateway.v1.AppsGateway.GetAppBySlug:output_type -> agynio.api.apps.v1.GetAppBySlugResponse
+	17, // 17: agynio.api.gateway.v1.AppsGateway.ListApps:output_type -> agynio.api.apps.v1.ListAppsResponse
+	18, // 18: agynio.api.gateway.v1.AppsGateway.DeleteApp:output_type -> agynio.api.apps.v1.DeleteAppResponse
+	19, // 19: agynio.api.gateway.v1.AppsGateway.EnrollApp:output_type -> agynio.api.apps.v1.EnrollAppResponse
+	20, // 20: agynio.api.gateway.v1.AppsGateway.InstallApp:output_type -> agynio.api.apps.v1.InstallAppResponse
+	21, // 21: agynio.api.gateway.v1.AppsGateway.GetInstallation:output_type -> agynio.api.apps.v1.GetInstallationResponse
+	22, // 22: agynio.api.gateway.v1.AppsGateway.GetInstallationBySlug:output_type -> agynio.api.apps.v1.GetInstallationBySlugResponse
+	23, // 23: agynio.api.gateway.v1.AppsGateway.ListInstallations:output_type -> agynio.api.apps.v1.ListInstallationsResponse
+	24, // 24: agynio.api.gateway.v1.AppsGateway.UpdateInstallation:output_type -> agynio.api.apps.v1.UpdateInstallationResponse
+	25, // 25: agynio.api.gateway.v1.AppsGateway.UninstallApp:output_type -> agynio.api.apps.v1.UninstallAppResponse
+	13, // [13:26] is the sub-list for method output_type
+	0,  // [0:13] is the sub-list for method input_type
+	0,  // [0:0] is the sub-list for extension type_name
+	0,  // [0:0] is the sub-list for extension extendee
+	0,  // [0:0] is the sub-list for field type_name
 }
 
 func init() { file_agynio_api_gateway_v1_apps_proto_init() }

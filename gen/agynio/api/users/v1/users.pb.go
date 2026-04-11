@@ -22,6 +22,101 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+type ClusterRole int32
+
+const (
+	ClusterRole_CLUSTER_ROLE_UNSPECIFIED ClusterRole = 0
+	ClusterRole_CLUSTER_ROLE_ADMIN       ClusterRole = 1
+)
+
+// Enum value maps for ClusterRole.
+var (
+	ClusterRole_name = map[int32]string{
+		0: "CLUSTER_ROLE_UNSPECIFIED",
+		1: "CLUSTER_ROLE_ADMIN",
+	}
+	ClusterRole_value = map[string]int32{
+		"CLUSTER_ROLE_UNSPECIFIED": 0,
+		"CLUSTER_ROLE_ADMIN":       1,
+	}
+)
+
+func (x ClusterRole) Enum() *ClusterRole {
+	p := new(ClusterRole)
+	*p = x
+	return p
+}
+
+func (x ClusterRole) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (ClusterRole) Descriptor() protoreflect.EnumDescriptor {
+	return file_agynio_api_users_v1_users_proto_enumTypes[0].Descriptor()
+}
+
+func (ClusterRole) Type() protoreflect.EnumType {
+	return &file_agynio_api_users_v1_users_proto_enumTypes[0]
+}
+
+func (x ClusterRole) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use ClusterRole.Descriptor instead.
+func (ClusterRole) EnumDescriptor() ([]byte, []int) {
+	return file_agynio_api_users_v1_users_proto_rawDescGZIP(), []int{0}
+}
+
+type DeviceStatus int32
+
+const (
+	DeviceStatus_DEVICE_STATUS_UNSPECIFIED DeviceStatus = 0
+	DeviceStatus_DEVICE_STATUS_PENDING     DeviceStatus = 1
+	DeviceStatus_DEVICE_STATUS_ENROLLED    DeviceStatus = 2
+)
+
+// Enum value maps for DeviceStatus.
+var (
+	DeviceStatus_name = map[int32]string{
+		0: "DEVICE_STATUS_UNSPECIFIED",
+		1: "DEVICE_STATUS_PENDING",
+		2: "DEVICE_STATUS_ENROLLED",
+	}
+	DeviceStatus_value = map[string]int32{
+		"DEVICE_STATUS_UNSPECIFIED": 0,
+		"DEVICE_STATUS_PENDING":     1,
+		"DEVICE_STATUS_ENROLLED":    2,
+	}
+)
+
+func (x DeviceStatus) Enum() *DeviceStatus {
+	p := new(DeviceStatus)
+	*p = x
+	return p
+}
+
+func (x DeviceStatus) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (DeviceStatus) Descriptor() protoreflect.EnumDescriptor {
+	return file_agynio_api_users_v1_users_proto_enumTypes[1].Descriptor()
+}
+
+func (DeviceStatus) Type() protoreflect.EnumType {
+	return &file_agynio_api_users_v1_users_proto_enumTypes[1]
+}
+
+func (x DeviceStatus) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use DeviceStatus.Descriptor instead.
+func (DeviceStatus) EnumDescriptor() ([]byte, []int) {
+	return file_agynio_api_users_v1_users_proto_rawDescGZIP(), []int{1}
+}
+
 type EntityMeta struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -89,6 +184,7 @@ type User struct {
 	Name          string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
 	Email         string                 `protobuf:"bytes,4,opt,name=email,proto3" json:"email,omitempty"`
 	PhotoUrl      string                 `protobuf:"bytes,5,opt,name=photo_url,json=photoUrl,proto3" json:"photo_url,omitempty"`
+	Nickname      string                 `protobuf:"bytes,6,opt,name=nickname,proto3" json:"nickname,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -158,6 +254,89 @@ func (x *User) GetPhotoUrl() string {
 	return ""
 }
 
+func (x *User) GetNickname() string {
+	if x != nil {
+		return x.Nickname
+	}
+	return ""
+}
+
+type Device struct {
+	state              protoimpl.MessageState `protogen:"open.v1"`
+	Meta               *EntityMeta            `protobuf:"bytes,1,opt,name=meta,proto3" json:"meta,omitempty"`
+	UserIdentityId     string                 `protobuf:"bytes,2,opt,name=user_identity_id,json=userIdentityId,proto3" json:"user_identity_id,omitempty"`
+	Name               string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	OpenzitiIdentityId string                 `protobuf:"bytes,4,opt,name=openziti_identity_id,json=openzitiIdentityId,proto3" json:"openziti_identity_id,omitempty"`
+	Status             DeviceStatus           `protobuf:"varint,5,opt,name=status,proto3,enum=agynio.api.users.v1.DeviceStatus" json:"status,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
+}
+
+func (x *Device) Reset() {
+	*x = Device{}
+	mi := &file_agynio_api_users_v1_users_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Device) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Device) ProtoMessage() {}
+
+func (x *Device) ProtoReflect() protoreflect.Message {
+	mi := &file_agynio_api_users_v1_users_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Device.ProtoReflect.Descriptor instead.
+func (*Device) Descriptor() ([]byte, []int) {
+	return file_agynio_api_users_v1_users_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *Device) GetMeta() *EntityMeta {
+	if x != nil {
+		return x.Meta
+	}
+	return nil
+}
+
+func (x *Device) GetUserIdentityId() string {
+	if x != nil {
+		return x.UserIdentityId
+	}
+	return ""
+}
+
+func (x *Device) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *Device) GetOpenzitiIdentityId() string {
+	if x != nil {
+		return x.OpenzitiIdentityId
+	}
+	return ""
+}
+
+func (x *Device) GetStatus() DeviceStatus {
+	if x != nil {
+		return x.Status
+	}
+	return DeviceStatus_DEVICE_STATUS_UNSPECIFIED
+}
+
 type ResolveOrCreateUserRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	OidcSubject   string                 `protobuf:"bytes,1,opt,name=oidc_subject,json=oidcSubject,proto3" json:"oidc_subject,omitempty"`
@@ -170,7 +349,7 @@ type ResolveOrCreateUserRequest struct {
 
 func (x *ResolveOrCreateUserRequest) Reset() {
 	*x = ResolveOrCreateUserRequest{}
-	mi := &file_agynio_api_users_v1_users_proto_msgTypes[2]
+	mi := &file_agynio_api_users_v1_users_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -182,7 +361,7 @@ func (x *ResolveOrCreateUserRequest) String() string {
 func (*ResolveOrCreateUserRequest) ProtoMessage() {}
 
 func (x *ResolveOrCreateUserRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_agynio_api_users_v1_users_proto_msgTypes[2]
+	mi := &file_agynio_api_users_v1_users_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -195,7 +374,7 @@ func (x *ResolveOrCreateUserRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ResolveOrCreateUserRequest.ProtoReflect.Descriptor instead.
 func (*ResolveOrCreateUserRequest) Descriptor() ([]byte, []int) {
-	return file_agynio_api_users_v1_users_proto_rawDescGZIP(), []int{2}
+	return file_agynio_api_users_v1_users_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *ResolveOrCreateUserRequest) GetOidcSubject() string {
@@ -236,7 +415,7 @@ type ResolveOrCreateUserResponse struct {
 
 func (x *ResolveOrCreateUserResponse) Reset() {
 	*x = ResolveOrCreateUserResponse{}
-	mi := &file_agynio_api_users_v1_users_proto_msgTypes[3]
+	mi := &file_agynio_api_users_v1_users_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -248,7 +427,7 @@ func (x *ResolveOrCreateUserResponse) String() string {
 func (*ResolveOrCreateUserResponse) ProtoMessage() {}
 
 func (x *ResolveOrCreateUserResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_agynio_api_users_v1_users_proto_msgTypes[3]
+	mi := &file_agynio_api_users_v1_users_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -261,7 +440,7 @@ func (x *ResolveOrCreateUserResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ResolveOrCreateUserResponse.ProtoReflect.Descriptor instead.
 func (*ResolveOrCreateUserResponse) Descriptor() ([]byte, []int) {
-	return file_agynio_api_users_v1_users_proto_rawDescGZIP(), []int{3}
+	return file_agynio_api_users_v1_users_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *ResolveOrCreateUserResponse) GetUser() *User {
@@ -287,7 +466,7 @@ type GetUserRequest struct {
 
 func (x *GetUserRequest) Reset() {
 	*x = GetUserRequest{}
-	mi := &file_agynio_api_users_v1_users_proto_msgTypes[4]
+	mi := &file_agynio_api_users_v1_users_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -299,7 +478,7 @@ func (x *GetUserRequest) String() string {
 func (*GetUserRequest) ProtoMessage() {}
 
 func (x *GetUserRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_agynio_api_users_v1_users_proto_msgTypes[4]
+	mi := &file_agynio_api_users_v1_users_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -312,7 +491,7 @@ func (x *GetUserRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetUserRequest.ProtoReflect.Descriptor instead.
 func (*GetUserRequest) Descriptor() ([]byte, []int) {
-	return file_agynio_api_users_v1_users_proto_rawDescGZIP(), []int{4}
+	return file_agynio_api_users_v1_users_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *GetUserRequest) GetIdentityId() string {
@@ -325,13 +504,14 @@ func (x *GetUserRequest) GetIdentityId() string {
 type GetUserResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	User          *User                  `protobuf:"bytes,1,opt,name=user,proto3" json:"user,omitempty"`
+	ClusterRole   ClusterRole            `protobuf:"varint,2,opt,name=cluster_role,json=clusterRole,proto3,enum=agynio.api.users.v1.ClusterRole" json:"cluster_role,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GetUserResponse) Reset() {
 	*x = GetUserResponse{}
-	mi := &file_agynio_api_users_v1_users_proto_msgTypes[5]
+	mi := &file_agynio_api_users_v1_users_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -343,7 +523,7 @@ func (x *GetUserResponse) String() string {
 func (*GetUserResponse) ProtoMessage() {}
 
 func (x *GetUserResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_agynio_api_users_v1_users_proto_msgTypes[5]
+	mi := &file_agynio_api_users_v1_users_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -356,7 +536,7 @@ func (x *GetUserResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetUserResponse.ProtoReflect.Descriptor instead.
 func (*GetUserResponse) Descriptor() ([]byte, []int) {
-	return file_agynio_api_users_v1_users_proto_rawDescGZIP(), []int{5}
+	return file_agynio_api_users_v1_users_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *GetUserResponse) GetUser() *User {
@@ -364,6 +544,13 @@ func (x *GetUserResponse) GetUser() *User {
 		return x.User
 	}
 	return nil
+}
+
+func (x *GetUserResponse) GetClusterRole() ClusterRole {
+	if x != nil {
+		return x.ClusterRole
+	}
+	return ClusterRole_CLUSTER_ROLE_UNSPECIFIED
 }
 
 type GetUserByOIDCSubjectRequest struct {
@@ -375,7 +562,7 @@ type GetUserByOIDCSubjectRequest struct {
 
 func (x *GetUserByOIDCSubjectRequest) Reset() {
 	*x = GetUserByOIDCSubjectRequest{}
-	mi := &file_agynio_api_users_v1_users_proto_msgTypes[6]
+	mi := &file_agynio_api_users_v1_users_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -387,7 +574,7 @@ func (x *GetUserByOIDCSubjectRequest) String() string {
 func (*GetUserByOIDCSubjectRequest) ProtoMessage() {}
 
 func (x *GetUserByOIDCSubjectRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_agynio_api_users_v1_users_proto_msgTypes[6]
+	mi := &file_agynio_api_users_v1_users_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -400,7 +587,7 @@ func (x *GetUserByOIDCSubjectRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetUserByOIDCSubjectRequest.ProtoReflect.Descriptor instead.
 func (*GetUserByOIDCSubjectRequest) Descriptor() ([]byte, []int) {
-	return file_agynio_api_users_v1_users_proto_rawDescGZIP(), []int{6}
+	return file_agynio_api_users_v1_users_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *GetUserByOIDCSubjectRequest) GetOidcSubject() string {
@@ -419,7 +606,7 @@ type GetUserByOIDCSubjectResponse struct {
 
 func (x *GetUserByOIDCSubjectResponse) Reset() {
 	*x = GetUserByOIDCSubjectResponse{}
-	mi := &file_agynio_api_users_v1_users_proto_msgTypes[7]
+	mi := &file_agynio_api_users_v1_users_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -431,7 +618,7 @@ func (x *GetUserByOIDCSubjectResponse) String() string {
 func (*GetUserByOIDCSubjectResponse) ProtoMessage() {}
 
 func (x *GetUserByOIDCSubjectResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_agynio_api_users_v1_users_proto_msgTypes[7]
+	mi := &file_agynio_api_users_v1_users_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -444,7 +631,7 @@ func (x *GetUserByOIDCSubjectResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetUserByOIDCSubjectResponse.ProtoReflect.Descriptor instead.
 func (*GetUserByOIDCSubjectResponse) Descriptor() ([]byte, []int) {
-	return file_agynio_api_users_v1_users_proto_rawDescGZIP(), []int{7}
+	return file_agynio_api_users_v1_users_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *GetUserByOIDCSubjectResponse) GetUser() *User {
@@ -463,7 +650,7 @@ type BatchGetUsersRequest struct {
 
 func (x *BatchGetUsersRequest) Reset() {
 	*x = BatchGetUsersRequest{}
-	mi := &file_agynio_api_users_v1_users_proto_msgTypes[8]
+	mi := &file_agynio_api_users_v1_users_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -475,7 +662,7 @@ func (x *BatchGetUsersRequest) String() string {
 func (*BatchGetUsersRequest) ProtoMessage() {}
 
 func (x *BatchGetUsersRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_agynio_api_users_v1_users_proto_msgTypes[8]
+	mi := &file_agynio_api_users_v1_users_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -488,7 +675,7 @@ func (x *BatchGetUsersRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BatchGetUsersRequest.ProtoReflect.Descriptor instead.
 func (*BatchGetUsersRequest) Descriptor() ([]byte, []int) {
-	return file_agynio_api_users_v1_users_proto_rawDescGZIP(), []int{8}
+	return file_agynio_api_users_v1_users_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *BatchGetUsersRequest) GetIdentityIds() []string {
@@ -507,7 +694,7 @@ type BatchGetUsersResponse struct {
 
 func (x *BatchGetUsersResponse) Reset() {
 	*x = BatchGetUsersResponse{}
-	mi := &file_agynio_api_users_v1_users_proto_msgTypes[9]
+	mi := &file_agynio_api_users_v1_users_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -519,7 +706,7 @@ func (x *BatchGetUsersResponse) String() string {
 func (*BatchGetUsersResponse) ProtoMessage() {}
 
 func (x *BatchGetUsersResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_agynio_api_users_v1_users_proto_msgTypes[9]
+	mi := &file_agynio_api_users_v1_users_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -532,7 +719,7 @@ func (x *BatchGetUsersResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BatchGetUsersResponse.ProtoReflect.Descriptor instead.
 func (*BatchGetUsersResponse) Descriptor() ([]byte, []int) {
-	return file_agynio_api_users_v1_users_proto_rawDescGZIP(), []int{9}
+	return file_agynio_api_users_v1_users_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *BatchGetUsersResponse) GetUsers() []*User {
@@ -548,13 +735,15 @@ type UpdateUserRequest struct {
 	Name          *string                `protobuf:"bytes,2,opt,name=name,proto3,oneof" json:"name,omitempty"`
 	Email         *string                `protobuf:"bytes,3,opt,name=email,proto3,oneof" json:"email,omitempty"`
 	PhotoUrl      *string                `protobuf:"bytes,4,opt,name=photo_url,json=photoUrl,proto3,oneof" json:"photo_url,omitempty"`
+	Nickname      *string                `protobuf:"bytes,5,opt,name=nickname,proto3,oneof" json:"nickname,omitempty"`
+	ClusterRole   *ClusterRole           `protobuf:"varint,6,opt,name=cluster_role,json=clusterRole,proto3,enum=agynio.api.users.v1.ClusterRole,oneof" json:"cluster_role,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *UpdateUserRequest) Reset() {
 	*x = UpdateUserRequest{}
-	mi := &file_agynio_api_users_v1_users_proto_msgTypes[10]
+	mi := &file_agynio_api_users_v1_users_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -566,7 +755,7 @@ func (x *UpdateUserRequest) String() string {
 func (*UpdateUserRequest) ProtoMessage() {}
 
 func (x *UpdateUserRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_agynio_api_users_v1_users_proto_msgTypes[10]
+	mi := &file_agynio_api_users_v1_users_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -579,7 +768,7 @@ func (x *UpdateUserRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateUserRequest.ProtoReflect.Descriptor instead.
 func (*UpdateUserRequest) Descriptor() ([]byte, []int) {
-	return file_agynio_api_users_v1_users_proto_rawDescGZIP(), []int{10}
+	return file_agynio_api_users_v1_users_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *UpdateUserRequest) GetIdentityId() string {
@@ -610,6 +799,20 @@ func (x *UpdateUserRequest) GetPhotoUrl() string {
 	return ""
 }
 
+func (x *UpdateUserRequest) GetNickname() string {
+	if x != nil && x.Nickname != nil {
+		return *x.Nickname
+	}
+	return ""
+}
+
+func (x *UpdateUserRequest) GetClusterRole() ClusterRole {
+	if x != nil && x.ClusterRole != nil {
+		return *x.ClusterRole
+	}
+	return ClusterRole_CLUSTER_ROLE_UNSPECIFIED
+}
+
 type UpdateUserResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	User          *User                  `protobuf:"bytes,1,opt,name=user,proto3" json:"user,omitempty"`
@@ -619,7 +822,7 @@ type UpdateUserResponse struct {
 
 func (x *UpdateUserResponse) Reset() {
 	*x = UpdateUserResponse{}
-	mi := &file_agynio_api_users_v1_users_proto_msgTypes[11]
+	mi := &file_agynio_api_users_v1_users_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -631,7 +834,7 @@ func (x *UpdateUserResponse) String() string {
 func (*UpdateUserResponse) ProtoMessage() {}
 
 func (x *UpdateUserResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_agynio_api_users_v1_users_proto_msgTypes[11]
+	mi := &file_agynio_api_users_v1_users_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -644,7 +847,7 @@ func (x *UpdateUserResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateUserResponse.ProtoReflect.Descriptor instead.
 func (*UpdateUserResponse) Descriptor() ([]byte, []int) {
-	return file_agynio_api_users_v1_users_proto_rawDescGZIP(), []int{11}
+	return file_agynio_api_users_v1_users_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *UpdateUserResponse) GetUser() *User {
@@ -652,6 +855,398 @@ func (x *UpdateUserResponse) GetUser() *User {
 		return x.User
 	}
 	return nil
+}
+
+type GetMeRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetMeRequest) Reset() {
+	*x = GetMeRequest{}
+	mi := &file_agynio_api_users_v1_users_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetMeRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetMeRequest) ProtoMessage() {}
+
+func (x *GetMeRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_agynio_api_users_v1_users_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetMeRequest.ProtoReflect.Descriptor instead.
+func (*GetMeRequest) Descriptor() ([]byte, []int) {
+	return file_agynio_api_users_v1_users_proto_rawDescGZIP(), []int{13}
+}
+
+type GetMeResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	User          *User                  `protobuf:"bytes,1,opt,name=user,proto3" json:"user,omitempty"`
+	ClusterRole   ClusterRole            `protobuf:"varint,2,opt,name=cluster_role,json=clusterRole,proto3,enum=agynio.api.users.v1.ClusterRole" json:"cluster_role,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetMeResponse) Reset() {
+	*x = GetMeResponse{}
+	mi := &file_agynio_api_users_v1_users_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetMeResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetMeResponse) ProtoMessage() {}
+
+func (x *GetMeResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_agynio_api_users_v1_users_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetMeResponse.ProtoReflect.Descriptor instead.
+func (*GetMeResponse) Descriptor() ([]byte, []int) {
+	return file_agynio_api_users_v1_users_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *GetMeResponse) GetUser() *User {
+	if x != nil {
+		return x.User
+	}
+	return nil
+}
+
+func (x *GetMeResponse) GetClusterRole() ClusterRole {
+	if x != nil {
+		return x.ClusterRole
+	}
+	return ClusterRole_CLUSTER_ROLE_UNSPECIFIED
+}
+
+type ListUsersRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	PageSize      int32                  `protobuf:"varint,1,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"`
+	PageToken     string                 `protobuf:"bytes,2,opt,name=page_token,json=pageToken,proto3" json:"page_token,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListUsersRequest) Reset() {
+	*x = ListUsersRequest{}
+	mi := &file_agynio_api_users_v1_users_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListUsersRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListUsersRequest) ProtoMessage() {}
+
+func (x *ListUsersRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_agynio_api_users_v1_users_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListUsersRequest.ProtoReflect.Descriptor instead.
+func (*ListUsersRequest) Descriptor() ([]byte, []int) {
+	return file_agynio_api_users_v1_users_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *ListUsersRequest) GetPageSize() int32 {
+	if x != nil {
+		return x.PageSize
+	}
+	return 0
+}
+
+func (x *ListUsersRequest) GetPageToken() string {
+	if x != nil {
+		return x.PageToken
+	}
+	return ""
+}
+
+type ListUsersResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Users         []*User                `protobuf:"bytes,1,rep,name=users,proto3" json:"users,omitempty"`
+	NextPageToken string                 `protobuf:"bytes,2,opt,name=next_page_token,json=nextPageToken,proto3" json:"next_page_token,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListUsersResponse) Reset() {
+	*x = ListUsersResponse{}
+	mi := &file_agynio_api_users_v1_users_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListUsersResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListUsersResponse) ProtoMessage() {}
+
+func (x *ListUsersResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_agynio_api_users_v1_users_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListUsersResponse.ProtoReflect.Descriptor instead.
+func (*ListUsersResponse) Descriptor() ([]byte, []int) {
+	return file_agynio_api_users_v1_users_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *ListUsersResponse) GetUsers() []*User {
+	if x != nil {
+		return x.Users
+	}
+	return nil
+}
+
+func (x *ListUsersResponse) GetNextPageToken() string {
+	if x != nil {
+		return x.NextPageToken
+	}
+	return ""
+}
+
+type CreateUserRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	OidcSubject   string                 `protobuf:"bytes,1,opt,name=oidc_subject,json=oidcSubject,proto3" json:"oidc_subject,omitempty"`
+	Name          *string                `protobuf:"bytes,2,opt,name=name,proto3,oneof" json:"name,omitempty"`
+	Nickname      *string                `protobuf:"bytes,3,opt,name=nickname,proto3,oneof" json:"nickname,omitempty"`
+	PhotoUrl      *string                `protobuf:"bytes,4,opt,name=photo_url,json=photoUrl,proto3,oneof" json:"photo_url,omitempty"`
+	ClusterRole   ClusterRole            `protobuf:"varint,5,opt,name=cluster_role,json=clusterRole,proto3,enum=agynio.api.users.v1.ClusterRole" json:"cluster_role,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreateUserRequest) Reset() {
+	*x = CreateUserRequest{}
+	mi := &file_agynio_api_users_v1_users_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateUserRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateUserRequest) ProtoMessage() {}
+
+func (x *CreateUserRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_agynio_api_users_v1_users_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateUserRequest.ProtoReflect.Descriptor instead.
+func (*CreateUserRequest) Descriptor() ([]byte, []int) {
+	return file_agynio_api_users_v1_users_proto_rawDescGZIP(), []int{17}
+}
+
+func (x *CreateUserRequest) GetOidcSubject() string {
+	if x != nil {
+		return x.OidcSubject
+	}
+	return ""
+}
+
+func (x *CreateUserRequest) GetName() string {
+	if x != nil && x.Name != nil {
+		return *x.Name
+	}
+	return ""
+}
+
+func (x *CreateUserRequest) GetNickname() string {
+	if x != nil && x.Nickname != nil {
+		return *x.Nickname
+	}
+	return ""
+}
+
+func (x *CreateUserRequest) GetPhotoUrl() string {
+	if x != nil && x.PhotoUrl != nil {
+		return *x.PhotoUrl
+	}
+	return ""
+}
+
+func (x *CreateUserRequest) GetClusterRole() ClusterRole {
+	if x != nil {
+		return x.ClusterRole
+	}
+	return ClusterRole_CLUSTER_ROLE_UNSPECIFIED
+}
+
+type CreateUserResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	User          *User                  `protobuf:"bytes,1,opt,name=user,proto3" json:"user,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreateUserResponse) Reset() {
+	*x = CreateUserResponse{}
+	mi := &file_agynio_api_users_v1_users_proto_msgTypes[18]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateUserResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateUserResponse) ProtoMessage() {}
+
+func (x *CreateUserResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_agynio_api_users_v1_users_proto_msgTypes[18]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateUserResponse.ProtoReflect.Descriptor instead.
+func (*CreateUserResponse) Descriptor() ([]byte, []int) {
+	return file_agynio_api_users_v1_users_proto_rawDescGZIP(), []int{18}
+}
+
+func (x *CreateUserResponse) GetUser() *User {
+	if x != nil {
+		return x.User
+	}
+	return nil
+}
+
+type DeleteUserRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	IdentityId    string                 `protobuf:"bytes,1,opt,name=identity_id,json=identityId,proto3" json:"identity_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeleteUserRequest) Reset() {
+	*x = DeleteUserRequest{}
+	mi := &file_agynio_api_users_v1_users_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeleteUserRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeleteUserRequest) ProtoMessage() {}
+
+func (x *DeleteUserRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_agynio_api_users_v1_users_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeleteUserRequest.ProtoReflect.Descriptor instead.
+func (*DeleteUserRequest) Descriptor() ([]byte, []int) {
+	return file_agynio_api_users_v1_users_proto_rawDescGZIP(), []int{19}
+}
+
+func (x *DeleteUserRequest) GetIdentityId() string {
+	if x != nil {
+		return x.IdentityId
+	}
+	return ""
+}
+
+type DeleteUserResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeleteUserResponse) Reset() {
+	*x = DeleteUserResponse{}
+	mi := &file_agynio_api_users_v1_users_proto_msgTypes[20]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeleteUserResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeleteUserResponse) ProtoMessage() {}
+
+func (x *DeleteUserResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_agynio_api_users_v1_users_proto_msgTypes[20]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeleteUserResponse.ProtoReflect.Descriptor instead.
+func (*DeleteUserResponse) Descriptor() ([]byte, []int) {
+	return file_agynio_api_users_v1_users_proto_rawDescGZIP(), []int{20}
 }
 
 type APIToken struct {
@@ -669,7 +1264,7 @@ type APIToken struct {
 
 func (x *APIToken) Reset() {
 	*x = APIToken{}
-	mi := &file_agynio_api_users_v1_users_proto_msgTypes[12]
+	mi := &file_agynio_api_users_v1_users_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -681,7 +1276,7 @@ func (x *APIToken) String() string {
 func (*APIToken) ProtoMessage() {}
 
 func (x *APIToken) ProtoReflect() protoreflect.Message {
-	mi := &file_agynio_api_users_v1_users_proto_msgTypes[12]
+	mi := &file_agynio_api_users_v1_users_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -694,7 +1289,7 @@ func (x *APIToken) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use APIToken.ProtoReflect.Descriptor instead.
 func (*APIToken) Descriptor() ([]byte, []int) {
-	return file_agynio_api_users_v1_users_proto_rawDescGZIP(), []int{12}
+	return file_agynio_api_users_v1_users_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *APIToken) GetId() string {
@@ -756,7 +1351,7 @@ type CreateAPITokenRequest struct {
 
 func (x *CreateAPITokenRequest) Reset() {
 	*x = CreateAPITokenRequest{}
-	mi := &file_agynio_api_users_v1_users_proto_msgTypes[13]
+	mi := &file_agynio_api_users_v1_users_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -768,7 +1363,7 @@ func (x *CreateAPITokenRequest) String() string {
 func (*CreateAPITokenRequest) ProtoMessage() {}
 
 func (x *CreateAPITokenRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_agynio_api_users_v1_users_proto_msgTypes[13]
+	mi := &file_agynio_api_users_v1_users_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -781,7 +1376,7 @@ func (x *CreateAPITokenRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateAPITokenRequest.ProtoReflect.Descriptor instead.
 func (*CreateAPITokenRequest) Descriptor() ([]byte, []int) {
-	return file_agynio_api_users_v1_users_proto_rawDescGZIP(), []int{13}
+	return file_agynio_api_users_v1_users_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *CreateAPITokenRequest) GetName() string {
@@ -808,7 +1403,7 @@ type CreateAPITokenResponse struct {
 
 func (x *CreateAPITokenResponse) Reset() {
 	*x = CreateAPITokenResponse{}
-	mi := &file_agynio_api_users_v1_users_proto_msgTypes[14]
+	mi := &file_agynio_api_users_v1_users_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -820,7 +1415,7 @@ func (x *CreateAPITokenResponse) String() string {
 func (*CreateAPITokenResponse) ProtoMessage() {}
 
 func (x *CreateAPITokenResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_agynio_api_users_v1_users_proto_msgTypes[14]
+	mi := &file_agynio_api_users_v1_users_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -833,7 +1428,7 @@ func (x *CreateAPITokenResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateAPITokenResponse.ProtoReflect.Descriptor instead.
 func (*CreateAPITokenResponse) Descriptor() ([]byte, []int) {
-	return file_agynio_api_users_v1_users_proto_rawDescGZIP(), []int{14}
+	return file_agynio_api_users_v1_users_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *CreateAPITokenResponse) GetToken() *APIToken {
@@ -858,7 +1453,7 @@ type ListAPITokensRequest struct {
 
 func (x *ListAPITokensRequest) Reset() {
 	*x = ListAPITokensRequest{}
-	mi := &file_agynio_api_users_v1_users_proto_msgTypes[15]
+	mi := &file_agynio_api_users_v1_users_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -870,7 +1465,7 @@ func (x *ListAPITokensRequest) String() string {
 func (*ListAPITokensRequest) ProtoMessage() {}
 
 func (x *ListAPITokensRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_agynio_api_users_v1_users_proto_msgTypes[15]
+	mi := &file_agynio_api_users_v1_users_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -883,7 +1478,7 @@ func (x *ListAPITokensRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListAPITokensRequest.ProtoReflect.Descriptor instead.
 func (*ListAPITokensRequest) Descriptor() ([]byte, []int) {
-	return file_agynio_api_users_v1_users_proto_rawDescGZIP(), []int{15}
+	return file_agynio_api_users_v1_users_proto_rawDescGZIP(), []int{24}
 }
 
 type ListAPITokensResponse struct {
@@ -895,7 +1490,7 @@ type ListAPITokensResponse struct {
 
 func (x *ListAPITokensResponse) Reset() {
 	*x = ListAPITokensResponse{}
-	mi := &file_agynio_api_users_v1_users_proto_msgTypes[16]
+	mi := &file_agynio_api_users_v1_users_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -907,7 +1502,7 @@ func (x *ListAPITokensResponse) String() string {
 func (*ListAPITokensResponse) ProtoMessage() {}
 
 func (x *ListAPITokensResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_agynio_api_users_v1_users_proto_msgTypes[16]
+	mi := &file_agynio_api_users_v1_users_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -920,7 +1515,7 @@ func (x *ListAPITokensResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListAPITokensResponse.ProtoReflect.Descriptor instead.
 func (*ListAPITokensResponse) Descriptor() ([]byte, []int) {
-	return file_agynio_api_users_v1_users_proto_rawDescGZIP(), []int{16}
+	return file_agynio_api_users_v1_users_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *ListAPITokensResponse) GetTokens() []*APIToken {
@@ -939,7 +1534,7 @@ type RevokeAPITokenRequest struct {
 
 func (x *RevokeAPITokenRequest) Reset() {
 	*x = RevokeAPITokenRequest{}
-	mi := &file_agynio_api_users_v1_users_proto_msgTypes[17]
+	mi := &file_agynio_api_users_v1_users_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -951,7 +1546,7 @@ func (x *RevokeAPITokenRequest) String() string {
 func (*RevokeAPITokenRequest) ProtoMessage() {}
 
 func (x *RevokeAPITokenRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_agynio_api_users_v1_users_proto_msgTypes[17]
+	mi := &file_agynio_api_users_v1_users_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -964,7 +1559,7 @@ func (x *RevokeAPITokenRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RevokeAPITokenRequest.ProtoReflect.Descriptor instead.
 func (*RevokeAPITokenRequest) Descriptor() ([]byte, []int) {
-	return file_agynio_api_users_v1_users_proto_rawDescGZIP(), []int{17}
+	return file_agynio_api_users_v1_users_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *RevokeAPITokenRequest) GetTokenId() string {
@@ -982,7 +1577,7 @@ type RevokeAPITokenResponse struct {
 
 func (x *RevokeAPITokenResponse) Reset() {
 	*x = RevokeAPITokenResponse{}
-	mi := &file_agynio_api_users_v1_users_proto_msgTypes[18]
+	mi := &file_agynio_api_users_v1_users_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -994,7 +1589,7 @@ func (x *RevokeAPITokenResponse) String() string {
 func (*RevokeAPITokenResponse) ProtoMessage() {}
 
 func (x *RevokeAPITokenResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_agynio_api_users_v1_users_proto_msgTypes[18]
+	mi := &file_agynio_api_users_v1_users_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1007,7 +1602,7 @@ func (x *RevokeAPITokenResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RevokeAPITokenResponse.ProtoReflect.Descriptor instead.
 func (*RevokeAPITokenResponse) Descriptor() ([]byte, []int) {
-	return file_agynio_api_users_v1_users_proto_rawDescGZIP(), []int{18}
+	return file_agynio_api_users_v1_users_proto_rawDescGZIP(), []int{27}
 }
 
 type ResolveAPITokenRequest struct {
@@ -1019,7 +1614,7 @@ type ResolveAPITokenRequest struct {
 
 func (x *ResolveAPITokenRequest) Reset() {
 	*x = ResolveAPITokenRequest{}
-	mi := &file_agynio_api_users_v1_users_proto_msgTypes[19]
+	mi := &file_agynio_api_users_v1_users_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1031,7 +1626,7 @@ func (x *ResolveAPITokenRequest) String() string {
 func (*ResolveAPITokenRequest) ProtoMessage() {}
 
 func (x *ResolveAPITokenRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_agynio_api_users_v1_users_proto_msgTypes[19]
+	mi := &file_agynio_api_users_v1_users_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1044,7 +1639,7 @@ func (x *ResolveAPITokenRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ResolveAPITokenRequest.ProtoReflect.Descriptor instead.
 func (*ResolveAPITokenRequest) Descriptor() ([]byte, []int) {
-	return file_agynio_api_users_v1_users_proto_rawDescGZIP(), []int{19}
+	return file_agynio_api_users_v1_users_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *ResolveAPITokenRequest) GetTokenHash() string {
@@ -1064,7 +1659,7 @@ type ResolveAPITokenResponse struct {
 
 func (x *ResolveAPITokenResponse) Reset() {
 	*x = ResolveAPITokenResponse{}
-	mi := &file_agynio_api_users_v1_users_proto_msgTypes[20]
+	mi := &file_agynio_api_users_v1_users_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1076,7 +1671,7 @@ func (x *ResolveAPITokenResponse) String() string {
 func (*ResolveAPITokenResponse) ProtoMessage() {}
 
 func (x *ResolveAPITokenResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_agynio_api_users_v1_users_proto_msgTypes[20]
+	mi := &file_agynio_api_users_v1_users_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1089,7 +1684,7 @@ func (x *ResolveAPITokenResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ResolveAPITokenResponse.ProtoReflect.Descriptor instead.
 func (*ResolveAPITokenResponse) Descriptor() ([]byte, []int) {
-	return file_agynio_api_users_v1_users_proto_rawDescGZIP(), []int{20}
+	return file_agynio_api_users_v1_users_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *ResolveAPITokenResponse) GetIdentityId() string {
@@ -1106,6 +1701,287 @@ func (x *ResolveAPITokenResponse) GetToken() *APIToken {
 	return nil
 }
 
+type CreateDeviceRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreateDeviceRequest) Reset() {
+	*x = CreateDeviceRequest{}
+	mi := &file_agynio_api_users_v1_users_proto_msgTypes[30]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateDeviceRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateDeviceRequest) ProtoMessage() {}
+
+func (x *CreateDeviceRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_agynio_api_users_v1_users_proto_msgTypes[30]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateDeviceRequest.ProtoReflect.Descriptor instead.
+func (*CreateDeviceRequest) Descriptor() ([]byte, []int) {
+	return file_agynio_api_users_v1_users_proto_rawDescGZIP(), []int{30}
+}
+
+func (x *CreateDeviceRequest) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+type CreateDeviceResponse struct {
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Device *Device                `protobuf:"bytes,1,opt,name=device,proto3" json:"device,omitempty"`
+	// Enrollment JWT shown once to the user. Cannot be retrieved again.
+	EnrollmentJwt string `protobuf:"bytes,2,opt,name=enrollment_jwt,json=enrollmentJwt,proto3" json:"enrollment_jwt,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreateDeviceResponse) Reset() {
+	*x = CreateDeviceResponse{}
+	mi := &file_agynio_api_users_v1_users_proto_msgTypes[31]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateDeviceResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateDeviceResponse) ProtoMessage() {}
+
+func (x *CreateDeviceResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_agynio_api_users_v1_users_proto_msgTypes[31]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateDeviceResponse.ProtoReflect.Descriptor instead.
+func (*CreateDeviceResponse) Descriptor() ([]byte, []int) {
+	return file_agynio_api_users_v1_users_proto_rawDescGZIP(), []int{31}
+}
+
+func (x *CreateDeviceResponse) GetDevice() *Device {
+	if x != nil {
+		return x.Device
+	}
+	return nil
+}
+
+func (x *CreateDeviceResponse) GetEnrollmentJwt() string {
+	if x != nil {
+		return x.EnrollmentJwt
+	}
+	return ""
+}
+
+type ListDevicesRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	PageSize      int32                  `protobuf:"varint,1,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"`
+	PageToken     string                 `protobuf:"bytes,2,opt,name=page_token,json=pageToken,proto3" json:"page_token,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListDevicesRequest) Reset() {
+	*x = ListDevicesRequest{}
+	mi := &file_agynio_api_users_v1_users_proto_msgTypes[32]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListDevicesRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListDevicesRequest) ProtoMessage() {}
+
+func (x *ListDevicesRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_agynio_api_users_v1_users_proto_msgTypes[32]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListDevicesRequest.ProtoReflect.Descriptor instead.
+func (*ListDevicesRequest) Descriptor() ([]byte, []int) {
+	return file_agynio_api_users_v1_users_proto_rawDescGZIP(), []int{32}
+}
+
+func (x *ListDevicesRequest) GetPageSize() int32 {
+	if x != nil {
+		return x.PageSize
+	}
+	return 0
+}
+
+func (x *ListDevicesRequest) GetPageToken() string {
+	if x != nil {
+		return x.PageToken
+	}
+	return ""
+}
+
+type ListDevicesResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Devices       []*Device              `protobuf:"bytes,1,rep,name=devices,proto3" json:"devices,omitempty"`
+	NextPageToken string                 `protobuf:"bytes,2,opt,name=next_page_token,json=nextPageToken,proto3" json:"next_page_token,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListDevicesResponse) Reset() {
+	*x = ListDevicesResponse{}
+	mi := &file_agynio_api_users_v1_users_proto_msgTypes[33]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListDevicesResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListDevicesResponse) ProtoMessage() {}
+
+func (x *ListDevicesResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_agynio_api_users_v1_users_proto_msgTypes[33]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListDevicesResponse.ProtoReflect.Descriptor instead.
+func (*ListDevicesResponse) Descriptor() ([]byte, []int) {
+	return file_agynio_api_users_v1_users_proto_rawDescGZIP(), []int{33}
+}
+
+func (x *ListDevicesResponse) GetDevices() []*Device {
+	if x != nil {
+		return x.Devices
+	}
+	return nil
+}
+
+func (x *ListDevicesResponse) GetNextPageToken() string {
+	if x != nil {
+		return x.NextPageToken
+	}
+	return ""
+}
+
+type DeleteDeviceRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeleteDeviceRequest) Reset() {
+	*x = DeleteDeviceRequest{}
+	mi := &file_agynio_api_users_v1_users_proto_msgTypes[34]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeleteDeviceRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeleteDeviceRequest) ProtoMessage() {}
+
+func (x *DeleteDeviceRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_agynio_api_users_v1_users_proto_msgTypes[34]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeleteDeviceRequest.ProtoReflect.Descriptor instead.
+func (*DeleteDeviceRequest) Descriptor() ([]byte, []int) {
+	return file_agynio_api_users_v1_users_proto_rawDescGZIP(), []int{34}
+}
+
+func (x *DeleteDeviceRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+type DeleteDeviceResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeleteDeviceResponse) Reset() {
+	*x = DeleteDeviceResponse{}
+	mi := &file_agynio_api_users_v1_users_proto_msgTypes[35]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeleteDeviceResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeleteDeviceResponse) ProtoMessage() {}
+
+func (x *DeleteDeviceResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_agynio_api_users_v1_users_proto_msgTypes[35]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeleteDeviceResponse.ProtoReflect.Descriptor instead.
+func (*DeleteDeviceResponse) Descriptor() ([]byte, []int) {
+	return file_agynio_api_users_v1_users_proto_rawDescGZIP(), []int{35}
+}
+
 var File_agynio_api_users_v1_users_proto protoreflect.FileDescriptor
 
 const file_agynio_api_users_v1_users_proto_rawDesc = "" +
@@ -1117,13 +1993,20 @@ const file_agynio_api_users_v1_users_proto_rawDesc = "" +
 	"\n" +
 	"created_at\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
 	"\n" +
-	"updated_at\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\"\xa5\x01\n" +
+	"updated_at\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\"\xc1\x01\n" +
 	"\x04User\x123\n" +
 	"\x04meta\x18\x01 \x01(\v2\x1f.agynio.api.users.v1.EntityMetaR\x04meta\x12!\n" +
 	"\foidc_subject\x18\x02 \x01(\tR\voidcSubject\x12\x12\n" +
 	"\x04name\x18\x03 \x01(\tR\x04name\x12\x14\n" +
 	"\x05email\x18\x04 \x01(\tR\x05email\x12\x1b\n" +
-	"\tphoto_url\x18\x05 \x01(\tR\bphotoUrl\"\x86\x01\n" +
+	"\tphoto_url\x18\x05 \x01(\tR\bphotoUrl\x12\x1a\n" +
+	"\bnickname\x18\x06 \x01(\tR\bnickname\"\xe8\x01\n" +
+	"\x06Device\x123\n" +
+	"\x04meta\x18\x01 \x01(\v2\x1f.agynio.api.users.v1.EntityMetaR\x04meta\x12(\n" +
+	"\x10user_identity_id\x18\x02 \x01(\tR\x0euserIdentityId\x12\x12\n" +
+	"\x04name\x18\x03 \x01(\tR\x04name\x120\n" +
+	"\x14openziti_identity_id\x18\x04 \x01(\tR\x12openzitiIdentityId\x129\n" +
+	"\x06status\x18\x05 \x01(\x0e2!.agynio.api.users.v1.DeviceStatusR\x06status\"\x86\x01\n" +
 	"\x1aResolveOrCreateUserRequest\x12!\n" +
 	"\foidc_subject\x18\x01 \x01(\tR\voidcSubject\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x14\n" +
@@ -1134,9 +2017,10 @@ const file_agynio_api_users_v1_users_proto_rawDesc = "" +
 	"\acreated\x18\x02 \x01(\bR\acreated\"1\n" +
 	"\x0eGetUserRequest\x12\x1f\n" +
 	"\videntity_id\x18\x01 \x01(\tR\n" +
-	"identityId\"@\n" +
+	"identityId\"\x85\x01\n" +
 	"\x0fGetUserResponse\x12-\n" +
-	"\x04user\x18\x01 \x01(\v2\x19.agynio.api.users.v1.UserR\x04user\"@\n" +
+	"\x04user\x18\x01 \x01(\v2\x19.agynio.api.users.v1.UserR\x04user\x12C\n" +
+	"\fcluster_role\x18\x02 \x01(\x0e2 .agynio.api.users.v1.ClusterRoleR\vclusterRole\"@\n" +
 	"\x1bGetUserByOIDCSubjectRequest\x12!\n" +
 	"\foidc_subject\x18\x01 \x01(\tR\voidcSubject\"M\n" +
 	"\x1cGetUserByOIDCSubjectResponse\x12-\n" +
@@ -1144,19 +2028,50 @@ const file_agynio_api_users_v1_users_proto_rawDesc = "" +
 	"\x14BatchGetUsersRequest\x12!\n" +
 	"\fidentity_ids\x18\x01 \x03(\tR\videntityIds\"H\n" +
 	"\x15BatchGetUsersResponse\x12/\n" +
-	"\x05users\x18\x01 \x03(\v2\x19.agynio.api.users.v1.UserR\x05users\"\xab\x01\n" +
+	"\x05users\x18\x01 \x03(\v2\x19.agynio.api.users.v1.UserR\x05users\"\xb4\x02\n" +
 	"\x11UpdateUserRequest\x12\x1f\n" +
 	"\videntity_id\x18\x01 \x01(\tR\n" +
 	"identityId\x12\x17\n" +
 	"\x04name\x18\x02 \x01(\tH\x00R\x04name\x88\x01\x01\x12\x19\n" +
 	"\x05email\x18\x03 \x01(\tH\x01R\x05email\x88\x01\x01\x12 \n" +
-	"\tphoto_url\x18\x04 \x01(\tH\x02R\bphotoUrl\x88\x01\x01B\a\n" +
+	"\tphoto_url\x18\x04 \x01(\tH\x02R\bphotoUrl\x88\x01\x01\x12\x1f\n" +
+	"\bnickname\x18\x05 \x01(\tH\x03R\bnickname\x88\x01\x01\x12H\n" +
+	"\fcluster_role\x18\x06 \x01(\x0e2 .agynio.api.users.v1.ClusterRoleH\x04R\vclusterRole\x88\x01\x01B\a\n" +
 	"\x05_nameB\b\n" +
 	"\x06_emailB\f\n" +
 	"\n" +
-	"_photo_url\"C\n" +
+	"_photo_urlB\v\n" +
+	"\t_nicknameB\x0f\n" +
+	"\r_cluster_role\"C\n" +
 	"\x12UpdateUserResponse\x12-\n" +
-	"\x04user\x18\x01 \x01(\v2\x19.agynio.api.users.v1.UserR\x04user\"\xa6\x02\n" +
+	"\x04user\x18\x01 \x01(\v2\x19.agynio.api.users.v1.UserR\x04user\"\x0e\n" +
+	"\fGetMeRequest\"\x83\x01\n" +
+	"\rGetMeResponse\x12-\n" +
+	"\x04user\x18\x01 \x01(\v2\x19.agynio.api.users.v1.UserR\x04user\x12C\n" +
+	"\fcluster_role\x18\x02 \x01(\x0e2 .agynio.api.users.v1.ClusterRoleR\vclusterRole\"N\n" +
+	"\x10ListUsersRequest\x12\x1b\n" +
+	"\tpage_size\x18\x01 \x01(\x05R\bpageSize\x12\x1d\n" +
+	"\n" +
+	"page_token\x18\x02 \x01(\tR\tpageToken\"l\n" +
+	"\x11ListUsersResponse\x12/\n" +
+	"\x05users\x18\x01 \x03(\v2\x19.agynio.api.users.v1.UserR\x05users\x12&\n" +
+	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken\"\xfb\x01\n" +
+	"\x11CreateUserRequest\x12!\n" +
+	"\foidc_subject\x18\x01 \x01(\tR\voidcSubject\x12\x17\n" +
+	"\x04name\x18\x02 \x01(\tH\x00R\x04name\x88\x01\x01\x12\x1f\n" +
+	"\bnickname\x18\x03 \x01(\tH\x01R\bnickname\x88\x01\x01\x12 \n" +
+	"\tphoto_url\x18\x04 \x01(\tH\x02R\bphotoUrl\x88\x01\x01\x12C\n" +
+	"\fcluster_role\x18\x05 \x01(\x0e2 .agynio.api.users.v1.ClusterRoleR\vclusterRoleB\a\n" +
+	"\x05_nameB\v\n" +
+	"\t_nicknameB\f\n" +
+	"\n" +
+	"_photo_url\"C\n" +
+	"\x12CreateUserResponse\x12-\n" +
+	"\x04user\x18\x01 \x01(\v2\x19.agynio.api.users.v1.UserR\x04user\"4\n" +
+	"\x11DeleteUserRequest\x12\x1f\n" +
+	"\videntity_id\x18\x01 \x01(\tR\n" +
+	"identityId\"\x14\n" +
+	"\x12DeleteUserResponse\"\xa6\x02\n" +
 	"\bAPIToken\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1f\n" +
 	"\videntity_id\x18\x02 \x01(\tR\n" +
@@ -1188,7 +2103,29 @@ const file_agynio_api_users_v1_users_proto_rawDesc = "" +
 	"\x17ResolveAPITokenResponse\x12\x1f\n" +
 	"\videntity_id\x18\x01 \x01(\tR\n" +
 	"identityId\x123\n" +
-	"\x05token\x18\x02 \x01(\v2\x1d.agynio.api.users.v1.APITokenR\x05token2\xce\a\n" +
+	"\x05token\x18\x02 \x01(\v2\x1d.agynio.api.users.v1.APITokenR\x05token\")\n" +
+	"\x13CreateDeviceRequest\x12\x12\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\"r\n" +
+	"\x14CreateDeviceResponse\x123\n" +
+	"\x06device\x18\x01 \x01(\v2\x1b.agynio.api.users.v1.DeviceR\x06device\x12%\n" +
+	"\x0eenrollment_jwt\x18\x02 \x01(\tR\renrollmentJwt\"P\n" +
+	"\x12ListDevicesRequest\x12\x1b\n" +
+	"\tpage_size\x18\x01 \x01(\x05R\bpageSize\x12\x1d\n" +
+	"\n" +
+	"page_token\x18\x02 \x01(\tR\tpageToken\"t\n" +
+	"\x13ListDevicesResponse\x125\n" +
+	"\adevices\x18\x01 \x03(\v2\x1b.agynio.api.users.v1.DeviceR\adevices\x12&\n" +
+	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken\"%\n" +
+	"\x13DeleteDeviceRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"\x16\n" +
+	"\x14DeleteDeviceResponse*C\n" +
+	"\vClusterRole\x12\x1c\n" +
+	"\x18CLUSTER_ROLE_UNSPECIFIED\x10\x00\x12\x16\n" +
+	"\x12CLUSTER_ROLE_ADMIN\x10\x01*d\n" +
+	"\fDeviceStatus\x12\x1d\n" +
+	"\x19DEVICE_STATUS_UNSPECIFIED\x10\x00\x12\x19\n" +
+	"\x15DEVICE_STATUS_PENDING\x10\x01\x12\x1a\n" +
+	"\x16DEVICE_STATUS_ENROLLED\x10\x022\xe4\f\n" +
 	"\fUsersService\x12x\n" +
 	"\x13ResolveOrCreateUser\x12/.agynio.api.users.v1.ResolveOrCreateUserRequest\x1a0.agynio.api.users.v1.ResolveOrCreateUserResponse\x12T\n" +
 	"\aGetUser\x12#.agynio.api.users.v1.GetUserRequest\x1a$.agynio.api.users.v1.GetUserResponse\x12{\n" +
@@ -1199,7 +2136,16 @@ const file_agynio_api_users_v1_users_proto_rawDesc = "" +
 	"\x0eCreateAPIToken\x12*.agynio.api.users.v1.CreateAPITokenRequest\x1a+.agynio.api.users.v1.CreateAPITokenResponse\x12f\n" +
 	"\rListAPITokens\x12).agynio.api.users.v1.ListAPITokensRequest\x1a*.agynio.api.users.v1.ListAPITokensResponse\x12i\n" +
 	"\x0eRevokeAPIToken\x12*.agynio.api.users.v1.RevokeAPITokenRequest\x1a+.agynio.api.users.v1.RevokeAPITokenResponse\x12l\n" +
-	"\x0fResolveAPIToken\x12+.agynio.api.users.v1.ResolveAPITokenRequest\x1a,.agynio.api.users.v1.ResolveAPITokenResponseB\xd0\x01\n" +
+	"\x0fResolveAPIToken\x12+.agynio.api.users.v1.ResolveAPITokenRequest\x1a,.agynio.api.users.v1.ResolveAPITokenResponse\x12N\n" +
+	"\x05GetMe\x12!.agynio.api.users.v1.GetMeRequest\x1a\".agynio.api.users.v1.GetMeResponse\x12Z\n" +
+	"\tListUsers\x12%.agynio.api.users.v1.ListUsersRequest\x1a&.agynio.api.users.v1.ListUsersResponse\x12]\n" +
+	"\n" +
+	"CreateUser\x12&.agynio.api.users.v1.CreateUserRequest\x1a'.agynio.api.users.v1.CreateUserResponse\x12]\n" +
+	"\n" +
+	"DeleteUser\x12&.agynio.api.users.v1.DeleteUserRequest\x1a'.agynio.api.users.v1.DeleteUserResponse\x12c\n" +
+	"\fCreateDevice\x12(.agynio.api.users.v1.CreateDeviceRequest\x1a).agynio.api.users.v1.CreateDeviceResponse\x12`\n" +
+	"\vListDevices\x12'.agynio.api.users.v1.ListDevicesRequest\x1a(.agynio.api.users.v1.ListDevicesResponse\x12c\n" +
+	"\fDeleteDevice\x12(.agynio.api.users.v1.DeleteDeviceRequest\x1a).agynio.api.users.v1.DeleteDeviceResponseB\xd0\x01\n" +
 	"\x17com.agynio.api.users.v1B\n" +
 	"UsersProtoP\x01Z:github.com/agynio/agyn-cli/gen/agynio/api/users/v1;usersv1\xa2\x02\x03AAU\xaa\x02\x13Agynio.Api.Users.V1\xca\x02\x13Agynio\\Api\\Users\\V1\xe2\x02\x1fAgynio\\Api\\Users\\V1\\GPBMetadata\xea\x02\x16Agynio::Api::Users::V1b\x06proto3"
 
@@ -1215,70 +2161,113 @@ func file_agynio_api_users_v1_users_proto_rawDescGZIP() []byte {
 	return file_agynio_api_users_v1_users_proto_rawDescData
 }
 
-var file_agynio_api_users_v1_users_proto_msgTypes = make([]protoimpl.MessageInfo, 21)
+var file_agynio_api_users_v1_users_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
+var file_agynio_api_users_v1_users_proto_msgTypes = make([]protoimpl.MessageInfo, 36)
 var file_agynio_api_users_v1_users_proto_goTypes = []any{
-	(*EntityMeta)(nil),                   // 0: agynio.api.users.v1.EntityMeta
-	(*User)(nil),                         // 1: agynio.api.users.v1.User
-	(*ResolveOrCreateUserRequest)(nil),   // 2: agynio.api.users.v1.ResolveOrCreateUserRequest
-	(*ResolveOrCreateUserResponse)(nil),  // 3: agynio.api.users.v1.ResolveOrCreateUserResponse
-	(*GetUserRequest)(nil),               // 4: agynio.api.users.v1.GetUserRequest
-	(*GetUserResponse)(nil),              // 5: agynio.api.users.v1.GetUserResponse
-	(*GetUserByOIDCSubjectRequest)(nil),  // 6: agynio.api.users.v1.GetUserByOIDCSubjectRequest
-	(*GetUserByOIDCSubjectResponse)(nil), // 7: agynio.api.users.v1.GetUserByOIDCSubjectResponse
-	(*BatchGetUsersRequest)(nil),         // 8: agynio.api.users.v1.BatchGetUsersRequest
-	(*BatchGetUsersResponse)(nil),        // 9: agynio.api.users.v1.BatchGetUsersResponse
-	(*UpdateUserRequest)(nil),            // 10: agynio.api.users.v1.UpdateUserRequest
-	(*UpdateUserResponse)(nil),           // 11: agynio.api.users.v1.UpdateUserResponse
-	(*APIToken)(nil),                     // 12: agynio.api.users.v1.APIToken
-	(*CreateAPITokenRequest)(nil),        // 13: agynio.api.users.v1.CreateAPITokenRequest
-	(*CreateAPITokenResponse)(nil),       // 14: agynio.api.users.v1.CreateAPITokenResponse
-	(*ListAPITokensRequest)(nil),         // 15: agynio.api.users.v1.ListAPITokensRequest
-	(*ListAPITokensResponse)(nil),        // 16: agynio.api.users.v1.ListAPITokensResponse
-	(*RevokeAPITokenRequest)(nil),        // 17: agynio.api.users.v1.RevokeAPITokenRequest
-	(*RevokeAPITokenResponse)(nil),       // 18: agynio.api.users.v1.RevokeAPITokenResponse
-	(*ResolveAPITokenRequest)(nil),       // 19: agynio.api.users.v1.ResolveAPITokenRequest
-	(*ResolveAPITokenResponse)(nil),      // 20: agynio.api.users.v1.ResolveAPITokenResponse
-	(*timestamppb.Timestamp)(nil),        // 21: google.protobuf.Timestamp
+	(ClusterRole)(0),                     // 0: agynio.api.users.v1.ClusterRole
+	(DeviceStatus)(0),                    // 1: agynio.api.users.v1.DeviceStatus
+	(*EntityMeta)(nil),                   // 2: agynio.api.users.v1.EntityMeta
+	(*User)(nil),                         // 3: agynio.api.users.v1.User
+	(*Device)(nil),                       // 4: agynio.api.users.v1.Device
+	(*ResolveOrCreateUserRequest)(nil),   // 5: agynio.api.users.v1.ResolveOrCreateUserRequest
+	(*ResolveOrCreateUserResponse)(nil),  // 6: agynio.api.users.v1.ResolveOrCreateUserResponse
+	(*GetUserRequest)(nil),               // 7: agynio.api.users.v1.GetUserRequest
+	(*GetUserResponse)(nil),              // 8: agynio.api.users.v1.GetUserResponse
+	(*GetUserByOIDCSubjectRequest)(nil),  // 9: agynio.api.users.v1.GetUserByOIDCSubjectRequest
+	(*GetUserByOIDCSubjectResponse)(nil), // 10: agynio.api.users.v1.GetUserByOIDCSubjectResponse
+	(*BatchGetUsersRequest)(nil),         // 11: agynio.api.users.v1.BatchGetUsersRequest
+	(*BatchGetUsersResponse)(nil),        // 12: agynio.api.users.v1.BatchGetUsersResponse
+	(*UpdateUserRequest)(nil),            // 13: agynio.api.users.v1.UpdateUserRequest
+	(*UpdateUserResponse)(nil),           // 14: agynio.api.users.v1.UpdateUserResponse
+	(*GetMeRequest)(nil),                 // 15: agynio.api.users.v1.GetMeRequest
+	(*GetMeResponse)(nil),                // 16: agynio.api.users.v1.GetMeResponse
+	(*ListUsersRequest)(nil),             // 17: agynio.api.users.v1.ListUsersRequest
+	(*ListUsersResponse)(nil),            // 18: agynio.api.users.v1.ListUsersResponse
+	(*CreateUserRequest)(nil),            // 19: agynio.api.users.v1.CreateUserRequest
+	(*CreateUserResponse)(nil),           // 20: agynio.api.users.v1.CreateUserResponse
+	(*DeleteUserRequest)(nil),            // 21: agynio.api.users.v1.DeleteUserRequest
+	(*DeleteUserResponse)(nil),           // 22: agynio.api.users.v1.DeleteUserResponse
+	(*APIToken)(nil),                     // 23: agynio.api.users.v1.APIToken
+	(*CreateAPITokenRequest)(nil),        // 24: agynio.api.users.v1.CreateAPITokenRequest
+	(*CreateAPITokenResponse)(nil),       // 25: agynio.api.users.v1.CreateAPITokenResponse
+	(*ListAPITokensRequest)(nil),         // 26: agynio.api.users.v1.ListAPITokensRequest
+	(*ListAPITokensResponse)(nil),        // 27: agynio.api.users.v1.ListAPITokensResponse
+	(*RevokeAPITokenRequest)(nil),        // 28: agynio.api.users.v1.RevokeAPITokenRequest
+	(*RevokeAPITokenResponse)(nil),       // 29: agynio.api.users.v1.RevokeAPITokenResponse
+	(*ResolveAPITokenRequest)(nil),       // 30: agynio.api.users.v1.ResolveAPITokenRequest
+	(*ResolveAPITokenResponse)(nil),      // 31: agynio.api.users.v1.ResolveAPITokenResponse
+	(*CreateDeviceRequest)(nil),          // 32: agynio.api.users.v1.CreateDeviceRequest
+	(*CreateDeviceResponse)(nil),         // 33: agynio.api.users.v1.CreateDeviceResponse
+	(*ListDevicesRequest)(nil),           // 34: agynio.api.users.v1.ListDevicesRequest
+	(*ListDevicesResponse)(nil),          // 35: agynio.api.users.v1.ListDevicesResponse
+	(*DeleteDeviceRequest)(nil),          // 36: agynio.api.users.v1.DeleteDeviceRequest
+	(*DeleteDeviceResponse)(nil),         // 37: agynio.api.users.v1.DeleteDeviceResponse
+	(*timestamppb.Timestamp)(nil),        // 38: google.protobuf.Timestamp
 }
 var file_agynio_api_users_v1_users_proto_depIdxs = []int32{
-	21, // 0: agynio.api.users.v1.EntityMeta.created_at:type_name -> google.protobuf.Timestamp
-	21, // 1: agynio.api.users.v1.EntityMeta.updated_at:type_name -> google.protobuf.Timestamp
-	0,  // 2: agynio.api.users.v1.User.meta:type_name -> agynio.api.users.v1.EntityMeta
-	1,  // 3: agynio.api.users.v1.ResolveOrCreateUserResponse.user:type_name -> agynio.api.users.v1.User
-	1,  // 4: agynio.api.users.v1.GetUserResponse.user:type_name -> agynio.api.users.v1.User
-	1,  // 5: agynio.api.users.v1.GetUserByOIDCSubjectResponse.user:type_name -> agynio.api.users.v1.User
-	1,  // 6: agynio.api.users.v1.BatchGetUsersResponse.users:type_name -> agynio.api.users.v1.User
-	1,  // 7: agynio.api.users.v1.UpdateUserResponse.user:type_name -> agynio.api.users.v1.User
-	21, // 8: agynio.api.users.v1.APIToken.expires_at:type_name -> google.protobuf.Timestamp
-	21, // 9: agynio.api.users.v1.APIToken.created_at:type_name -> google.protobuf.Timestamp
-	21, // 10: agynio.api.users.v1.APIToken.last_used_at:type_name -> google.protobuf.Timestamp
-	21, // 11: agynio.api.users.v1.CreateAPITokenRequest.expires_at:type_name -> google.protobuf.Timestamp
-	12, // 12: agynio.api.users.v1.CreateAPITokenResponse.token:type_name -> agynio.api.users.v1.APIToken
-	12, // 13: agynio.api.users.v1.ListAPITokensResponse.tokens:type_name -> agynio.api.users.v1.APIToken
-	12, // 14: agynio.api.users.v1.ResolveAPITokenResponse.token:type_name -> agynio.api.users.v1.APIToken
-	2,  // 15: agynio.api.users.v1.UsersService.ResolveOrCreateUser:input_type -> agynio.api.users.v1.ResolveOrCreateUserRequest
-	4,  // 16: agynio.api.users.v1.UsersService.GetUser:input_type -> agynio.api.users.v1.GetUserRequest
-	6,  // 17: agynio.api.users.v1.UsersService.GetUserByOIDCSubject:input_type -> agynio.api.users.v1.GetUserByOIDCSubjectRequest
-	8,  // 18: agynio.api.users.v1.UsersService.BatchGetUsers:input_type -> agynio.api.users.v1.BatchGetUsersRequest
-	10, // 19: agynio.api.users.v1.UsersService.UpdateUser:input_type -> agynio.api.users.v1.UpdateUserRequest
-	13, // 20: agynio.api.users.v1.UsersService.CreateAPIToken:input_type -> agynio.api.users.v1.CreateAPITokenRequest
-	15, // 21: agynio.api.users.v1.UsersService.ListAPITokens:input_type -> agynio.api.users.v1.ListAPITokensRequest
-	17, // 22: agynio.api.users.v1.UsersService.RevokeAPIToken:input_type -> agynio.api.users.v1.RevokeAPITokenRequest
-	19, // 23: agynio.api.users.v1.UsersService.ResolveAPIToken:input_type -> agynio.api.users.v1.ResolveAPITokenRequest
-	3,  // 24: agynio.api.users.v1.UsersService.ResolveOrCreateUser:output_type -> agynio.api.users.v1.ResolveOrCreateUserResponse
-	5,  // 25: agynio.api.users.v1.UsersService.GetUser:output_type -> agynio.api.users.v1.GetUserResponse
-	7,  // 26: agynio.api.users.v1.UsersService.GetUserByOIDCSubject:output_type -> agynio.api.users.v1.GetUserByOIDCSubjectResponse
-	9,  // 27: agynio.api.users.v1.UsersService.BatchGetUsers:output_type -> agynio.api.users.v1.BatchGetUsersResponse
-	11, // 28: agynio.api.users.v1.UsersService.UpdateUser:output_type -> agynio.api.users.v1.UpdateUserResponse
-	14, // 29: agynio.api.users.v1.UsersService.CreateAPIToken:output_type -> agynio.api.users.v1.CreateAPITokenResponse
-	16, // 30: agynio.api.users.v1.UsersService.ListAPITokens:output_type -> agynio.api.users.v1.ListAPITokensResponse
-	18, // 31: agynio.api.users.v1.UsersService.RevokeAPIToken:output_type -> agynio.api.users.v1.RevokeAPITokenResponse
-	20, // 32: agynio.api.users.v1.UsersService.ResolveAPIToken:output_type -> agynio.api.users.v1.ResolveAPITokenResponse
-	24, // [24:33] is the sub-list for method output_type
-	15, // [15:24] is the sub-list for method input_type
-	15, // [15:15] is the sub-list for extension type_name
-	15, // [15:15] is the sub-list for extension extendee
-	0,  // [0:15] is the sub-list for field type_name
+	38, // 0: agynio.api.users.v1.EntityMeta.created_at:type_name -> google.protobuf.Timestamp
+	38, // 1: agynio.api.users.v1.EntityMeta.updated_at:type_name -> google.protobuf.Timestamp
+	2,  // 2: agynio.api.users.v1.User.meta:type_name -> agynio.api.users.v1.EntityMeta
+	2,  // 3: agynio.api.users.v1.Device.meta:type_name -> agynio.api.users.v1.EntityMeta
+	1,  // 4: agynio.api.users.v1.Device.status:type_name -> agynio.api.users.v1.DeviceStatus
+	3,  // 5: agynio.api.users.v1.ResolveOrCreateUserResponse.user:type_name -> agynio.api.users.v1.User
+	3,  // 6: agynio.api.users.v1.GetUserResponse.user:type_name -> agynio.api.users.v1.User
+	0,  // 7: agynio.api.users.v1.GetUserResponse.cluster_role:type_name -> agynio.api.users.v1.ClusterRole
+	3,  // 8: agynio.api.users.v1.GetUserByOIDCSubjectResponse.user:type_name -> agynio.api.users.v1.User
+	3,  // 9: agynio.api.users.v1.BatchGetUsersResponse.users:type_name -> agynio.api.users.v1.User
+	0,  // 10: agynio.api.users.v1.UpdateUserRequest.cluster_role:type_name -> agynio.api.users.v1.ClusterRole
+	3,  // 11: agynio.api.users.v1.UpdateUserResponse.user:type_name -> agynio.api.users.v1.User
+	3,  // 12: agynio.api.users.v1.GetMeResponse.user:type_name -> agynio.api.users.v1.User
+	0,  // 13: agynio.api.users.v1.GetMeResponse.cluster_role:type_name -> agynio.api.users.v1.ClusterRole
+	3,  // 14: agynio.api.users.v1.ListUsersResponse.users:type_name -> agynio.api.users.v1.User
+	0,  // 15: agynio.api.users.v1.CreateUserRequest.cluster_role:type_name -> agynio.api.users.v1.ClusterRole
+	3,  // 16: agynio.api.users.v1.CreateUserResponse.user:type_name -> agynio.api.users.v1.User
+	38, // 17: agynio.api.users.v1.APIToken.expires_at:type_name -> google.protobuf.Timestamp
+	38, // 18: agynio.api.users.v1.APIToken.created_at:type_name -> google.protobuf.Timestamp
+	38, // 19: agynio.api.users.v1.APIToken.last_used_at:type_name -> google.protobuf.Timestamp
+	38, // 20: agynio.api.users.v1.CreateAPITokenRequest.expires_at:type_name -> google.protobuf.Timestamp
+	23, // 21: agynio.api.users.v1.CreateAPITokenResponse.token:type_name -> agynio.api.users.v1.APIToken
+	23, // 22: agynio.api.users.v1.ListAPITokensResponse.tokens:type_name -> agynio.api.users.v1.APIToken
+	23, // 23: agynio.api.users.v1.ResolveAPITokenResponse.token:type_name -> agynio.api.users.v1.APIToken
+	4,  // 24: agynio.api.users.v1.CreateDeviceResponse.device:type_name -> agynio.api.users.v1.Device
+	4,  // 25: agynio.api.users.v1.ListDevicesResponse.devices:type_name -> agynio.api.users.v1.Device
+	5,  // 26: agynio.api.users.v1.UsersService.ResolveOrCreateUser:input_type -> agynio.api.users.v1.ResolveOrCreateUserRequest
+	7,  // 27: agynio.api.users.v1.UsersService.GetUser:input_type -> agynio.api.users.v1.GetUserRequest
+	9,  // 28: agynio.api.users.v1.UsersService.GetUserByOIDCSubject:input_type -> agynio.api.users.v1.GetUserByOIDCSubjectRequest
+	11, // 29: agynio.api.users.v1.UsersService.BatchGetUsers:input_type -> agynio.api.users.v1.BatchGetUsersRequest
+	13, // 30: agynio.api.users.v1.UsersService.UpdateUser:input_type -> agynio.api.users.v1.UpdateUserRequest
+	24, // 31: agynio.api.users.v1.UsersService.CreateAPIToken:input_type -> agynio.api.users.v1.CreateAPITokenRequest
+	26, // 32: agynio.api.users.v1.UsersService.ListAPITokens:input_type -> agynio.api.users.v1.ListAPITokensRequest
+	28, // 33: agynio.api.users.v1.UsersService.RevokeAPIToken:input_type -> agynio.api.users.v1.RevokeAPITokenRequest
+	30, // 34: agynio.api.users.v1.UsersService.ResolveAPIToken:input_type -> agynio.api.users.v1.ResolveAPITokenRequest
+	15, // 35: agynio.api.users.v1.UsersService.GetMe:input_type -> agynio.api.users.v1.GetMeRequest
+	17, // 36: agynio.api.users.v1.UsersService.ListUsers:input_type -> agynio.api.users.v1.ListUsersRequest
+	19, // 37: agynio.api.users.v1.UsersService.CreateUser:input_type -> agynio.api.users.v1.CreateUserRequest
+	21, // 38: agynio.api.users.v1.UsersService.DeleteUser:input_type -> agynio.api.users.v1.DeleteUserRequest
+	32, // 39: agynio.api.users.v1.UsersService.CreateDevice:input_type -> agynio.api.users.v1.CreateDeviceRequest
+	34, // 40: agynio.api.users.v1.UsersService.ListDevices:input_type -> agynio.api.users.v1.ListDevicesRequest
+	36, // 41: agynio.api.users.v1.UsersService.DeleteDevice:input_type -> agynio.api.users.v1.DeleteDeviceRequest
+	6,  // 42: agynio.api.users.v1.UsersService.ResolveOrCreateUser:output_type -> agynio.api.users.v1.ResolveOrCreateUserResponse
+	8,  // 43: agynio.api.users.v1.UsersService.GetUser:output_type -> agynio.api.users.v1.GetUserResponse
+	10, // 44: agynio.api.users.v1.UsersService.GetUserByOIDCSubject:output_type -> agynio.api.users.v1.GetUserByOIDCSubjectResponse
+	12, // 45: agynio.api.users.v1.UsersService.BatchGetUsers:output_type -> agynio.api.users.v1.BatchGetUsersResponse
+	14, // 46: agynio.api.users.v1.UsersService.UpdateUser:output_type -> agynio.api.users.v1.UpdateUserResponse
+	25, // 47: agynio.api.users.v1.UsersService.CreateAPIToken:output_type -> agynio.api.users.v1.CreateAPITokenResponse
+	27, // 48: agynio.api.users.v1.UsersService.ListAPITokens:output_type -> agynio.api.users.v1.ListAPITokensResponse
+	29, // 49: agynio.api.users.v1.UsersService.RevokeAPIToken:output_type -> agynio.api.users.v1.RevokeAPITokenResponse
+	31, // 50: agynio.api.users.v1.UsersService.ResolveAPIToken:output_type -> agynio.api.users.v1.ResolveAPITokenResponse
+	16, // 51: agynio.api.users.v1.UsersService.GetMe:output_type -> agynio.api.users.v1.GetMeResponse
+	18, // 52: agynio.api.users.v1.UsersService.ListUsers:output_type -> agynio.api.users.v1.ListUsersResponse
+	20, // 53: agynio.api.users.v1.UsersService.CreateUser:output_type -> agynio.api.users.v1.CreateUserResponse
+	22, // 54: agynio.api.users.v1.UsersService.DeleteUser:output_type -> agynio.api.users.v1.DeleteUserResponse
+	33, // 55: agynio.api.users.v1.UsersService.CreateDevice:output_type -> agynio.api.users.v1.CreateDeviceResponse
+	35, // 56: agynio.api.users.v1.UsersService.ListDevices:output_type -> agynio.api.users.v1.ListDevicesResponse
+	37, // 57: agynio.api.users.v1.UsersService.DeleteDevice:output_type -> agynio.api.users.v1.DeleteDeviceResponse
+	42, // [42:58] is the sub-list for method output_type
+	26, // [26:42] is the sub-list for method input_type
+	26, // [26:26] is the sub-list for extension type_name
+	26, // [26:26] is the sub-list for extension extendee
+	0,  // [0:26] is the sub-list for field type_name
 }
 
 func init() { file_agynio_api_users_v1_users_proto_init() }
@@ -1286,19 +2275,21 @@ func file_agynio_api_users_v1_users_proto_init() {
 	if File_agynio_api_users_v1_users_proto != nil {
 		return
 	}
-	file_agynio_api_users_v1_users_proto_msgTypes[10].OneofWrappers = []any{}
+	file_agynio_api_users_v1_users_proto_msgTypes[11].OneofWrappers = []any{}
+	file_agynio_api_users_v1_users_proto_msgTypes[17].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_agynio_api_users_v1_users_proto_rawDesc), len(file_agynio_api_users_v1_users_proto_rawDesc)),
-			NumEnums:      0,
-			NumMessages:   21,
+			NumEnums:      2,
+			NumMessages:   36,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
 		GoTypes:           file_agynio_api_users_v1_users_proto_goTypes,
 		DependencyIndexes: file_agynio_api_users_v1_users_proto_depIdxs,
+		EnumInfos:         file_agynio_api_users_v1_users_proto_enumTypes,
 		MessageInfos:      file_agynio_api_users_v1_users_proto_msgTypes,
 	}.Build()
 	File_agynio_api_users_v1_users_proto = out.File

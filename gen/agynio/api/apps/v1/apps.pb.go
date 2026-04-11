@@ -9,6 +9,7 @@ package appsv1
 import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	structpb "google.golang.org/protobuf/types/known/structpb"
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 	reflect "reflect"
 	sync "sync"
@@ -21,6 +22,55 @@ const (
 	// Verify that runtime/protoimpl is sufficiently up-to-date.
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
+
+type AppVisibility int32
+
+const (
+	AppVisibility_APP_VISIBILITY_UNSPECIFIED AppVisibility = 0
+	AppVisibility_APP_VISIBILITY_PUBLIC      AppVisibility = 1
+	AppVisibility_APP_VISIBILITY_INTERNAL    AppVisibility = 2
+)
+
+// Enum value maps for AppVisibility.
+var (
+	AppVisibility_name = map[int32]string{
+		0: "APP_VISIBILITY_UNSPECIFIED",
+		1: "APP_VISIBILITY_PUBLIC",
+		2: "APP_VISIBILITY_INTERNAL",
+	}
+	AppVisibility_value = map[string]int32{
+		"APP_VISIBILITY_UNSPECIFIED": 0,
+		"APP_VISIBILITY_PUBLIC":      1,
+		"APP_VISIBILITY_INTERNAL":    2,
+	}
+)
+
+func (x AppVisibility) Enum() *AppVisibility {
+	p := new(AppVisibility)
+	*p = x
+	return p
+}
+
+func (x AppVisibility) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AppVisibility) Descriptor() protoreflect.EnumDescriptor {
+	return file_agynio_api_apps_v1_apps_proto_enumTypes[0].Descriptor()
+}
+
+func (AppVisibility) Type() protoreflect.EnumType {
+	return &file_agynio_api_apps_v1_apps_proto_enumTypes[0]
+}
+
+func (x AppVisibility) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AppVisibility.Descriptor instead.
+func (AppVisibility) EnumDescriptor() ([]byte, []int) {
+	return file_agynio_api_apps_v1_apps_proto_rawDescGZIP(), []int{0}
+}
 
 type EntityMeta struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -92,6 +142,9 @@ type App struct {
 	IdentityId     string                 `protobuf:"bytes,6,opt,name=identity_id,json=identityId,proto3" json:"identity_id,omitempty"`
 	ZitiIdentityId string                 `protobuf:"bytes,7,opt,name=ziti_identity_id,json=zitiIdentityId,proto3" json:"ziti_identity_id,omitempty"`
 	ZitiServiceId  string                 `protobuf:"bytes,8,opt,name=ziti_service_id,json=zitiServiceId,proto3" json:"ziti_service_id,omitempty"`
+	OrganizationId string                 `protobuf:"bytes,9,opt,name=organization_id,json=organizationId,proto3" json:"organization_id,omitempty"`
+	Visibility     AppVisibility          `protobuf:"varint,10,opt,name=visibility,proto3,enum=agynio.api.apps.v1.AppVisibility" json:"visibility,omitempty"`
+	Permissions    []string               `protobuf:"bytes,11,rep,name=permissions,proto3" json:"permissions,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -182,6 +235,27 @@ func (x *App) GetZitiServiceId() string {
 	return ""
 }
 
+func (x *App) GetOrganizationId() string {
+	if x != nil {
+		return x.OrganizationId
+	}
+	return ""
+}
+
+func (x *App) GetVisibility() AppVisibility {
+	if x != nil {
+		return x.Visibility
+	}
+	return AppVisibility_APP_VISIBILITY_UNSPECIFIED
+}
+
+func (x *App) GetPermissions() []string {
+	if x != nil {
+		return x.Permissions
+	}
+	return nil
+}
+
 type AppProfile struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -258,30 +332,31 @@ func (x *AppProfile) GetIcon() string {
 	return ""
 }
 
-type RegisterAppRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Slug          string                 `protobuf:"bytes,1,opt,name=slug,proto3" json:"slug,omitempty"`
-	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
-	Description   string                 `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"`
-	Icon          string                 `protobuf:"bytes,4,opt,name=icon,proto3" json:"icon,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+type Installation struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	Meta           *EntityMeta            `protobuf:"bytes,1,opt,name=meta,proto3" json:"meta,omitempty"`
+	AppId          string                 `protobuf:"bytes,2,opt,name=app_id,json=appId,proto3" json:"app_id,omitempty"`
+	OrganizationId string                 `protobuf:"bytes,3,opt,name=organization_id,json=organizationId,proto3" json:"organization_id,omitempty"`
+	Slug           string                 `protobuf:"bytes,4,opt,name=slug,proto3" json:"slug,omitempty"`
+	Configuration  *structpb.Struct       `protobuf:"bytes,5,opt,name=configuration,proto3" json:"configuration,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
-func (x *RegisterAppRequest) Reset() {
-	*x = RegisterAppRequest{}
+func (x *Installation) Reset() {
+	*x = Installation{}
 	mi := &file_agynio_api_apps_v1_apps_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *RegisterAppRequest) String() string {
+func (x *Installation) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*RegisterAppRequest) ProtoMessage() {}
+func (*Installation) ProtoMessage() {}
 
-func (x *RegisterAppRequest) ProtoReflect() protoreflect.Message {
+func (x *Installation) ProtoReflect() protoreflect.Message {
 	mi := &file_agynio_api_apps_v1_apps_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -293,40 +368,139 @@ func (x *RegisterAppRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use RegisterAppRequest.ProtoReflect.Descriptor instead.
-func (*RegisterAppRequest) Descriptor() ([]byte, []int) {
+// Deprecated: Use Installation.ProtoReflect.Descriptor instead.
+func (*Installation) Descriptor() ([]byte, []int) {
 	return file_agynio_api_apps_v1_apps_proto_rawDescGZIP(), []int{3}
 }
 
-func (x *RegisterAppRequest) GetSlug() string {
+func (x *Installation) GetMeta() *EntityMeta {
+	if x != nil {
+		return x.Meta
+	}
+	return nil
+}
+
+func (x *Installation) GetAppId() string {
+	if x != nil {
+		return x.AppId
+	}
+	return ""
+}
+
+func (x *Installation) GetOrganizationId() string {
+	if x != nil {
+		return x.OrganizationId
+	}
+	return ""
+}
+
+func (x *Installation) GetSlug() string {
 	if x != nil {
 		return x.Slug
 	}
 	return ""
 }
 
-func (x *RegisterAppRequest) GetName() string {
+func (x *Installation) GetConfiguration() *structpb.Struct {
+	if x != nil {
+		return x.Configuration
+	}
+	return nil
+}
+
+type CreateAppRequest struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	OrganizationId string                 `protobuf:"bytes,1,opt,name=organization_id,json=organizationId,proto3" json:"organization_id,omitempty"`
+	Slug           string                 `protobuf:"bytes,2,opt,name=slug,proto3" json:"slug,omitempty"`
+	Name           string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	Description    string                 `protobuf:"bytes,4,opt,name=description,proto3" json:"description,omitempty"`
+	Icon           string                 `protobuf:"bytes,5,opt,name=icon,proto3" json:"icon,omitempty"`
+	Visibility     AppVisibility          `protobuf:"varint,6,opt,name=visibility,proto3,enum=agynio.api.apps.v1.AppVisibility" json:"visibility,omitempty"`
+	Permissions    []string               `protobuf:"bytes,7,rep,name=permissions,proto3" json:"permissions,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *CreateAppRequest) Reset() {
+	*x = CreateAppRequest{}
+	mi := &file_agynio_api_apps_v1_apps_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateAppRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateAppRequest) ProtoMessage() {}
+
+func (x *CreateAppRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_agynio_api_apps_v1_apps_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateAppRequest.ProtoReflect.Descriptor instead.
+func (*CreateAppRequest) Descriptor() ([]byte, []int) {
+	return file_agynio_api_apps_v1_apps_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *CreateAppRequest) GetOrganizationId() string {
+	if x != nil {
+		return x.OrganizationId
+	}
+	return ""
+}
+
+func (x *CreateAppRequest) GetSlug() string {
+	if x != nil {
+		return x.Slug
+	}
+	return ""
+}
+
+func (x *CreateAppRequest) GetName() string {
 	if x != nil {
 		return x.Name
 	}
 	return ""
 }
 
-func (x *RegisterAppRequest) GetDescription() string {
+func (x *CreateAppRequest) GetDescription() string {
 	if x != nil {
 		return x.Description
 	}
 	return ""
 }
 
-func (x *RegisterAppRequest) GetIcon() string {
+func (x *CreateAppRequest) GetIcon() string {
 	if x != nil {
 		return x.Icon
 	}
 	return ""
 }
 
-type RegisterAppResponse struct {
+func (x *CreateAppRequest) GetVisibility() AppVisibility {
+	if x != nil {
+		return x.Visibility
+	}
+	return AppVisibility_APP_VISIBILITY_UNSPECIFIED
+}
+
+func (x *CreateAppRequest) GetPermissions() []string {
+	if x != nil {
+		return x.Permissions
+	}
+	return nil
+}
+
+type CreateAppResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	App           *App                   `protobuf:"bytes,1,opt,name=app,proto3" json:"app,omitempty"`
 	ServiceToken  string                 `protobuf:"bytes,2,opt,name=service_token,json=serviceToken,proto3" json:"service_token,omitempty"`
@@ -334,21 +508,21 @@ type RegisterAppResponse struct {
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *RegisterAppResponse) Reset() {
-	*x = RegisterAppResponse{}
-	mi := &file_agynio_api_apps_v1_apps_proto_msgTypes[4]
+func (x *CreateAppResponse) Reset() {
+	*x = CreateAppResponse{}
+	mi := &file_agynio_api_apps_v1_apps_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *RegisterAppResponse) String() string {
+func (x *CreateAppResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*RegisterAppResponse) ProtoMessage() {}
+func (*CreateAppResponse) ProtoMessage() {}
 
-func (x *RegisterAppResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_agynio_api_apps_v1_apps_proto_msgTypes[4]
+func (x *CreateAppResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_agynio_api_apps_v1_apps_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -359,19 +533,19 @@ func (x *RegisterAppResponse) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use RegisterAppResponse.ProtoReflect.Descriptor instead.
-func (*RegisterAppResponse) Descriptor() ([]byte, []int) {
-	return file_agynio_api_apps_v1_apps_proto_rawDescGZIP(), []int{4}
+// Deprecated: Use CreateAppResponse.ProtoReflect.Descriptor instead.
+func (*CreateAppResponse) Descriptor() ([]byte, []int) {
+	return file_agynio_api_apps_v1_apps_proto_rawDescGZIP(), []int{5}
 }
 
-func (x *RegisterAppResponse) GetApp() *App {
+func (x *CreateAppResponse) GetApp() *App {
 	if x != nil {
 		return x.App
 	}
 	return nil
 }
 
-func (x *RegisterAppResponse) GetServiceToken() string {
+func (x *CreateAppResponse) GetServiceToken() string {
 	if x != nil {
 		return x.ServiceToken
 	}
@@ -387,7 +561,7 @@ type GetAppRequest struct {
 
 func (x *GetAppRequest) Reset() {
 	*x = GetAppRequest{}
-	mi := &file_agynio_api_apps_v1_apps_proto_msgTypes[5]
+	mi := &file_agynio_api_apps_v1_apps_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -399,7 +573,7 @@ func (x *GetAppRequest) String() string {
 func (*GetAppRequest) ProtoMessage() {}
 
 func (x *GetAppRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_agynio_api_apps_v1_apps_proto_msgTypes[5]
+	mi := &file_agynio_api_apps_v1_apps_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -412,7 +586,7 @@ func (x *GetAppRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetAppRequest.ProtoReflect.Descriptor instead.
 func (*GetAppRequest) Descriptor() ([]byte, []int) {
-	return file_agynio_api_apps_v1_apps_proto_rawDescGZIP(), []int{5}
+	return file_agynio_api_apps_v1_apps_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *GetAppRequest) GetId() string {
@@ -431,7 +605,7 @@ type GetAppResponse struct {
 
 func (x *GetAppResponse) Reset() {
 	*x = GetAppResponse{}
-	mi := &file_agynio_api_apps_v1_apps_proto_msgTypes[6]
+	mi := &file_agynio_api_apps_v1_apps_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -443,7 +617,7 @@ func (x *GetAppResponse) String() string {
 func (*GetAppResponse) ProtoMessage() {}
 
 func (x *GetAppResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_agynio_api_apps_v1_apps_proto_msgTypes[6]
+	mi := &file_agynio_api_apps_v1_apps_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -456,7 +630,7 @@ func (x *GetAppResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetAppResponse.ProtoReflect.Descriptor instead.
 func (*GetAppResponse) Descriptor() ([]byte, []int) {
-	return file_agynio_api_apps_v1_apps_proto_rawDescGZIP(), []int{6}
+	return file_agynio_api_apps_v1_apps_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *GetAppResponse) GetApp() *App {
@@ -466,16 +640,137 @@ func (x *GetAppResponse) GetApp() *App {
 	return nil
 }
 
-type GetAppBySlugRequest struct {
+type UpdateAppRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Slug          string                 `protobuf:"bytes,1,opt,name=slug,proto3" json:"slug,omitempty"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Name          *string                `protobuf:"bytes,2,opt,name=name,proto3,oneof" json:"name,omitempty"`
+	Description   *string                `protobuf:"bytes,3,opt,name=description,proto3,oneof" json:"description,omitempty"`
+	Icon          *string                `protobuf:"bytes,4,opt,name=icon,proto3,oneof" json:"icon,omitempty"`
+	Visibility    *AppVisibility         `protobuf:"varint,5,opt,name=visibility,proto3,enum=agynio.api.apps.v1.AppVisibility,oneof" json:"visibility,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+func (x *UpdateAppRequest) Reset() {
+	*x = UpdateAppRequest{}
+	mi := &file_agynio_api_apps_v1_apps_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdateAppRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateAppRequest) ProtoMessage() {}
+
+func (x *UpdateAppRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_agynio_api_apps_v1_apps_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateAppRequest.ProtoReflect.Descriptor instead.
+func (*UpdateAppRequest) Descriptor() ([]byte, []int) {
+	return file_agynio_api_apps_v1_apps_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *UpdateAppRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *UpdateAppRequest) GetName() string {
+	if x != nil && x.Name != nil {
+		return *x.Name
+	}
+	return ""
+}
+
+func (x *UpdateAppRequest) GetDescription() string {
+	if x != nil && x.Description != nil {
+		return *x.Description
+	}
+	return ""
+}
+
+func (x *UpdateAppRequest) GetIcon() string {
+	if x != nil && x.Icon != nil {
+		return *x.Icon
+	}
+	return ""
+}
+
+func (x *UpdateAppRequest) GetVisibility() AppVisibility {
+	if x != nil && x.Visibility != nil {
+		return *x.Visibility
+	}
+	return AppVisibility_APP_VISIBILITY_UNSPECIFIED
+}
+
+type UpdateAppResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	App           *App                   `protobuf:"bytes,1,opt,name=app,proto3" json:"app,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UpdateAppResponse) Reset() {
+	*x = UpdateAppResponse{}
+	mi := &file_agynio_api_apps_v1_apps_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdateAppResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateAppResponse) ProtoMessage() {}
+
+func (x *UpdateAppResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_agynio_api_apps_v1_apps_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateAppResponse.ProtoReflect.Descriptor instead.
+func (*UpdateAppResponse) Descriptor() ([]byte, []int) {
+	return file_agynio_api_apps_v1_apps_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *UpdateAppResponse) GetApp() *App {
+	if x != nil {
+		return x.App
+	}
+	return nil
+}
+
+type GetAppBySlugRequest struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	OrganizationId string                 `protobuf:"bytes,1,opt,name=organization_id,json=organizationId,proto3" json:"organization_id,omitempty"`
+	Slug           string                 `protobuf:"bytes,2,opt,name=slug,proto3" json:"slug,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
 func (x *GetAppBySlugRequest) Reset() {
 	*x = GetAppBySlugRequest{}
-	mi := &file_agynio_api_apps_v1_apps_proto_msgTypes[7]
+	mi := &file_agynio_api_apps_v1_apps_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -487,7 +782,7 @@ func (x *GetAppBySlugRequest) String() string {
 func (*GetAppBySlugRequest) ProtoMessage() {}
 
 func (x *GetAppBySlugRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_agynio_api_apps_v1_apps_proto_msgTypes[7]
+	mi := &file_agynio_api_apps_v1_apps_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -500,7 +795,14 @@ func (x *GetAppBySlugRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetAppBySlugRequest.ProtoReflect.Descriptor instead.
 func (*GetAppBySlugRequest) Descriptor() ([]byte, []int) {
-	return file_agynio_api_apps_v1_apps_proto_rawDescGZIP(), []int{7}
+	return file_agynio_api_apps_v1_apps_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *GetAppBySlugRequest) GetOrganizationId() string {
+	if x != nil {
+		return x.OrganizationId
+	}
+	return ""
 }
 
 func (x *GetAppBySlugRequest) GetSlug() string {
@@ -519,7 +821,7 @@ type GetAppBySlugResponse struct {
 
 func (x *GetAppBySlugResponse) Reset() {
 	*x = GetAppBySlugResponse{}
-	mi := &file_agynio_api_apps_v1_apps_proto_msgTypes[8]
+	mi := &file_agynio_api_apps_v1_apps_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -531,7 +833,7 @@ func (x *GetAppBySlugResponse) String() string {
 func (*GetAppBySlugResponse) ProtoMessage() {}
 
 func (x *GetAppBySlugResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_agynio_api_apps_v1_apps_proto_msgTypes[8]
+	mi := &file_agynio_api_apps_v1_apps_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -544,7 +846,7 @@ func (x *GetAppBySlugResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetAppBySlugResponse.ProtoReflect.Descriptor instead.
 func (*GetAppBySlugResponse) Descriptor() ([]byte, []int) {
-	return file_agynio_api_apps_v1_apps_proto_rawDescGZIP(), []int{8}
+	return file_agynio_api_apps_v1_apps_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *GetAppBySlugResponse) GetApp() *App {
@@ -555,16 +857,18 @@ func (x *GetAppBySlugResponse) GetApp() *App {
 }
 
 type ListAppsRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	PageSize      int32                  `protobuf:"varint,1,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"`
-	PageToken     string                 `protobuf:"bytes,2,opt,name=page_token,json=pageToken,proto3" json:"page_token,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	PageSize       int32                  `protobuf:"varint,1,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"`
+	PageToken      string                 `protobuf:"bytes,2,opt,name=page_token,json=pageToken,proto3" json:"page_token,omitempty"`
+	OrganizationId string                 `protobuf:"bytes,3,opt,name=organization_id,json=organizationId,proto3" json:"organization_id,omitempty"`
+	Visibility     AppVisibility          `protobuf:"varint,4,opt,name=visibility,proto3,enum=agynio.api.apps.v1.AppVisibility" json:"visibility,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *ListAppsRequest) Reset() {
 	*x = ListAppsRequest{}
-	mi := &file_agynio_api_apps_v1_apps_proto_msgTypes[9]
+	mi := &file_agynio_api_apps_v1_apps_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -576,7 +880,7 @@ func (x *ListAppsRequest) String() string {
 func (*ListAppsRequest) ProtoMessage() {}
 
 func (x *ListAppsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_agynio_api_apps_v1_apps_proto_msgTypes[9]
+	mi := &file_agynio_api_apps_v1_apps_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -589,7 +893,7 @@ func (x *ListAppsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListAppsRequest.ProtoReflect.Descriptor instead.
 func (*ListAppsRequest) Descriptor() ([]byte, []int) {
-	return file_agynio_api_apps_v1_apps_proto_rawDescGZIP(), []int{9}
+	return file_agynio_api_apps_v1_apps_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *ListAppsRequest) GetPageSize() int32 {
@@ -606,6 +910,20 @@ func (x *ListAppsRequest) GetPageToken() string {
 	return ""
 }
 
+func (x *ListAppsRequest) GetOrganizationId() string {
+	if x != nil {
+		return x.OrganizationId
+	}
+	return ""
+}
+
+func (x *ListAppsRequest) GetVisibility() AppVisibility {
+	if x != nil {
+		return x.Visibility
+	}
+	return AppVisibility_APP_VISIBILITY_UNSPECIFIED
+}
+
 type ListAppsResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Apps          []*App                 `protobuf:"bytes,1,rep,name=apps,proto3" json:"apps,omitempty"`
@@ -616,7 +934,7 @@ type ListAppsResponse struct {
 
 func (x *ListAppsResponse) Reset() {
 	*x = ListAppsResponse{}
-	mi := &file_agynio_api_apps_v1_apps_proto_msgTypes[10]
+	mi := &file_agynio_api_apps_v1_apps_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -628,7 +946,7 @@ func (x *ListAppsResponse) String() string {
 func (*ListAppsResponse) ProtoMessage() {}
 
 func (x *ListAppsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_agynio_api_apps_v1_apps_proto_msgTypes[10]
+	mi := &file_agynio_api_apps_v1_apps_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -641,7 +959,7 @@ func (x *ListAppsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListAppsResponse.ProtoReflect.Descriptor instead.
 func (*ListAppsResponse) Descriptor() ([]byte, []int) {
-	return file_agynio_api_apps_v1_apps_proto_rawDescGZIP(), []int{10}
+	return file_agynio_api_apps_v1_apps_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *ListAppsResponse) GetApps() []*App {
@@ -667,7 +985,7 @@ type DeleteAppRequest struct {
 
 func (x *DeleteAppRequest) Reset() {
 	*x = DeleteAppRequest{}
-	mi := &file_agynio_api_apps_v1_apps_proto_msgTypes[11]
+	mi := &file_agynio_api_apps_v1_apps_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -679,7 +997,7 @@ func (x *DeleteAppRequest) String() string {
 func (*DeleteAppRequest) ProtoMessage() {}
 
 func (x *DeleteAppRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_agynio_api_apps_v1_apps_proto_msgTypes[11]
+	mi := &file_agynio_api_apps_v1_apps_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -692,7 +1010,7 @@ func (x *DeleteAppRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteAppRequest.ProtoReflect.Descriptor instead.
 func (*DeleteAppRequest) Descriptor() ([]byte, []int) {
-	return file_agynio_api_apps_v1_apps_proto_rawDescGZIP(), []int{11}
+	return file_agynio_api_apps_v1_apps_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *DeleteAppRequest) GetId() string {
@@ -710,7 +1028,7 @@ type DeleteAppResponse struct {
 
 func (x *DeleteAppResponse) Reset() {
 	*x = DeleteAppResponse{}
-	mi := &file_agynio_api_apps_v1_apps_proto_msgTypes[12]
+	mi := &file_agynio_api_apps_v1_apps_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -722,7 +1040,7 @@ func (x *DeleteAppResponse) String() string {
 func (*DeleteAppResponse) ProtoMessage() {}
 
 func (x *DeleteAppResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_agynio_api_apps_v1_apps_proto_msgTypes[12]
+	mi := &file_agynio_api_apps_v1_apps_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -735,7 +1053,7 @@ func (x *DeleteAppResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteAppResponse.ProtoReflect.Descriptor instead.
 func (*DeleteAppResponse) Descriptor() ([]byte, []int) {
-	return file_agynio_api_apps_v1_apps_proto_rawDescGZIP(), []int{12}
+	return file_agynio_api_apps_v1_apps_proto_rawDescGZIP(), []int{15}
 }
 
 type GetAppProfileRequest struct {
@@ -747,7 +1065,7 @@ type GetAppProfileRequest struct {
 
 func (x *GetAppProfileRequest) Reset() {
 	*x = GetAppProfileRequest{}
-	mi := &file_agynio_api_apps_v1_apps_proto_msgTypes[13]
+	mi := &file_agynio_api_apps_v1_apps_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -759,7 +1077,7 @@ func (x *GetAppProfileRequest) String() string {
 func (*GetAppProfileRequest) ProtoMessage() {}
 
 func (x *GetAppProfileRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_agynio_api_apps_v1_apps_proto_msgTypes[13]
+	mi := &file_agynio_api_apps_v1_apps_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -772,7 +1090,7 @@ func (x *GetAppProfileRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetAppProfileRequest.ProtoReflect.Descriptor instead.
 func (*GetAppProfileRequest) Descriptor() ([]byte, []int) {
-	return file_agynio_api_apps_v1_apps_proto_rawDescGZIP(), []int{13}
+	return file_agynio_api_apps_v1_apps_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *GetAppProfileRequest) GetIdentityId() string {
@@ -791,7 +1109,7 @@ type GetAppProfileResponse struct {
 
 func (x *GetAppProfileResponse) Reset() {
 	*x = GetAppProfileResponse{}
-	mi := &file_agynio_api_apps_v1_apps_proto_msgTypes[14]
+	mi := &file_agynio_api_apps_v1_apps_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -803,7 +1121,7 @@ func (x *GetAppProfileResponse) String() string {
 func (*GetAppProfileResponse) ProtoMessage() {}
 
 func (x *GetAppProfileResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_agynio_api_apps_v1_apps_proto_msgTypes[14]
+	mi := &file_agynio_api_apps_v1_apps_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -816,7 +1134,7 @@ func (x *GetAppProfileResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetAppProfileResponse.ProtoReflect.Descriptor instead.
 func (*GetAppProfileResponse) Descriptor() ([]byte, []int) {
-	return file_agynio_api_apps_v1_apps_proto_rawDescGZIP(), []int{14}
+	return file_agynio_api_apps_v1_apps_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *GetAppProfileResponse) GetProfile() *AppProfile {
@@ -835,7 +1153,7 @@ type ValidateServiceTokenRequest struct {
 
 func (x *ValidateServiceTokenRequest) Reset() {
 	*x = ValidateServiceTokenRequest{}
-	mi := &file_agynio_api_apps_v1_apps_proto_msgTypes[15]
+	mi := &file_agynio_api_apps_v1_apps_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -847,7 +1165,7 @@ func (x *ValidateServiceTokenRequest) String() string {
 func (*ValidateServiceTokenRequest) ProtoMessage() {}
 
 func (x *ValidateServiceTokenRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_agynio_api_apps_v1_apps_proto_msgTypes[15]
+	mi := &file_agynio_api_apps_v1_apps_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -860,7 +1178,7 @@ func (x *ValidateServiceTokenRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ValidateServiceTokenRequest.ProtoReflect.Descriptor instead.
 func (*ValidateServiceTokenRequest) Descriptor() ([]byte, []int) {
-	return file_agynio_api_apps_v1_apps_proto_rawDescGZIP(), []int{15}
+	return file_agynio_api_apps_v1_apps_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *ValidateServiceTokenRequest) GetTokenHash() string {
@@ -879,7 +1197,7 @@ type ValidateServiceTokenResponse struct {
 
 func (x *ValidateServiceTokenResponse) Reset() {
 	*x = ValidateServiceTokenResponse{}
-	mi := &file_agynio_api_apps_v1_apps_proto_msgTypes[16]
+	mi := &file_agynio_api_apps_v1_apps_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -891,7 +1209,7 @@ func (x *ValidateServiceTokenResponse) String() string {
 func (*ValidateServiceTokenResponse) ProtoMessage() {}
 
 func (x *ValidateServiceTokenResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_agynio_api_apps_v1_apps_proto_msgTypes[16]
+	mi := &file_agynio_api_apps_v1_apps_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -904,7 +1222,7 @@ func (x *ValidateServiceTokenResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ValidateServiceTokenResponse.ProtoReflect.Descriptor instead.
 func (*ValidateServiceTokenResponse) Descriptor() ([]byte, []int) {
-	return file_agynio_api_apps_v1_apps_proto_rawDescGZIP(), []int{16}
+	return file_agynio_api_apps_v1_apps_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *ValidateServiceTokenResponse) GetApp() *App {
@@ -914,18 +1232,805 @@ func (x *ValidateServiceTokenResponse) GetApp() *App {
 	return nil
 }
 
+type EnrollAppRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The raw service token issued during CreateApp.
+	ServiceToken  string `protobuf:"bytes,1,opt,name=service_token,json=serviceToken,proto3" json:"service_token,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *EnrollAppRequest) Reset() {
+	*x = EnrollAppRequest{}
+	mi := &file_agynio_api_apps_v1_apps_proto_msgTypes[20]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *EnrollAppRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EnrollAppRequest) ProtoMessage() {}
+
+func (x *EnrollAppRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_agynio_api_apps_v1_apps_proto_msgTypes[20]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EnrollAppRequest.ProtoReflect.Descriptor instead.
+func (*EnrollAppRequest) Descriptor() ([]byte, []int) {
+	return file_agynio_api_apps_v1_apps_proto_rawDescGZIP(), []int{20}
+}
+
+func (x *EnrollAppRequest) GetServiceToken() string {
+	if x != nil {
+		return x.ServiceToken
+	}
+	return ""
+}
+
+type EnrollAppResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The enrolled OpenZiti identity JSON (cert, key, CA, controller URL).
+	IdentityJson []byte `protobuf:"bytes,1,opt,name=identity_json,json=identityJson,proto3" json:"identity_json,omitempty"`
+	// The platform identity ID for this app.
+	IdentityId    string `protobuf:"bytes,2,opt,name=identity_id,json=identityId,proto3" json:"identity_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *EnrollAppResponse) Reset() {
+	*x = EnrollAppResponse{}
+	mi := &file_agynio_api_apps_v1_apps_proto_msgTypes[21]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *EnrollAppResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EnrollAppResponse) ProtoMessage() {}
+
+func (x *EnrollAppResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_agynio_api_apps_v1_apps_proto_msgTypes[21]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EnrollAppResponse.ProtoReflect.Descriptor instead.
+func (*EnrollAppResponse) Descriptor() ([]byte, []int) {
+	return file_agynio_api_apps_v1_apps_proto_rawDescGZIP(), []int{21}
+}
+
+func (x *EnrollAppResponse) GetIdentityJson() []byte {
+	if x != nil {
+		return x.IdentityJson
+	}
+	return nil
+}
+
+func (x *EnrollAppResponse) GetIdentityId() string {
+	if x != nil {
+		return x.IdentityId
+	}
+	return ""
+}
+
+type InstallAppRequest struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	AppId          string                 `protobuf:"bytes,1,opt,name=app_id,json=appId,proto3" json:"app_id,omitempty"`
+	OrganizationId string                 `protobuf:"bytes,2,opt,name=organization_id,json=organizationId,proto3" json:"organization_id,omitempty"`
+	Slug           string                 `protobuf:"bytes,3,opt,name=slug,proto3" json:"slug,omitempty"`
+	Configuration  *structpb.Struct       `protobuf:"bytes,4,opt,name=configuration,proto3" json:"configuration,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *InstallAppRequest) Reset() {
+	*x = InstallAppRequest{}
+	mi := &file_agynio_api_apps_v1_apps_proto_msgTypes[22]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *InstallAppRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*InstallAppRequest) ProtoMessage() {}
+
+func (x *InstallAppRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_agynio_api_apps_v1_apps_proto_msgTypes[22]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use InstallAppRequest.ProtoReflect.Descriptor instead.
+func (*InstallAppRequest) Descriptor() ([]byte, []int) {
+	return file_agynio_api_apps_v1_apps_proto_rawDescGZIP(), []int{22}
+}
+
+func (x *InstallAppRequest) GetAppId() string {
+	if x != nil {
+		return x.AppId
+	}
+	return ""
+}
+
+func (x *InstallAppRequest) GetOrganizationId() string {
+	if x != nil {
+		return x.OrganizationId
+	}
+	return ""
+}
+
+func (x *InstallAppRequest) GetSlug() string {
+	if x != nil {
+		return x.Slug
+	}
+	return ""
+}
+
+func (x *InstallAppRequest) GetConfiguration() *structpb.Struct {
+	if x != nil {
+		return x.Configuration
+	}
+	return nil
+}
+
+type InstallAppResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Installation  *Installation          `protobuf:"bytes,1,opt,name=installation,proto3" json:"installation,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *InstallAppResponse) Reset() {
+	*x = InstallAppResponse{}
+	mi := &file_agynio_api_apps_v1_apps_proto_msgTypes[23]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *InstallAppResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*InstallAppResponse) ProtoMessage() {}
+
+func (x *InstallAppResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_agynio_api_apps_v1_apps_proto_msgTypes[23]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use InstallAppResponse.ProtoReflect.Descriptor instead.
+func (*InstallAppResponse) Descriptor() ([]byte, []int) {
+	return file_agynio_api_apps_v1_apps_proto_rawDescGZIP(), []int{23}
+}
+
+func (x *InstallAppResponse) GetInstallation() *Installation {
+	if x != nil {
+		return x.Installation
+	}
+	return nil
+}
+
+type GetInstallationRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetInstallationRequest) Reset() {
+	*x = GetInstallationRequest{}
+	mi := &file_agynio_api_apps_v1_apps_proto_msgTypes[24]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetInstallationRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetInstallationRequest) ProtoMessage() {}
+
+func (x *GetInstallationRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_agynio_api_apps_v1_apps_proto_msgTypes[24]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetInstallationRequest.ProtoReflect.Descriptor instead.
+func (*GetInstallationRequest) Descriptor() ([]byte, []int) {
+	return file_agynio_api_apps_v1_apps_proto_rawDescGZIP(), []int{24}
+}
+
+func (x *GetInstallationRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+type GetInstallationResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Installation  *Installation          `protobuf:"bytes,1,opt,name=installation,proto3" json:"installation,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetInstallationResponse) Reset() {
+	*x = GetInstallationResponse{}
+	mi := &file_agynio_api_apps_v1_apps_proto_msgTypes[25]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetInstallationResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetInstallationResponse) ProtoMessage() {}
+
+func (x *GetInstallationResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_agynio_api_apps_v1_apps_proto_msgTypes[25]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetInstallationResponse.ProtoReflect.Descriptor instead.
+func (*GetInstallationResponse) Descriptor() ([]byte, []int) {
+	return file_agynio_api_apps_v1_apps_proto_rawDescGZIP(), []int{25}
+}
+
+func (x *GetInstallationResponse) GetInstallation() *Installation {
+	if x != nil {
+		return x.Installation
+	}
+	return nil
+}
+
+type GetInstallationBySlugRequest struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	OrganizationId string                 `protobuf:"bytes,1,opt,name=organization_id,json=organizationId,proto3" json:"organization_id,omitempty"`
+	Slug           string                 `protobuf:"bytes,2,opt,name=slug,proto3" json:"slug,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *GetInstallationBySlugRequest) Reset() {
+	*x = GetInstallationBySlugRequest{}
+	mi := &file_agynio_api_apps_v1_apps_proto_msgTypes[26]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetInstallationBySlugRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetInstallationBySlugRequest) ProtoMessage() {}
+
+func (x *GetInstallationBySlugRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_agynio_api_apps_v1_apps_proto_msgTypes[26]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetInstallationBySlugRequest.ProtoReflect.Descriptor instead.
+func (*GetInstallationBySlugRequest) Descriptor() ([]byte, []int) {
+	return file_agynio_api_apps_v1_apps_proto_rawDescGZIP(), []int{26}
+}
+
+func (x *GetInstallationBySlugRequest) GetOrganizationId() string {
+	if x != nil {
+		return x.OrganizationId
+	}
+	return ""
+}
+
+func (x *GetInstallationBySlugRequest) GetSlug() string {
+	if x != nil {
+		return x.Slug
+	}
+	return ""
+}
+
+type GetInstallationBySlugResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Installation  *Installation          `protobuf:"bytes,1,opt,name=installation,proto3" json:"installation,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetInstallationBySlugResponse) Reset() {
+	*x = GetInstallationBySlugResponse{}
+	mi := &file_agynio_api_apps_v1_apps_proto_msgTypes[27]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetInstallationBySlugResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetInstallationBySlugResponse) ProtoMessage() {}
+
+func (x *GetInstallationBySlugResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_agynio_api_apps_v1_apps_proto_msgTypes[27]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetInstallationBySlugResponse.ProtoReflect.Descriptor instead.
+func (*GetInstallationBySlugResponse) Descriptor() ([]byte, []int) {
+	return file_agynio_api_apps_v1_apps_proto_rawDescGZIP(), []int{27}
+}
+
+func (x *GetInstallationBySlugResponse) GetInstallation() *Installation {
+	if x != nil {
+		return x.Installation
+	}
+	return nil
+}
+
+type ListInstallationsRequest struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	PageSize       int32                  `protobuf:"varint,1,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"`
+	PageToken      string                 `protobuf:"bytes,2,opt,name=page_token,json=pageToken,proto3" json:"page_token,omitempty"`
+	OrganizationId string                 `protobuf:"bytes,3,opt,name=organization_id,json=organizationId,proto3" json:"organization_id,omitempty"`
+	AppId          string                 `protobuf:"bytes,4,opt,name=app_id,json=appId,proto3" json:"app_id,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *ListInstallationsRequest) Reset() {
+	*x = ListInstallationsRequest{}
+	mi := &file_agynio_api_apps_v1_apps_proto_msgTypes[28]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListInstallationsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListInstallationsRequest) ProtoMessage() {}
+
+func (x *ListInstallationsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_agynio_api_apps_v1_apps_proto_msgTypes[28]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListInstallationsRequest.ProtoReflect.Descriptor instead.
+func (*ListInstallationsRequest) Descriptor() ([]byte, []int) {
+	return file_agynio_api_apps_v1_apps_proto_rawDescGZIP(), []int{28}
+}
+
+func (x *ListInstallationsRequest) GetPageSize() int32 {
+	if x != nil {
+		return x.PageSize
+	}
+	return 0
+}
+
+func (x *ListInstallationsRequest) GetPageToken() string {
+	if x != nil {
+		return x.PageToken
+	}
+	return ""
+}
+
+func (x *ListInstallationsRequest) GetOrganizationId() string {
+	if x != nil {
+		return x.OrganizationId
+	}
+	return ""
+}
+
+func (x *ListInstallationsRequest) GetAppId() string {
+	if x != nil {
+		return x.AppId
+	}
+	return ""
+}
+
+type ListInstallationsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Installations []*Installation        `protobuf:"bytes,1,rep,name=installations,proto3" json:"installations,omitempty"`
+	NextPageToken string                 `protobuf:"bytes,2,opt,name=next_page_token,json=nextPageToken,proto3" json:"next_page_token,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListInstallationsResponse) Reset() {
+	*x = ListInstallationsResponse{}
+	mi := &file_agynio_api_apps_v1_apps_proto_msgTypes[29]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListInstallationsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListInstallationsResponse) ProtoMessage() {}
+
+func (x *ListInstallationsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_agynio_api_apps_v1_apps_proto_msgTypes[29]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListInstallationsResponse.ProtoReflect.Descriptor instead.
+func (*ListInstallationsResponse) Descriptor() ([]byte, []int) {
+	return file_agynio_api_apps_v1_apps_proto_rawDescGZIP(), []int{29}
+}
+
+func (x *ListInstallationsResponse) GetInstallations() []*Installation {
+	if x != nil {
+		return x.Installations
+	}
+	return nil
+}
+
+func (x *ListInstallationsResponse) GetNextPageToken() string {
+	if x != nil {
+		return x.NextPageToken
+	}
+	return ""
+}
+
+type UpdateInstallationRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Slug          *string                `protobuf:"bytes,2,opt,name=slug,proto3,oneof" json:"slug,omitempty"`
+	Configuration *structpb.Struct       `protobuf:"bytes,3,opt,name=configuration,proto3,oneof" json:"configuration,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UpdateInstallationRequest) Reset() {
+	*x = UpdateInstallationRequest{}
+	mi := &file_agynio_api_apps_v1_apps_proto_msgTypes[30]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdateInstallationRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateInstallationRequest) ProtoMessage() {}
+
+func (x *UpdateInstallationRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_agynio_api_apps_v1_apps_proto_msgTypes[30]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateInstallationRequest.ProtoReflect.Descriptor instead.
+func (*UpdateInstallationRequest) Descriptor() ([]byte, []int) {
+	return file_agynio_api_apps_v1_apps_proto_rawDescGZIP(), []int{30}
+}
+
+func (x *UpdateInstallationRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *UpdateInstallationRequest) GetSlug() string {
+	if x != nil && x.Slug != nil {
+		return *x.Slug
+	}
+	return ""
+}
+
+func (x *UpdateInstallationRequest) GetConfiguration() *structpb.Struct {
+	if x != nil {
+		return x.Configuration
+	}
+	return nil
+}
+
+type UpdateInstallationResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Installation  *Installation          `protobuf:"bytes,1,opt,name=installation,proto3" json:"installation,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UpdateInstallationResponse) Reset() {
+	*x = UpdateInstallationResponse{}
+	mi := &file_agynio_api_apps_v1_apps_proto_msgTypes[31]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdateInstallationResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateInstallationResponse) ProtoMessage() {}
+
+func (x *UpdateInstallationResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_agynio_api_apps_v1_apps_proto_msgTypes[31]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateInstallationResponse.ProtoReflect.Descriptor instead.
+func (*UpdateInstallationResponse) Descriptor() ([]byte, []int) {
+	return file_agynio_api_apps_v1_apps_proto_rawDescGZIP(), []int{31}
+}
+
+func (x *UpdateInstallationResponse) GetInstallation() *Installation {
+	if x != nil {
+		return x.Installation
+	}
+	return nil
+}
+
+type UninstallAppRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UninstallAppRequest) Reset() {
+	*x = UninstallAppRequest{}
+	mi := &file_agynio_api_apps_v1_apps_proto_msgTypes[32]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UninstallAppRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UninstallAppRequest) ProtoMessage() {}
+
+func (x *UninstallAppRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_agynio_api_apps_v1_apps_proto_msgTypes[32]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UninstallAppRequest.ProtoReflect.Descriptor instead.
+func (*UninstallAppRequest) Descriptor() ([]byte, []int) {
+	return file_agynio_api_apps_v1_apps_proto_rawDescGZIP(), []int{32}
+}
+
+func (x *UninstallAppRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+type UninstallAppResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UninstallAppResponse) Reset() {
+	*x = UninstallAppResponse{}
+	mi := &file_agynio_api_apps_v1_apps_proto_msgTypes[33]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UninstallAppResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UninstallAppResponse) ProtoMessage() {}
+
+func (x *UninstallAppResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_agynio_api_apps_v1_apps_proto_msgTypes[33]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UninstallAppResponse.ProtoReflect.Descriptor instead.
+func (*UninstallAppResponse) Descriptor() ([]byte, []int) {
+	return file_agynio_api_apps_v1_apps_proto_rawDescGZIP(), []int{33}
+}
+
+type GetInstallationConfigurationRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetInstallationConfigurationRequest) Reset() {
+	*x = GetInstallationConfigurationRequest{}
+	mi := &file_agynio_api_apps_v1_apps_proto_msgTypes[34]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetInstallationConfigurationRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetInstallationConfigurationRequest) ProtoMessage() {}
+
+func (x *GetInstallationConfigurationRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_agynio_api_apps_v1_apps_proto_msgTypes[34]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetInstallationConfigurationRequest.ProtoReflect.Descriptor instead.
+func (*GetInstallationConfigurationRequest) Descriptor() ([]byte, []int) {
+	return file_agynio_api_apps_v1_apps_proto_rawDescGZIP(), []int{34}
+}
+
+func (x *GetInstallationConfigurationRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+type GetInstallationConfigurationResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Configuration *structpb.Struct       `protobuf:"bytes,1,opt,name=configuration,proto3" json:"configuration,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetInstallationConfigurationResponse) Reset() {
+	*x = GetInstallationConfigurationResponse{}
+	mi := &file_agynio_api_apps_v1_apps_proto_msgTypes[35]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetInstallationConfigurationResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetInstallationConfigurationResponse) ProtoMessage() {}
+
+func (x *GetInstallationConfigurationResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_agynio_api_apps_v1_apps_proto_msgTypes[35]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetInstallationConfigurationResponse.ProtoReflect.Descriptor instead.
+func (*GetInstallationConfigurationResponse) Descriptor() ([]byte, []int) {
+	return file_agynio_api_apps_v1_apps_proto_rawDescGZIP(), []int{35}
+}
+
+func (x *GetInstallationConfigurationResponse) GetConfiguration() *structpb.Struct {
+	if x != nil {
+		return x.Configuration
+	}
+	return nil
+}
+
 var File_agynio_api_apps_v1_apps_proto protoreflect.FileDescriptor
 
 const file_agynio_api_apps_v1_apps_proto_rawDesc = "" +
 	"\n" +
-	"\x1dagynio/api/apps/v1/apps.proto\x12\x12agynio.api.apps.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\x92\x01\n" +
+	"\x1dagynio/api/apps/v1/apps.proto\x12\x12agynio.api.apps.v1\x1a\x1cgoogle/protobuf/struct.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\x92\x01\n" +
 	"\n" +
 	"EntityMeta\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x129\n" +
 	"\n" +
 	"created_at\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
 	"\n" +
-	"updated_at\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\"\x8a\x02\n" +
+	"updated_at\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\"\x98\x03\n" +
 	"\x03App\x122\n" +
 	"\x04meta\x18\x01 \x01(\v2\x1e.agynio.api.apps.v1.EntityMetaR\x04meta\x12\x12\n" +
 	"\x04slug\x18\x02 \x01(\tR\x04slug\x12\x12\n" +
@@ -935,34 +2040,70 @@ const file_agynio_api_apps_v1_apps_proto_rawDesc = "" +
 	"\videntity_id\x18\x06 \x01(\tR\n" +
 	"identityId\x12(\n" +
 	"\x10ziti_identity_id\x18\a \x01(\tR\x0ezitiIdentityId\x12&\n" +
-	"\x0fziti_service_id\x18\b \x01(\tR\rzitiServiceId\"z\n" +
+	"\x0fziti_service_id\x18\b \x01(\tR\rzitiServiceId\x12'\n" +
+	"\x0forganization_id\x18\t \x01(\tR\x0eorganizationId\x12A\n" +
+	"\n" +
+	"visibility\x18\n" +
+	" \x01(\x0e2!.agynio.api.apps.v1.AppVisibilityR\n" +
+	"visibility\x12 \n" +
+	"\vpermissions\x18\v \x03(\tR\vpermissions\"z\n" +
 	"\n" +
 	"AppProfile\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04slug\x18\x02 \x01(\tR\x04slug\x12\x12\n" +
 	"\x04name\x18\x03 \x01(\tR\x04name\x12 \n" +
 	"\vdescription\x18\x04 \x01(\tR\vdescription\x12\x12\n" +
-	"\x04icon\x18\x05 \x01(\tR\x04icon\"r\n" +
-	"\x12RegisterAppRequest\x12\x12\n" +
-	"\x04slug\x18\x01 \x01(\tR\x04slug\x12\x12\n" +
-	"\x04name\x18\x02 \x01(\tR\x04name\x12 \n" +
-	"\vdescription\x18\x03 \x01(\tR\vdescription\x12\x12\n" +
-	"\x04icon\x18\x04 \x01(\tR\x04icon\"e\n" +
-	"\x13RegisterAppResponse\x12)\n" +
+	"\x04icon\x18\x05 \x01(\tR\x04icon\"\xd5\x01\n" +
+	"\fInstallation\x122\n" +
+	"\x04meta\x18\x01 \x01(\v2\x1e.agynio.api.apps.v1.EntityMetaR\x04meta\x12\x15\n" +
+	"\x06app_id\x18\x02 \x01(\tR\x05appId\x12'\n" +
+	"\x0forganization_id\x18\x03 \x01(\tR\x0eorganizationId\x12\x12\n" +
+	"\x04slug\x18\x04 \x01(\tR\x04slug\x12=\n" +
+	"\rconfiguration\x18\x05 \x01(\v2\x17.google.protobuf.StructR\rconfiguration\"\xfe\x01\n" +
+	"\x10CreateAppRequest\x12'\n" +
+	"\x0forganization_id\x18\x01 \x01(\tR\x0eorganizationId\x12\x12\n" +
+	"\x04slug\x18\x02 \x01(\tR\x04slug\x12\x12\n" +
+	"\x04name\x18\x03 \x01(\tR\x04name\x12 \n" +
+	"\vdescription\x18\x04 \x01(\tR\vdescription\x12\x12\n" +
+	"\x04icon\x18\x05 \x01(\tR\x04icon\x12A\n" +
+	"\n" +
+	"visibility\x18\x06 \x01(\x0e2!.agynio.api.apps.v1.AppVisibilityR\n" +
+	"visibility\x12 \n" +
+	"\vpermissions\x18\a \x03(\tR\vpermissions\"c\n" +
+	"\x11CreateAppResponse\x12)\n" +
 	"\x03app\x18\x01 \x01(\v2\x17.agynio.api.apps.v1.AppR\x03app\x12#\n" +
 	"\rservice_token\x18\x02 \x01(\tR\fserviceToken\"\x1f\n" +
 	"\rGetAppRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\";\n" +
 	"\x0eGetAppResponse\x12)\n" +
-	"\x03app\x18\x01 \x01(\v2\x17.agynio.api.apps.v1.AppR\x03app\")\n" +
-	"\x13GetAppBySlugRequest\x12\x12\n" +
-	"\x04slug\x18\x01 \x01(\tR\x04slug\"A\n" +
+	"\x03app\x18\x01 \x01(\v2\x17.agynio.api.apps.v1.AppR\x03app\"\xf4\x01\n" +
+	"\x10UpdateAppRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x17\n" +
+	"\x04name\x18\x02 \x01(\tH\x00R\x04name\x88\x01\x01\x12%\n" +
+	"\vdescription\x18\x03 \x01(\tH\x01R\vdescription\x88\x01\x01\x12\x17\n" +
+	"\x04icon\x18\x04 \x01(\tH\x02R\x04icon\x88\x01\x01\x12F\n" +
+	"\n" +
+	"visibility\x18\x05 \x01(\x0e2!.agynio.api.apps.v1.AppVisibilityH\x03R\n" +
+	"visibility\x88\x01\x01B\a\n" +
+	"\x05_nameB\x0e\n" +
+	"\f_descriptionB\a\n" +
+	"\x05_iconB\r\n" +
+	"\v_visibility\">\n" +
+	"\x11UpdateAppResponse\x12)\n" +
+	"\x03app\x18\x01 \x01(\v2\x17.agynio.api.apps.v1.AppR\x03app\"R\n" +
+	"\x13GetAppBySlugRequest\x12'\n" +
+	"\x0forganization_id\x18\x01 \x01(\tR\x0eorganizationId\x12\x12\n" +
+	"\x04slug\x18\x02 \x01(\tR\x04slug\"A\n" +
 	"\x14GetAppBySlugResponse\x12)\n" +
-	"\x03app\x18\x01 \x01(\v2\x17.agynio.api.apps.v1.AppR\x03app\"M\n" +
+	"\x03app\x18\x01 \x01(\v2\x17.agynio.api.apps.v1.AppR\x03app\"\xb9\x01\n" +
 	"\x0fListAppsRequest\x12\x1b\n" +
 	"\tpage_size\x18\x01 \x01(\x05R\bpageSize\x12\x1d\n" +
 	"\n" +
-	"page_token\x18\x02 \x01(\tR\tpageToken\"g\n" +
+	"page_token\x18\x02 \x01(\tR\tpageToken\x12'\n" +
+	"\x0forganization_id\x18\x03 \x01(\tR\x0eorganizationId\x12A\n" +
+	"\n" +
+	"visibility\x18\x04 \x01(\x0e2!.agynio.api.apps.v1.AppVisibilityR\n" +
+	"visibility\"g\n" +
 	"\x10ListAppsResponse\x12+\n" +
 	"\x04apps\x18\x01 \x03(\v2\x17.agynio.api.apps.v1.AppR\x04apps\x12&\n" +
 	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken\"\"\n" +
@@ -978,15 +2119,75 @@ const file_agynio_api_apps_v1_apps_proto_rawDesc = "" +
 	"\n" +
 	"token_hash\x18\x01 \x01(\tR\ttokenHash\"I\n" +
 	"\x1cValidateServiceTokenResponse\x12)\n" +
-	"\x03app\x18\x01 \x01(\v2\x17.agynio.api.apps.v1.AppR\x03app2\xb3\x05\n" +
-	"\vAppsService\x12^\n" +
-	"\vRegisterApp\x12&.agynio.api.apps.v1.RegisterAppRequest\x1a'.agynio.api.apps.v1.RegisterAppResponse\x12O\n" +
+	"\x03app\x18\x01 \x01(\v2\x17.agynio.api.apps.v1.AppR\x03app\"7\n" +
+	"\x10EnrollAppRequest\x12#\n" +
+	"\rservice_token\x18\x01 \x01(\tR\fserviceToken\"Y\n" +
+	"\x11EnrollAppResponse\x12#\n" +
+	"\ridentity_json\x18\x01 \x01(\fR\fidentityJson\x12\x1f\n" +
+	"\videntity_id\x18\x02 \x01(\tR\n" +
+	"identityId\"\xa6\x01\n" +
+	"\x11InstallAppRequest\x12\x15\n" +
+	"\x06app_id\x18\x01 \x01(\tR\x05appId\x12'\n" +
+	"\x0forganization_id\x18\x02 \x01(\tR\x0eorganizationId\x12\x12\n" +
+	"\x04slug\x18\x03 \x01(\tR\x04slug\x12=\n" +
+	"\rconfiguration\x18\x04 \x01(\v2\x17.google.protobuf.StructR\rconfiguration\"Z\n" +
+	"\x12InstallAppResponse\x12D\n" +
+	"\finstallation\x18\x01 \x01(\v2 .agynio.api.apps.v1.InstallationR\finstallation\"(\n" +
+	"\x16GetInstallationRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"_\n" +
+	"\x17GetInstallationResponse\x12D\n" +
+	"\finstallation\x18\x01 \x01(\v2 .agynio.api.apps.v1.InstallationR\finstallation\"[\n" +
+	"\x1cGetInstallationBySlugRequest\x12'\n" +
+	"\x0forganization_id\x18\x01 \x01(\tR\x0eorganizationId\x12\x12\n" +
+	"\x04slug\x18\x02 \x01(\tR\x04slug\"e\n" +
+	"\x1dGetInstallationBySlugResponse\x12D\n" +
+	"\finstallation\x18\x01 \x01(\v2 .agynio.api.apps.v1.InstallationR\finstallation\"\x96\x01\n" +
+	"\x18ListInstallationsRequest\x12\x1b\n" +
+	"\tpage_size\x18\x01 \x01(\x05R\bpageSize\x12\x1d\n" +
+	"\n" +
+	"page_token\x18\x02 \x01(\tR\tpageToken\x12'\n" +
+	"\x0forganization_id\x18\x03 \x01(\tR\x0eorganizationId\x12\x15\n" +
+	"\x06app_id\x18\x04 \x01(\tR\x05appId\"\x8b\x01\n" +
+	"\x19ListInstallationsResponse\x12F\n" +
+	"\rinstallations\x18\x01 \x03(\v2 .agynio.api.apps.v1.InstallationR\rinstallations\x12&\n" +
+	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken\"\xa3\x01\n" +
+	"\x19UpdateInstallationRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x17\n" +
+	"\x04slug\x18\x02 \x01(\tH\x00R\x04slug\x88\x01\x01\x12B\n" +
+	"\rconfiguration\x18\x03 \x01(\v2\x17.google.protobuf.StructH\x01R\rconfiguration\x88\x01\x01B\a\n" +
+	"\x05_slugB\x10\n" +
+	"\x0e_configuration\"b\n" +
+	"\x1aUpdateInstallationResponse\x12D\n" +
+	"\finstallation\x18\x01 \x01(\v2 .agynio.api.apps.v1.InstallationR\finstallation\"%\n" +
+	"\x13UninstallAppRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"\x16\n" +
+	"\x14UninstallAppResponse\"5\n" +
+	"#GetInstallationConfigurationRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"e\n" +
+	"$GetInstallationConfigurationResponse\x12=\n" +
+	"\rconfiguration\x18\x01 \x01(\v2\x17.google.protobuf.StructR\rconfiguration*g\n" +
+	"\rAppVisibility\x12\x1e\n" +
+	"\x1aAPP_VISIBILITY_UNSPECIFIED\x10\x00\x12\x19\n" +
+	"\x15APP_VISIBILITY_PUBLIC\x10\x01\x12\x1b\n" +
+	"\x17APP_VISIBILITY_INTERNAL\x10\x022\x86\r\n" +
+	"\vAppsService\x12X\n" +
+	"\tCreateApp\x12$.agynio.api.apps.v1.CreateAppRequest\x1a%.agynio.api.apps.v1.CreateAppResponse\x12X\n" +
+	"\tUpdateApp\x12$.agynio.api.apps.v1.UpdateAppRequest\x1a%.agynio.api.apps.v1.UpdateAppResponse\x12O\n" +
 	"\x06GetApp\x12!.agynio.api.apps.v1.GetAppRequest\x1a\".agynio.api.apps.v1.GetAppResponse\x12a\n" +
 	"\fGetAppBySlug\x12'.agynio.api.apps.v1.GetAppBySlugRequest\x1a(.agynio.api.apps.v1.GetAppBySlugResponse\x12U\n" +
 	"\bListApps\x12#.agynio.api.apps.v1.ListAppsRequest\x1a$.agynio.api.apps.v1.ListAppsResponse\x12X\n" +
 	"\tDeleteApp\x12$.agynio.api.apps.v1.DeleteAppRequest\x1a%.agynio.api.apps.v1.DeleteAppResponse\x12d\n" +
 	"\rGetAppProfile\x12(.agynio.api.apps.v1.GetAppProfileRequest\x1a).agynio.api.apps.v1.GetAppProfileResponse\x12y\n" +
-	"\x14ValidateServiceToken\x12/.agynio.api.apps.v1.ValidateServiceTokenRequest\x1a0.agynio.api.apps.v1.ValidateServiceTokenResponseB\xc8\x01\n" +
+	"\x14ValidateServiceToken\x12/.agynio.api.apps.v1.ValidateServiceTokenRequest\x1a0.agynio.api.apps.v1.ValidateServiceTokenResponse\x12X\n" +
+	"\tEnrollApp\x12$.agynio.api.apps.v1.EnrollAppRequest\x1a%.agynio.api.apps.v1.EnrollAppResponse\x12[\n" +
+	"\n" +
+	"InstallApp\x12%.agynio.api.apps.v1.InstallAppRequest\x1a&.agynio.api.apps.v1.InstallAppResponse\x12j\n" +
+	"\x0fGetInstallation\x12*.agynio.api.apps.v1.GetInstallationRequest\x1a+.agynio.api.apps.v1.GetInstallationResponse\x12|\n" +
+	"\x15GetInstallationBySlug\x120.agynio.api.apps.v1.GetInstallationBySlugRequest\x1a1.agynio.api.apps.v1.GetInstallationBySlugResponse\x12p\n" +
+	"\x11ListInstallations\x12,.agynio.api.apps.v1.ListInstallationsRequest\x1a-.agynio.api.apps.v1.ListInstallationsResponse\x12s\n" +
+	"\x12UpdateInstallation\x12-.agynio.api.apps.v1.UpdateInstallationRequest\x1a..agynio.api.apps.v1.UpdateInstallationResponse\x12a\n" +
+	"\fUninstallApp\x12'.agynio.api.apps.v1.UninstallAppRequest\x1a(.agynio.api.apps.v1.UninstallAppResponse\x12\x91\x01\n" +
+	"\x1cGetInstallationConfiguration\x127.agynio.api.apps.v1.GetInstallationConfigurationRequest\x1a8.agynio.api.apps.v1.GetInstallationConfigurationResponseB\xc8\x01\n" +
 	"\x16com.agynio.api.apps.v1B\tAppsProtoP\x01Z8github.com/agynio/agyn-cli/gen/agynio/api/apps/v1;appsv1\xa2\x02\x03AAA\xaa\x02\x12Agynio.Api.Apps.V1\xca\x02\x12Agynio\\Api\\Apps\\V1\xe2\x02\x1eAgynio\\Api\\Apps\\V1\\GPBMetadata\xea\x02\x15Agynio::Api::Apps::V1b\x06proto3"
 
 var (
@@ -1001,56 +2202,111 @@ func file_agynio_api_apps_v1_apps_proto_rawDescGZIP() []byte {
 	return file_agynio_api_apps_v1_apps_proto_rawDescData
 }
 
-var file_agynio_api_apps_v1_apps_proto_msgTypes = make([]protoimpl.MessageInfo, 17)
+var file_agynio_api_apps_v1_apps_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
+var file_agynio_api_apps_v1_apps_proto_msgTypes = make([]protoimpl.MessageInfo, 36)
 var file_agynio_api_apps_v1_apps_proto_goTypes = []any{
-	(*EntityMeta)(nil),                   // 0: agynio.api.apps.v1.EntityMeta
-	(*App)(nil),                          // 1: agynio.api.apps.v1.App
-	(*AppProfile)(nil),                   // 2: agynio.api.apps.v1.AppProfile
-	(*RegisterAppRequest)(nil),           // 3: agynio.api.apps.v1.RegisterAppRequest
-	(*RegisterAppResponse)(nil),          // 4: agynio.api.apps.v1.RegisterAppResponse
-	(*GetAppRequest)(nil),                // 5: agynio.api.apps.v1.GetAppRequest
-	(*GetAppResponse)(nil),               // 6: agynio.api.apps.v1.GetAppResponse
-	(*GetAppBySlugRequest)(nil),          // 7: agynio.api.apps.v1.GetAppBySlugRequest
-	(*GetAppBySlugResponse)(nil),         // 8: agynio.api.apps.v1.GetAppBySlugResponse
-	(*ListAppsRequest)(nil),              // 9: agynio.api.apps.v1.ListAppsRequest
-	(*ListAppsResponse)(nil),             // 10: agynio.api.apps.v1.ListAppsResponse
-	(*DeleteAppRequest)(nil),             // 11: agynio.api.apps.v1.DeleteAppRequest
-	(*DeleteAppResponse)(nil),            // 12: agynio.api.apps.v1.DeleteAppResponse
-	(*GetAppProfileRequest)(nil),         // 13: agynio.api.apps.v1.GetAppProfileRequest
-	(*GetAppProfileResponse)(nil),        // 14: agynio.api.apps.v1.GetAppProfileResponse
-	(*ValidateServiceTokenRequest)(nil),  // 15: agynio.api.apps.v1.ValidateServiceTokenRequest
-	(*ValidateServiceTokenResponse)(nil), // 16: agynio.api.apps.v1.ValidateServiceTokenResponse
-	(*timestamppb.Timestamp)(nil),        // 17: google.protobuf.Timestamp
+	(AppVisibility)(0),                           // 0: agynio.api.apps.v1.AppVisibility
+	(*EntityMeta)(nil),                           // 1: agynio.api.apps.v1.EntityMeta
+	(*App)(nil),                                  // 2: agynio.api.apps.v1.App
+	(*AppProfile)(nil),                           // 3: agynio.api.apps.v1.AppProfile
+	(*Installation)(nil),                         // 4: agynio.api.apps.v1.Installation
+	(*CreateAppRequest)(nil),                     // 5: agynio.api.apps.v1.CreateAppRequest
+	(*CreateAppResponse)(nil),                    // 6: agynio.api.apps.v1.CreateAppResponse
+	(*GetAppRequest)(nil),                        // 7: agynio.api.apps.v1.GetAppRequest
+	(*GetAppResponse)(nil),                       // 8: agynio.api.apps.v1.GetAppResponse
+	(*UpdateAppRequest)(nil),                     // 9: agynio.api.apps.v1.UpdateAppRequest
+	(*UpdateAppResponse)(nil),                    // 10: agynio.api.apps.v1.UpdateAppResponse
+	(*GetAppBySlugRequest)(nil),                  // 11: agynio.api.apps.v1.GetAppBySlugRequest
+	(*GetAppBySlugResponse)(nil),                 // 12: agynio.api.apps.v1.GetAppBySlugResponse
+	(*ListAppsRequest)(nil),                      // 13: agynio.api.apps.v1.ListAppsRequest
+	(*ListAppsResponse)(nil),                     // 14: agynio.api.apps.v1.ListAppsResponse
+	(*DeleteAppRequest)(nil),                     // 15: agynio.api.apps.v1.DeleteAppRequest
+	(*DeleteAppResponse)(nil),                    // 16: agynio.api.apps.v1.DeleteAppResponse
+	(*GetAppProfileRequest)(nil),                 // 17: agynio.api.apps.v1.GetAppProfileRequest
+	(*GetAppProfileResponse)(nil),                // 18: agynio.api.apps.v1.GetAppProfileResponse
+	(*ValidateServiceTokenRequest)(nil),          // 19: agynio.api.apps.v1.ValidateServiceTokenRequest
+	(*ValidateServiceTokenResponse)(nil),         // 20: agynio.api.apps.v1.ValidateServiceTokenResponse
+	(*EnrollAppRequest)(nil),                     // 21: agynio.api.apps.v1.EnrollAppRequest
+	(*EnrollAppResponse)(nil),                    // 22: agynio.api.apps.v1.EnrollAppResponse
+	(*InstallAppRequest)(nil),                    // 23: agynio.api.apps.v1.InstallAppRequest
+	(*InstallAppResponse)(nil),                   // 24: agynio.api.apps.v1.InstallAppResponse
+	(*GetInstallationRequest)(nil),               // 25: agynio.api.apps.v1.GetInstallationRequest
+	(*GetInstallationResponse)(nil),              // 26: agynio.api.apps.v1.GetInstallationResponse
+	(*GetInstallationBySlugRequest)(nil),         // 27: agynio.api.apps.v1.GetInstallationBySlugRequest
+	(*GetInstallationBySlugResponse)(nil),        // 28: agynio.api.apps.v1.GetInstallationBySlugResponse
+	(*ListInstallationsRequest)(nil),             // 29: agynio.api.apps.v1.ListInstallationsRequest
+	(*ListInstallationsResponse)(nil),            // 30: agynio.api.apps.v1.ListInstallationsResponse
+	(*UpdateInstallationRequest)(nil),            // 31: agynio.api.apps.v1.UpdateInstallationRequest
+	(*UpdateInstallationResponse)(nil),           // 32: agynio.api.apps.v1.UpdateInstallationResponse
+	(*UninstallAppRequest)(nil),                  // 33: agynio.api.apps.v1.UninstallAppRequest
+	(*UninstallAppResponse)(nil),                 // 34: agynio.api.apps.v1.UninstallAppResponse
+	(*GetInstallationConfigurationRequest)(nil),  // 35: agynio.api.apps.v1.GetInstallationConfigurationRequest
+	(*GetInstallationConfigurationResponse)(nil), // 36: agynio.api.apps.v1.GetInstallationConfigurationResponse
+	(*timestamppb.Timestamp)(nil),                // 37: google.protobuf.Timestamp
+	(*structpb.Struct)(nil),                      // 38: google.protobuf.Struct
 }
 var file_agynio_api_apps_v1_apps_proto_depIdxs = []int32{
-	17, // 0: agynio.api.apps.v1.EntityMeta.created_at:type_name -> google.protobuf.Timestamp
-	17, // 1: agynio.api.apps.v1.EntityMeta.updated_at:type_name -> google.protobuf.Timestamp
-	0,  // 2: agynio.api.apps.v1.App.meta:type_name -> agynio.api.apps.v1.EntityMeta
-	1,  // 3: agynio.api.apps.v1.RegisterAppResponse.app:type_name -> agynio.api.apps.v1.App
-	1,  // 4: agynio.api.apps.v1.GetAppResponse.app:type_name -> agynio.api.apps.v1.App
-	1,  // 5: agynio.api.apps.v1.GetAppBySlugResponse.app:type_name -> agynio.api.apps.v1.App
-	1,  // 6: agynio.api.apps.v1.ListAppsResponse.apps:type_name -> agynio.api.apps.v1.App
-	2,  // 7: agynio.api.apps.v1.GetAppProfileResponse.profile:type_name -> agynio.api.apps.v1.AppProfile
-	1,  // 8: agynio.api.apps.v1.ValidateServiceTokenResponse.app:type_name -> agynio.api.apps.v1.App
-	3,  // 9: agynio.api.apps.v1.AppsService.RegisterApp:input_type -> agynio.api.apps.v1.RegisterAppRequest
-	5,  // 10: agynio.api.apps.v1.AppsService.GetApp:input_type -> agynio.api.apps.v1.GetAppRequest
-	7,  // 11: agynio.api.apps.v1.AppsService.GetAppBySlug:input_type -> agynio.api.apps.v1.GetAppBySlugRequest
-	9,  // 12: agynio.api.apps.v1.AppsService.ListApps:input_type -> agynio.api.apps.v1.ListAppsRequest
-	11, // 13: agynio.api.apps.v1.AppsService.DeleteApp:input_type -> agynio.api.apps.v1.DeleteAppRequest
-	13, // 14: agynio.api.apps.v1.AppsService.GetAppProfile:input_type -> agynio.api.apps.v1.GetAppProfileRequest
-	15, // 15: agynio.api.apps.v1.AppsService.ValidateServiceToken:input_type -> agynio.api.apps.v1.ValidateServiceTokenRequest
-	4,  // 16: agynio.api.apps.v1.AppsService.RegisterApp:output_type -> agynio.api.apps.v1.RegisterAppResponse
-	6,  // 17: agynio.api.apps.v1.AppsService.GetApp:output_type -> agynio.api.apps.v1.GetAppResponse
-	8,  // 18: agynio.api.apps.v1.AppsService.GetAppBySlug:output_type -> agynio.api.apps.v1.GetAppBySlugResponse
-	10, // 19: agynio.api.apps.v1.AppsService.ListApps:output_type -> agynio.api.apps.v1.ListAppsResponse
-	12, // 20: agynio.api.apps.v1.AppsService.DeleteApp:output_type -> agynio.api.apps.v1.DeleteAppResponse
-	14, // 21: agynio.api.apps.v1.AppsService.GetAppProfile:output_type -> agynio.api.apps.v1.GetAppProfileResponse
-	16, // 22: agynio.api.apps.v1.AppsService.ValidateServiceToken:output_type -> agynio.api.apps.v1.ValidateServiceTokenResponse
-	16, // [16:23] is the sub-list for method output_type
-	9,  // [9:16] is the sub-list for method input_type
-	9,  // [9:9] is the sub-list for extension type_name
-	9,  // [9:9] is the sub-list for extension extendee
-	0,  // [0:9] is the sub-list for field type_name
+	37, // 0: agynio.api.apps.v1.EntityMeta.created_at:type_name -> google.protobuf.Timestamp
+	37, // 1: agynio.api.apps.v1.EntityMeta.updated_at:type_name -> google.protobuf.Timestamp
+	1,  // 2: agynio.api.apps.v1.App.meta:type_name -> agynio.api.apps.v1.EntityMeta
+	0,  // 3: agynio.api.apps.v1.App.visibility:type_name -> agynio.api.apps.v1.AppVisibility
+	1,  // 4: agynio.api.apps.v1.Installation.meta:type_name -> agynio.api.apps.v1.EntityMeta
+	38, // 5: agynio.api.apps.v1.Installation.configuration:type_name -> google.protobuf.Struct
+	0,  // 6: agynio.api.apps.v1.CreateAppRequest.visibility:type_name -> agynio.api.apps.v1.AppVisibility
+	2,  // 7: agynio.api.apps.v1.CreateAppResponse.app:type_name -> agynio.api.apps.v1.App
+	2,  // 8: agynio.api.apps.v1.GetAppResponse.app:type_name -> agynio.api.apps.v1.App
+	0,  // 9: agynio.api.apps.v1.UpdateAppRequest.visibility:type_name -> agynio.api.apps.v1.AppVisibility
+	2,  // 10: agynio.api.apps.v1.UpdateAppResponse.app:type_name -> agynio.api.apps.v1.App
+	2,  // 11: agynio.api.apps.v1.GetAppBySlugResponse.app:type_name -> agynio.api.apps.v1.App
+	0,  // 12: agynio.api.apps.v1.ListAppsRequest.visibility:type_name -> agynio.api.apps.v1.AppVisibility
+	2,  // 13: agynio.api.apps.v1.ListAppsResponse.apps:type_name -> agynio.api.apps.v1.App
+	3,  // 14: agynio.api.apps.v1.GetAppProfileResponse.profile:type_name -> agynio.api.apps.v1.AppProfile
+	2,  // 15: agynio.api.apps.v1.ValidateServiceTokenResponse.app:type_name -> agynio.api.apps.v1.App
+	38, // 16: agynio.api.apps.v1.InstallAppRequest.configuration:type_name -> google.protobuf.Struct
+	4,  // 17: agynio.api.apps.v1.InstallAppResponse.installation:type_name -> agynio.api.apps.v1.Installation
+	4,  // 18: agynio.api.apps.v1.GetInstallationResponse.installation:type_name -> agynio.api.apps.v1.Installation
+	4,  // 19: agynio.api.apps.v1.GetInstallationBySlugResponse.installation:type_name -> agynio.api.apps.v1.Installation
+	4,  // 20: agynio.api.apps.v1.ListInstallationsResponse.installations:type_name -> agynio.api.apps.v1.Installation
+	38, // 21: agynio.api.apps.v1.UpdateInstallationRequest.configuration:type_name -> google.protobuf.Struct
+	4,  // 22: agynio.api.apps.v1.UpdateInstallationResponse.installation:type_name -> agynio.api.apps.v1.Installation
+	38, // 23: agynio.api.apps.v1.GetInstallationConfigurationResponse.configuration:type_name -> google.protobuf.Struct
+	5,  // 24: agynio.api.apps.v1.AppsService.CreateApp:input_type -> agynio.api.apps.v1.CreateAppRequest
+	9,  // 25: agynio.api.apps.v1.AppsService.UpdateApp:input_type -> agynio.api.apps.v1.UpdateAppRequest
+	7,  // 26: agynio.api.apps.v1.AppsService.GetApp:input_type -> agynio.api.apps.v1.GetAppRequest
+	11, // 27: agynio.api.apps.v1.AppsService.GetAppBySlug:input_type -> agynio.api.apps.v1.GetAppBySlugRequest
+	13, // 28: agynio.api.apps.v1.AppsService.ListApps:input_type -> agynio.api.apps.v1.ListAppsRequest
+	15, // 29: agynio.api.apps.v1.AppsService.DeleteApp:input_type -> agynio.api.apps.v1.DeleteAppRequest
+	17, // 30: agynio.api.apps.v1.AppsService.GetAppProfile:input_type -> agynio.api.apps.v1.GetAppProfileRequest
+	19, // 31: agynio.api.apps.v1.AppsService.ValidateServiceToken:input_type -> agynio.api.apps.v1.ValidateServiceTokenRequest
+	21, // 32: agynio.api.apps.v1.AppsService.EnrollApp:input_type -> agynio.api.apps.v1.EnrollAppRequest
+	23, // 33: agynio.api.apps.v1.AppsService.InstallApp:input_type -> agynio.api.apps.v1.InstallAppRequest
+	25, // 34: agynio.api.apps.v1.AppsService.GetInstallation:input_type -> agynio.api.apps.v1.GetInstallationRequest
+	27, // 35: agynio.api.apps.v1.AppsService.GetInstallationBySlug:input_type -> agynio.api.apps.v1.GetInstallationBySlugRequest
+	29, // 36: agynio.api.apps.v1.AppsService.ListInstallations:input_type -> agynio.api.apps.v1.ListInstallationsRequest
+	31, // 37: agynio.api.apps.v1.AppsService.UpdateInstallation:input_type -> agynio.api.apps.v1.UpdateInstallationRequest
+	33, // 38: agynio.api.apps.v1.AppsService.UninstallApp:input_type -> agynio.api.apps.v1.UninstallAppRequest
+	35, // 39: agynio.api.apps.v1.AppsService.GetInstallationConfiguration:input_type -> agynio.api.apps.v1.GetInstallationConfigurationRequest
+	6,  // 40: agynio.api.apps.v1.AppsService.CreateApp:output_type -> agynio.api.apps.v1.CreateAppResponse
+	10, // 41: agynio.api.apps.v1.AppsService.UpdateApp:output_type -> agynio.api.apps.v1.UpdateAppResponse
+	8,  // 42: agynio.api.apps.v1.AppsService.GetApp:output_type -> agynio.api.apps.v1.GetAppResponse
+	12, // 43: agynio.api.apps.v1.AppsService.GetAppBySlug:output_type -> agynio.api.apps.v1.GetAppBySlugResponse
+	14, // 44: agynio.api.apps.v1.AppsService.ListApps:output_type -> agynio.api.apps.v1.ListAppsResponse
+	16, // 45: agynio.api.apps.v1.AppsService.DeleteApp:output_type -> agynio.api.apps.v1.DeleteAppResponse
+	18, // 46: agynio.api.apps.v1.AppsService.GetAppProfile:output_type -> agynio.api.apps.v1.GetAppProfileResponse
+	20, // 47: agynio.api.apps.v1.AppsService.ValidateServiceToken:output_type -> agynio.api.apps.v1.ValidateServiceTokenResponse
+	22, // 48: agynio.api.apps.v1.AppsService.EnrollApp:output_type -> agynio.api.apps.v1.EnrollAppResponse
+	24, // 49: agynio.api.apps.v1.AppsService.InstallApp:output_type -> agynio.api.apps.v1.InstallAppResponse
+	26, // 50: agynio.api.apps.v1.AppsService.GetInstallation:output_type -> agynio.api.apps.v1.GetInstallationResponse
+	28, // 51: agynio.api.apps.v1.AppsService.GetInstallationBySlug:output_type -> agynio.api.apps.v1.GetInstallationBySlugResponse
+	30, // 52: agynio.api.apps.v1.AppsService.ListInstallations:output_type -> agynio.api.apps.v1.ListInstallationsResponse
+	32, // 53: agynio.api.apps.v1.AppsService.UpdateInstallation:output_type -> agynio.api.apps.v1.UpdateInstallationResponse
+	34, // 54: agynio.api.apps.v1.AppsService.UninstallApp:output_type -> agynio.api.apps.v1.UninstallAppResponse
+	36, // 55: agynio.api.apps.v1.AppsService.GetInstallationConfiguration:output_type -> agynio.api.apps.v1.GetInstallationConfigurationResponse
+	40, // [40:56] is the sub-list for method output_type
+	24, // [24:40] is the sub-list for method input_type
+	24, // [24:24] is the sub-list for extension type_name
+	24, // [24:24] is the sub-list for extension extendee
+	0,  // [0:24] is the sub-list for field type_name
 }
 
 func init() { file_agynio_api_apps_v1_apps_proto_init() }
@@ -1058,18 +2314,21 @@ func file_agynio_api_apps_v1_apps_proto_init() {
 	if File_agynio_api_apps_v1_apps_proto != nil {
 		return
 	}
+	file_agynio_api_apps_v1_apps_proto_msgTypes[8].OneofWrappers = []any{}
+	file_agynio_api_apps_v1_apps_proto_msgTypes[30].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_agynio_api_apps_v1_apps_proto_rawDesc), len(file_agynio_api_apps_v1_apps_proto_rawDesc)),
-			NumEnums:      0,
-			NumMessages:   17,
+			NumEnums:      1,
+			NumMessages:   36,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
 		GoTypes:           file_agynio_api_apps_v1_apps_proto_goTypes,
 		DependencyIndexes: file_agynio_api_apps_v1_apps_proto_depIdxs,
+		EnumInfos:         file_agynio_api_apps_v1_apps_proto_enumTypes,
 		MessageInfos:      file_agynio_api_apps_v1_apps_proto_msgTypes,
 	}.Build()
 	File_agynio_api_apps_v1_apps_proto = out.File
