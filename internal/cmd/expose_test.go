@@ -52,7 +52,7 @@ func TestFormatExposureStatus(t *testing.T) {
 		exposev1.ExposureStatus_EXPOSURE_STATUS_ACTIVE:       "active",
 		exposev1.ExposureStatus_EXPOSURE_STATUS_FAILED:       "failed",
 		exposev1.ExposureStatus_EXPOSURE_STATUS_REMOVING:     "removing",
-		exposev1.ExposureStatus(99):                          "unknown",
+		exposev1.ExposureStatus(99):                          "ExposureStatus(99)",
 	}
 
 	for status, want := range tests {

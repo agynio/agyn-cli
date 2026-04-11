@@ -15,9 +15,17 @@ type exposureOutput struct {
 	Status string `json:"status" yaml:"status"`
 }
 
-var exposeCmd = &cobra.Command{
-	Use:   "expose",
-	Short: "Manage port exposures",
+func newExposeCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "expose",
+		Short: "Manage port exposures",
+	}
+
+	cmd.AddCommand(newExposeAddCmd())
+	cmd.AddCommand(newExposeRemoveCmd())
+	cmd.AddCommand(newExposeListCmd())
+
+	return cmd
 }
 
 func parsePort(value string) (uint32, error) {
@@ -44,13 +52,22 @@ func formatExposureStatus(status exposev1.ExposureStatus) string {
 	case exposev1.ExposureStatus_EXPOSURE_STATUS_REMOVING:
 		return "removing"
 	default:
-		return "unknown"
+		return fmt.Sprintf("ExposureStatus(%d)", status)
 	}
 }
 
-func init() {
-	rootCmd.AddCommand(exposeCmd)
-	exposeCmd.AddCommand(exposeAddCmd)
-	exposeCmd.AddCommand(exposeRemoveCmd)
-	exposeCmd.AddCommand(exposeListCmd)
+func exposureOutputFrom(exposure *exposev1.Exposure) (exposureOutput, error) {
+	if exposure == nil {
+		return exposureOutput{}, fmt.Errorf("exposure missing in response")
+	}
+	meta := exposure.GetMeta()
+	if meta == nil {
+		return exposureOutput{}, fmt.Errorf("exposure metadata missing in response")
+	}
+	return exposureOutput{
+		ID:     meta.GetId(),
+		Port:   exposure.GetPort(),
+		URL:    exposure.GetUrl(),
+		Status: formatExposureStatus(exposure.GetStatus()),
+	}, nil
 }

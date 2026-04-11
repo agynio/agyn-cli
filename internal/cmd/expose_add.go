@@ -10,64 +10,59 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var exposeAddCmd = &cobra.Command{
-	Use:   "add <port>",
-	Short: "Expose a port",
-	Args:  cobra.ExactArgs(1),
-	RunE: func(cmd *cobra.Command, args []string) error {
-		port, err := parsePort(args[0])
-		if err != nil {
-			return err
-		}
-
-		runContext, err := RunContextFrom(cmd)
-		if err != nil {
-			return err
-		}
-
-		client := gatewayv1connect.NewExposeGatewayClient(
-			runContext.Clients.HTTPClient,
-			runContext.Clients.BaseURL,
-			runContext.Clients.ConnectOpts()...,
-		)
-
-		response, err := client.AddExposure(cmd.Context(), connect.NewRequest(&exposev1.AddExposureRequest{
-			Port: int32(port),
-		}))
-		if err != nil {
-			return err
-		}
-
-		exposure := response.Msg.GetExposure()
-		if exposure == nil {
-			return fmt.Errorf("exposure missing in response")
-		}
-
-		meta := exposure.GetMeta()
-		if meta == nil {
-			return fmt.Errorf("exposure metadata missing in response")
-		}
-
-		status := formatExposureStatus(exposure.GetStatus())
-		if runContext.OutputFormat == output.FormatTable {
-			table := output.Table{
-				Headers: []string{"ID", "PORT", "URL", "STATUS"},
-				Rows: [][]string{{
-					meta.GetId(),
-					fmt.Sprintf("%d", exposure.GetPort()),
-					exposure.GetUrl(),
-					status,
-				}},
+func newExposeAddCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "add <port>",
+		Short: "Expose a port",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			port, err := parsePort(args[0])
+			if err != nil {
+				return err
 			}
-			return output.Print(runContext.OutputFormat, table)
-		}
 
-		payload := exposureOutput{
-			ID:     meta.GetId(),
-			Port:   exposure.GetPort(),
-			URL:    exposure.GetUrl(),
-			Status: status,
-		}
-		return output.Print(runContext.OutputFormat, payload)
-	},
+			runContext, err := RunContextFrom(cmd)
+			if err != nil {
+				return err
+			}
+			if runContext.Clients == nil {
+				return fmt.Errorf("gateway client unavailable")
+			}
+
+			client := gatewayv1connect.NewExposeGatewayClient(
+				runContext.Clients.HTTPClient,
+				runContext.Clients.BaseURL,
+				runContext.Clients.ConnectOpts()...,
+			)
+
+			response, err := client.AddExposure(cmd.Context(), connect.NewRequest(&exposev1.AddExposureRequest{
+				Port: int32(port),
+			}))
+			if err != nil {
+				return err
+			}
+
+			outputData, err := exposureOutputFrom(response.Msg.GetExposure())
+			if err != nil {
+				return err
+			}
+
+			if runContext.OutputFormat == output.FormatTable {
+				table := output.Table{
+					Headers: []string{"ID", "PORT", "URL", "STATUS"},
+					Rows: [][]string{{
+						outputData.ID,
+						fmt.Sprintf("%d", outputData.Port),
+						outputData.URL,
+						outputData.Status,
+					}},
+				}
+				return output.Print(runContext.OutputFormat, table)
+			}
+
+			return output.Print(runContext.OutputFormat, outputData)
+		},
+	}
+
+	return cmd
 }
