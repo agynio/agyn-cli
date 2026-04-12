@@ -2,7 +2,9 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 	"strconv"
+	"strings"
 
 	exposev1 "github.com/agynio/agyn-cli/gen/agynio/api/expose/v1"
 	"github.com/spf13/cobra"
@@ -14,6 +16,13 @@ type exposureOutput struct {
 	URL    string `json:"url" yaml:"url"`
 	Status string `json:"status" yaml:"status"`
 }
+
+const (
+	workloadIDEnv          = "WORKLOAD_ID"
+	agentIDEnv             = "AGENT_ID"
+	hostnameEnv            = "HOSTNAME"
+	workloadHostnamePrefix = "workload-"
+)
 
 func newExposeCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -37,6 +46,26 @@ func parsePort(value string) (uint32, error) {
 		return 0, fmt.Errorf("port must be between 1 and 65535")
 	}
 	return uint32(port), nil
+}
+
+func resolveWorkloadID() (string, error) {
+	if value := strings.TrimSpace(os.Getenv(workloadIDEnv)); value != "" {
+		return value, nil
+	}
+
+	hostname := strings.TrimSpace(os.Getenv(hostnameEnv))
+	if strings.HasPrefix(hostname, workloadHostnamePrefix) {
+		suffix := strings.TrimPrefix(hostname, workloadHostnamePrefix)
+		if suffix != "" {
+			return suffix, nil
+		}
+	}
+
+	return "", fmt.Errorf("workload id unavailable; set %s or ensure %s starts with %q", workloadIDEnv, hostnameEnv, workloadHostnamePrefix)
+}
+
+func agentIDFromEnv() string {
+	return strings.TrimSpace(os.Getenv(agentIDEnv))
 }
 
 func formatExposureStatus(status exposev1.ExposureStatus) string {

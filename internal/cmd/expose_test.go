@@ -64,3 +64,49 @@ func TestFormatExposureStatus(t *testing.T) {
 		})
 	}
 }
+
+func TestResolveWorkloadIDPrefersEnv(t *testing.T) {
+	t.Setenv(workloadIDEnv, "workload-123")
+	t.Setenv("HOSTNAME", "workload-456")
+
+	got, err := resolveWorkloadID()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got != "workload-123" {
+		t.Fatalf("expected WORKLOAD_ID, got %q", got)
+	}
+}
+
+func TestResolveWorkloadIDFromHostname(t *testing.T) {
+	t.Setenv(workloadIDEnv, "")
+	t.Setenv("HOSTNAME", "workload-456")
+
+	got, err := resolveWorkloadID()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got != "456" {
+		t.Fatalf("expected hostname suffix, got %q", got)
+	}
+}
+
+func TestResolveWorkloadIDMissing(t *testing.T) {
+	t.Setenv(workloadIDEnv, "")
+	t.Setenv("HOSTNAME", "agent-456")
+
+	_, err := resolveWorkloadID()
+	if err == nil {
+		t.Fatal("expected error for missing workload id")
+	}
+}
+
+func TestResolveWorkloadIDEmptyHostnameSuffix(t *testing.T) {
+	t.Setenv(workloadIDEnv, "")
+	t.Setenv("HOSTNAME", "workload-")
+
+	_, err := resolveWorkloadID()
+	if err == nil {
+		t.Fatal("expected error for empty workload suffix")
+	}
+}
