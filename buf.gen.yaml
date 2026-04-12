@@ -17,8 +17,10 @@ inputs:
   - module: buf.build/agynio/api
     paths:
       - agynio/api/gateway/v1/apps.proto
+      - agynio/api/gateway/v1/notifications.proto
       - agynio/api/gateway/v1/threads.proto
       - agynio/api/gateway/v1/users.proto
       - agynio/api/apps/v1/apps.proto
+      - agynio/api/notifications/v1/notifications.proto
       - agynio/api/threads/v1/threads.proto
       - agynio/api/users/v1/users.proto

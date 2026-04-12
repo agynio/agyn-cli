@@ -150,9 +150,11 @@ func (x *Thread) GetUpdatedAt() *timestamppb.Timestamp {
 
 // A participant in a thread.
 type Participant struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"` // UUID
-	JoinedAt      *timestamppb.Timestamp `protobuf:"bytes,2,opt,name=joined_at,json=joinedAt,proto3" json:"joined_at,omitempty"`
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	Id       string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"` // UUID
+	JoinedAt *timestamppb.Timestamp `protobuf:"bytes,2,opt,name=joined_at,json=joinedAt,proto3" json:"joined_at,omitempty"`
+	// When true, the participant receives messages but does not trigger workload starts.
+	Passive       bool `protobuf:"varint,3,opt,name=passive,proto3" json:"passive,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -199,6 +201,13 @@ func (x *Participant) GetJoinedAt() *timestamppb.Timestamp {
 		return x.JoinedAt
 	}
 	return nil
+}
+
+func (x *Participant) GetPassive() bool {
+	if x != nil {
+		return x.Passive
+	}
+	return false
 }
 
 // A message within a thread.
@@ -361,6 +370,7 @@ func (x *MessageRecipient) GetAckedAt() *timestamppb.Timestamp {
 type CreateThreadRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Initial participant UUIDs. At least one required.
+	// Passive participants must be added with AddParticipant.
 	ParticipantIds []string `protobuf:"bytes,1,rep,name=participant_ids,json=participantIds,proto3" json:"participant_ids,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
@@ -536,9 +546,17 @@ func (x *ArchiveThreadResponse) GetThread() *Thread {
 }
 
 type AddParticipantRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	ThreadId      string                 `protobuf:"bytes,1,opt,name=thread_id,json=threadId,proto3" json:"thread_id,omitempty"`                // UUID
-	ParticipantId string                 `protobuf:"bytes,2,opt,name=participant_id,json=participantId,proto3" json:"participant_id,omitempty"` // UUID
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	ThreadId string                 `protobuf:"bytes,1,opt,name=thread_id,json=threadId,proto3" json:"thread_id,omitempty"` // UUID
+	// Deprecated: use participant instead.
+	//
+	// Deprecated: Marked as deprecated in agynio/api/threads/v1/threads.proto.
+	ParticipantId string `protobuf:"bytes,2,opt,name=participant_id,json=participantId,proto3" json:"participant_id,omitempty"` // UUID
+	// Organization scope for nickname resolution. Required with participant_nickname.
+	OrganizationId *string `protobuf:"bytes,4,opt,name=organization_id,json=organizationId,proto3,oneof" json:"organization_id,omitempty"` // UUID
+	// Passive participants receive messages but do not trigger workload starts.
+	Passive       bool                   `protobuf:"varint,5,opt,name=passive,proto3" json:"passive,omitempty"`
+	Participant   *ParticipantIdentifier `protobuf:"bytes,6,opt,name=participant,proto3" json:"participant,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -580,12 +598,117 @@ func (x *AddParticipantRequest) GetThreadId() string {
 	return ""
 }
 
+// Deprecated: Marked as deprecated in agynio/api/threads/v1/threads.proto.
 func (x *AddParticipantRequest) GetParticipantId() string {
 	if x != nil {
 		return x.ParticipantId
 	}
 	return ""
 }
+
+func (x *AddParticipantRequest) GetOrganizationId() string {
+	if x != nil && x.OrganizationId != nil {
+		return *x.OrganizationId
+	}
+	return ""
+}
+
+func (x *AddParticipantRequest) GetPassive() bool {
+	if x != nil {
+		return x.Passive
+	}
+	return false
+}
+
+func (x *AddParticipantRequest) GetParticipant() *ParticipantIdentifier {
+	if x != nil {
+		return x.Participant
+	}
+	return nil
+}
+
+type ParticipantIdentifier struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Types that are valid to be assigned to Identifier:
+	//
+	//	*ParticipantIdentifier_ParticipantId
+	//	*ParticipantIdentifier_ParticipantNickname
+	Identifier    isParticipantIdentifier_Identifier `protobuf_oneof:"identifier"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ParticipantIdentifier) Reset() {
+	*x = ParticipantIdentifier{}
+	mi := &file_agynio_api_threads_v1_threads_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ParticipantIdentifier) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ParticipantIdentifier) ProtoMessage() {}
+
+func (x *ParticipantIdentifier) ProtoReflect() protoreflect.Message {
+	mi := &file_agynio_api_threads_v1_threads_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ParticipantIdentifier.ProtoReflect.Descriptor instead.
+func (*ParticipantIdentifier) Descriptor() ([]byte, []int) {
+	return file_agynio_api_threads_v1_threads_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *ParticipantIdentifier) GetIdentifier() isParticipantIdentifier_Identifier {
+	if x != nil {
+		return x.Identifier
+	}
+	return nil
+}
+
+func (x *ParticipantIdentifier) GetParticipantId() string {
+	if x != nil {
+		if x, ok := x.Identifier.(*ParticipantIdentifier_ParticipantId); ok {
+			return x.ParticipantId
+		}
+	}
+	return ""
+}
+
+func (x *ParticipantIdentifier) GetParticipantNickname() string {
+	if x != nil {
+		if x, ok := x.Identifier.(*ParticipantIdentifier_ParticipantNickname); ok {
+			return x.ParticipantNickname
+		}
+	}
+	return ""
+}
+
+type isParticipantIdentifier_Identifier interface {
+	isParticipantIdentifier_Identifier()
+}
+
+type ParticipantIdentifier_ParticipantId struct {
+	ParticipantId string `protobuf:"bytes,1,opt,name=participant_id,json=participantId,proto3,oneof"` // UUID
+}
+
+type ParticipantIdentifier_ParticipantNickname struct {
+	// @nickname to resolve within organization_id.
+	ParticipantNickname string `protobuf:"bytes,2,opt,name=participant_nickname,json=participantNickname,proto3,oneof"`
+}
+
+func (*ParticipantIdentifier_ParticipantId) isParticipantIdentifier_Identifier() {}
+
+func (*ParticipantIdentifier_ParticipantNickname) isParticipantIdentifier_Identifier() {}
 
 type AddParticipantResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -596,7 +719,7 @@ type AddParticipantResponse struct {
 
 func (x *AddParticipantResponse) Reset() {
 	*x = AddParticipantResponse{}
-	mi := &file_agynio_api_threads_v1_threads_proto_msgTypes[9]
+	mi := &file_agynio_api_threads_v1_threads_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -608,7 +731,7 @@ func (x *AddParticipantResponse) String() string {
 func (*AddParticipantResponse) ProtoMessage() {}
 
 func (x *AddParticipantResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_agynio_api_threads_v1_threads_proto_msgTypes[9]
+	mi := &file_agynio_api_threads_v1_threads_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -621,7 +744,7 @@ func (x *AddParticipantResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AddParticipantResponse.ProtoReflect.Descriptor instead.
 func (*AddParticipantResponse) Descriptor() ([]byte, []int) {
-	return file_agynio_api_threads_v1_threads_proto_rawDescGZIP(), []int{9}
+	return file_agynio_api_threads_v1_threads_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *AddParticipantResponse) GetThread() *Thread {
@@ -647,7 +770,7 @@ type SendMessageRequest struct {
 
 func (x *SendMessageRequest) Reset() {
 	*x = SendMessageRequest{}
-	mi := &file_agynio_api_threads_v1_threads_proto_msgTypes[10]
+	mi := &file_agynio_api_threads_v1_threads_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -659,7 +782,7 @@ func (x *SendMessageRequest) String() string {
 func (*SendMessageRequest) ProtoMessage() {}
 
 func (x *SendMessageRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_agynio_api_threads_v1_threads_proto_msgTypes[10]
+	mi := &file_agynio_api_threads_v1_threads_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -672,7 +795,7 @@ func (x *SendMessageRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SendMessageRequest.ProtoReflect.Descriptor instead.
 func (*SendMessageRequest) Descriptor() ([]byte, []int) {
-	return file_agynio_api_threads_v1_threads_proto_rawDescGZIP(), []int{10}
+	return file_agynio_api_threads_v1_threads_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *SendMessageRequest) GetThreadId() string {
@@ -712,7 +835,7 @@ type SendMessageResponse struct {
 
 func (x *SendMessageResponse) Reset() {
 	*x = SendMessageResponse{}
-	mi := &file_agynio_api_threads_v1_threads_proto_msgTypes[11]
+	mi := &file_agynio_api_threads_v1_threads_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -724,7 +847,7 @@ func (x *SendMessageResponse) String() string {
 func (*SendMessageResponse) ProtoMessage() {}
 
 func (x *SendMessageResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_agynio_api_threads_v1_threads_proto_msgTypes[11]
+	mi := &file_agynio_api_threads_v1_threads_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -737,7 +860,7 @@ func (x *SendMessageResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SendMessageResponse.ProtoReflect.Descriptor instead.
 func (*SendMessageResponse) Descriptor() ([]byte, []int) {
-	return file_agynio_api_threads_v1_threads_proto_rawDescGZIP(), []int{11}
+	return file_agynio_api_threads_v1_threads_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *SendMessageResponse) GetMessage() *Message {
@@ -758,7 +881,7 @@ type GetThreadsRequest struct {
 
 func (x *GetThreadsRequest) Reset() {
 	*x = GetThreadsRequest{}
-	mi := &file_agynio_api_threads_v1_threads_proto_msgTypes[12]
+	mi := &file_agynio_api_threads_v1_threads_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -770,7 +893,7 @@ func (x *GetThreadsRequest) String() string {
 func (*GetThreadsRequest) ProtoMessage() {}
 
 func (x *GetThreadsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_agynio_api_threads_v1_threads_proto_msgTypes[12]
+	mi := &file_agynio_api_threads_v1_threads_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -783,7 +906,7 @@ func (x *GetThreadsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetThreadsRequest.ProtoReflect.Descriptor instead.
 func (*GetThreadsRequest) Descriptor() ([]byte, []int) {
-	return file_agynio_api_threads_v1_threads_proto_rawDescGZIP(), []int{12}
+	return file_agynio_api_threads_v1_threads_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *GetThreadsRequest) GetParticipantId() string {
@@ -817,7 +940,7 @@ type GetThreadsResponse struct {
 
 func (x *GetThreadsResponse) Reset() {
 	*x = GetThreadsResponse{}
-	mi := &file_agynio_api_threads_v1_threads_proto_msgTypes[13]
+	mi := &file_agynio_api_threads_v1_threads_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -829,7 +952,7 @@ func (x *GetThreadsResponse) String() string {
 func (*GetThreadsResponse) ProtoMessage() {}
 
 func (x *GetThreadsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_agynio_api_threads_v1_threads_proto_msgTypes[13]
+	mi := &file_agynio_api_threads_v1_threads_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -842,7 +965,7 @@ func (x *GetThreadsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetThreadsResponse.ProtoReflect.Descriptor instead.
 func (*GetThreadsResponse) Descriptor() ([]byte, []int) {
-	return file_agynio_api_threads_v1_threads_proto_rawDescGZIP(), []int{13}
+	return file_agynio_api_threads_v1_threads_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *GetThreadsResponse) GetThreads() []*Thread {
@@ -870,7 +993,7 @@ type GetMessagesRequest struct {
 
 func (x *GetMessagesRequest) Reset() {
 	*x = GetMessagesRequest{}
-	mi := &file_agynio_api_threads_v1_threads_proto_msgTypes[14]
+	mi := &file_agynio_api_threads_v1_threads_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -882,7 +1005,7 @@ func (x *GetMessagesRequest) String() string {
 func (*GetMessagesRequest) ProtoMessage() {}
 
 func (x *GetMessagesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_agynio_api_threads_v1_threads_proto_msgTypes[14]
+	mi := &file_agynio_api_threads_v1_threads_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -895,7 +1018,7 @@ func (x *GetMessagesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetMessagesRequest.ProtoReflect.Descriptor instead.
 func (*GetMessagesRequest) Descriptor() ([]byte, []int) {
-	return file_agynio_api_threads_v1_threads_proto_rawDescGZIP(), []int{14}
+	return file_agynio_api_threads_v1_threads_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *GetMessagesRequest) GetThreadId() string {
@@ -929,7 +1052,7 @@ type GetMessagesResponse struct {
 
 func (x *GetMessagesResponse) Reset() {
 	*x = GetMessagesResponse{}
-	mi := &file_agynio_api_threads_v1_threads_proto_msgTypes[15]
+	mi := &file_agynio_api_threads_v1_threads_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -941,7 +1064,7 @@ func (x *GetMessagesResponse) String() string {
 func (*GetMessagesResponse) ProtoMessage() {}
 
 func (x *GetMessagesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_agynio_api_threads_v1_threads_proto_msgTypes[15]
+	mi := &file_agynio_api_threads_v1_threads_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -954,7 +1077,7 @@ func (x *GetMessagesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetMessagesResponse.ProtoReflect.Descriptor instead.
 func (*GetMessagesResponse) Descriptor() ([]byte, []int) {
-	return file_agynio_api_threads_v1_threads_proto_rawDescGZIP(), []int{15}
+	return file_agynio_api_threads_v1_threads_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *GetMessagesResponse) GetMessages() []*Message {
@@ -976,13 +1099,15 @@ type GetUnackedMessagesRequest struct {
 	ParticipantId string                 `protobuf:"bytes,1,opt,name=participant_id,json=participantId,proto3" json:"participant_id,omitempty"` // UUID
 	PageSize      int32                  `protobuf:"varint,2,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"`
 	PageToken     string                 `protobuf:"bytes,3,opt,name=page_token,json=pageToken,proto3" json:"page_token,omitempty"`
+	// Optional thread filter.
+	ThreadId      *string `protobuf:"bytes,4,opt,name=thread_id,json=threadId,proto3,oneof" json:"thread_id,omitempty"` // UUID
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GetUnackedMessagesRequest) Reset() {
 	*x = GetUnackedMessagesRequest{}
-	mi := &file_agynio_api_threads_v1_threads_proto_msgTypes[16]
+	mi := &file_agynio_api_threads_v1_threads_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -994,7 +1119,7 @@ func (x *GetUnackedMessagesRequest) String() string {
 func (*GetUnackedMessagesRequest) ProtoMessage() {}
 
 func (x *GetUnackedMessagesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_agynio_api_threads_v1_threads_proto_msgTypes[16]
+	mi := &file_agynio_api_threads_v1_threads_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1007,7 +1132,7 @@ func (x *GetUnackedMessagesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetUnackedMessagesRequest.ProtoReflect.Descriptor instead.
 func (*GetUnackedMessagesRequest) Descriptor() ([]byte, []int) {
-	return file_agynio_api_threads_v1_threads_proto_rawDescGZIP(), []int{16}
+	return file_agynio_api_threads_v1_threads_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *GetUnackedMessagesRequest) GetParticipantId() string {
@@ -1031,6 +1156,13 @@ func (x *GetUnackedMessagesRequest) GetPageToken() string {
 	return ""
 }
 
+func (x *GetUnackedMessagesRequest) GetThreadId() string {
+	if x != nil && x.ThreadId != nil {
+		return *x.ThreadId
+	}
+	return ""
+}
+
 type GetUnackedMessagesResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Messages      []*Message             `protobuf:"bytes,1,rep,name=messages,proto3" json:"messages,omitempty"`
@@ -1041,7 +1173,7 @@ type GetUnackedMessagesResponse struct {
 
 func (x *GetUnackedMessagesResponse) Reset() {
 	*x = GetUnackedMessagesResponse{}
-	mi := &file_agynio_api_threads_v1_threads_proto_msgTypes[17]
+	mi := &file_agynio_api_threads_v1_threads_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1053,7 +1185,7 @@ func (x *GetUnackedMessagesResponse) String() string {
 func (*GetUnackedMessagesResponse) ProtoMessage() {}
 
 func (x *GetUnackedMessagesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_agynio_api_threads_v1_threads_proto_msgTypes[17]
+	mi := &file_agynio_api_threads_v1_threads_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1066,7 +1198,7 @@ func (x *GetUnackedMessagesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetUnackedMessagesResponse.ProtoReflect.Descriptor instead.
 func (*GetUnackedMessagesResponse) Descriptor() ([]byte, []int) {
-	return file_agynio_api_threads_v1_threads_proto_rawDescGZIP(), []int{17}
+	return file_agynio_api_threads_v1_threads_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *GetUnackedMessagesResponse) GetMessages() []*Message {
@@ -1093,7 +1225,7 @@ type AckMessagesRequest struct {
 
 func (x *AckMessagesRequest) Reset() {
 	*x = AckMessagesRequest{}
-	mi := &file_agynio_api_threads_v1_threads_proto_msgTypes[18]
+	mi := &file_agynio_api_threads_v1_threads_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1105,7 +1237,7 @@ func (x *AckMessagesRequest) String() string {
 func (*AckMessagesRequest) ProtoMessage() {}
 
 func (x *AckMessagesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_agynio_api_threads_v1_threads_proto_msgTypes[18]
+	mi := &file_agynio_api_threads_v1_threads_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1118,7 +1250,7 @@ func (x *AckMessagesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AckMessagesRequest.ProtoReflect.Descriptor instead.
 func (*AckMessagesRequest) Descriptor() ([]byte, []int) {
-	return file_agynio_api_threads_v1_threads_proto_rawDescGZIP(), []int{18}
+	return file_agynio_api_threads_v1_threads_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *AckMessagesRequest) GetParticipantId() string {
@@ -1147,7 +1279,7 @@ type AckMessagesResponse struct {
 
 func (x *AckMessagesResponse) Reset() {
 	*x = AckMessagesResponse{}
-	mi := &file_agynio_api_threads_v1_threads_proto_msgTypes[19]
+	mi := &file_agynio_api_threads_v1_threads_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1159,7 +1291,7 @@ func (x *AckMessagesResponse) String() string {
 func (*AckMessagesResponse) ProtoMessage() {}
 
 func (x *AckMessagesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_agynio_api_threads_v1_threads_proto_msgTypes[19]
+	mi := &file_agynio_api_threads_v1_threads_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1172,7 +1304,7 @@ func (x *AckMessagesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AckMessagesResponse.ProtoReflect.Descriptor instead.
 func (*AckMessagesResponse) Descriptor() ([]byte, []int) {
-	return file_agynio_api_threads_v1_threads_proto_rawDescGZIP(), []int{19}
+	return file_agynio_api_threads_v1_threads_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *AckMessagesResponse) GetAckedCount() int32 {
@@ -1194,10 +1326,11 @@ const file_agynio_api_threads_v1_threads_proto_rawDesc = "" +
 	"\n" +
 	"created_at\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
 	"\n" +
-	"updated_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\"V\n" +
+	"updated_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\"p\n" +
 	"\vParticipant\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x127\n" +
-	"\tjoined_at\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\bjoinedAt\"\xbd\x01\n" +
+	"\tjoined_at\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\bjoinedAt\x12\x18\n" +
+	"\apassive\x18\x03 \x01(\bR\apassive\"\xbd\x01\n" +
 	"\aMessage\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
 	"\tthread_id\x18\x02 \x01(\tR\bthreadId\x12\x1b\n" +
@@ -1219,10 +1352,19 @@ const file_agynio_api_threads_v1_threads_proto_rawDesc = "" +
 	"\x14ArchiveThreadRequest\x12\x1b\n" +
 	"\tthread_id\x18\x01 \x01(\tR\bthreadId\"N\n" +
 	"\x15ArchiveThreadResponse\x125\n" +
-	"\x06thread\x18\x01 \x01(\v2\x1d.agynio.api.threads.v1.ThreadR\x06thread\"[\n" +
+	"\x06thread\x18\x01 \x01(\v2\x1d.agynio.api.threads.v1.ThreadR\x06thread\"\x91\x02\n" +
 	"\x15AddParticipantRequest\x12\x1b\n" +
-	"\tthread_id\x18\x01 \x01(\tR\bthreadId\x12%\n" +
-	"\x0eparticipant_id\x18\x02 \x01(\tR\rparticipantId\"O\n" +
+	"\tthread_id\x18\x01 \x01(\tR\bthreadId\x12)\n" +
+	"\x0eparticipant_id\x18\x02 \x01(\tB\x02\x18\x01R\rparticipantId\x12,\n" +
+	"\x0forganization_id\x18\x04 \x01(\tH\x00R\x0eorganizationId\x88\x01\x01\x12\x18\n" +
+	"\apassive\x18\x05 \x01(\bR\apassive\x12N\n" +
+	"\vparticipant\x18\x06 \x01(\v2,.agynio.api.threads.v1.ParticipantIdentifierR\vparticipantB\x12\n" +
+	"\x10_organization_idJ\x04\b\x03\x10\x04\"\x83\x01\n" +
+	"\x15ParticipantIdentifier\x12'\n" +
+	"\x0eparticipant_id\x18\x01 \x01(\tH\x00R\rparticipantId\x123\n" +
+	"\x14participant_nickname\x18\x02 \x01(\tH\x00R\x13participantNicknameB\f\n" +
+	"\n" +
+	"identifier\"O\n" +
 	"\x16AddParticipantResponse\x125\n" +
 	"\x06thread\x18\x01 \x01(\v2\x1d.agynio.api.threads.v1.ThreadR\x06thread\"}\n" +
 	"\x12SendMessageRequest\x12\x1b\n" +
@@ -1247,12 +1389,15 @@ const file_agynio_api_threads_v1_threads_proto_rawDesc = "" +
 	"page_token\x18\x03 \x01(\tR\tpageToken\"y\n" +
 	"\x13GetMessagesResponse\x12:\n" +
 	"\bmessages\x18\x01 \x03(\v2\x1e.agynio.api.threads.v1.MessageR\bmessages\x12&\n" +
-	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken\"~\n" +
+	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken\"\xae\x01\n" +
 	"\x19GetUnackedMessagesRequest\x12%\n" +
 	"\x0eparticipant_id\x18\x01 \x01(\tR\rparticipantId\x12\x1b\n" +
 	"\tpage_size\x18\x02 \x01(\x05R\bpageSize\x12\x1d\n" +
 	"\n" +
-	"page_token\x18\x03 \x01(\tR\tpageToken\"\x80\x01\n" +
+	"page_token\x18\x03 \x01(\tR\tpageToken\x12 \n" +
+	"\tthread_id\x18\x04 \x01(\tH\x00R\bthreadId\x88\x01\x01B\f\n" +
+	"\n" +
+	"_thread_id\"\x80\x01\n" +
 	"\x1aGetUnackedMessagesResponse\x12:\n" +
 	"\bmessages\x18\x01 \x03(\v2\x1e.agynio.api.threads.v1.MessageR\bmessages\x12&\n" +
 	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken\"\\\n" +
@@ -1292,7 +1437,7 @@ func file_agynio_api_threads_v1_threads_proto_rawDescGZIP() []byte {
 }
 
 var file_agynio_api_threads_v1_threads_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_agynio_api_threads_v1_threads_proto_msgTypes = make([]protoimpl.MessageInfo, 20)
+var file_agynio_api_threads_v1_threads_proto_msgTypes = make([]protoimpl.MessageInfo, 21)
 var file_agynio_api_threads_v1_threads_proto_goTypes = []any{
 	(ThreadStatus)(0),                  // 0: agynio.api.threads.v1.ThreadStatus
 	(*Thread)(nil),                     // 1: agynio.api.threads.v1.Thread
@@ -1304,55 +1449,57 @@ var file_agynio_api_threads_v1_threads_proto_goTypes = []any{
 	(*ArchiveThreadRequest)(nil),       // 7: agynio.api.threads.v1.ArchiveThreadRequest
 	(*ArchiveThreadResponse)(nil),      // 8: agynio.api.threads.v1.ArchiveThreadResponse
 	(*AddParticipantRequest)(nil),      // 9: agynio.api.threads.v1.AddParticipantRequest
-	(*AddParticipantResponse)(nil),     // 10: agynio.api.threads.v1.AddParticipantResponse
-	(*SendMessageRequest)(nil),         // 11: agynio.api.threads.v1.SendMessageRequest
-	(*SendMessageResponse)(nil),        // 12: agynio.api.threads.v1.SendMessageResponse
-	(*GetThreadsRequest)(nil),          // 13: agynio.api.threads.v1.GetThreadsRequest
-	(*GetThreadsResponse)(nil),         // 14: agynio.api.threads.v1.GetThreadsResponse
-	(*GetMessagesRequest)(nil),         // 15: agynio.api.threads.v1.GetMessagesRequest
-	(*GetMessagesResponse)(nil),        // 16: agynio.api.threads.v1.GetMessagesResponse
-	(*GetUnackedMessagesRequest)(nil),  // 17: agynio.api.threads.v1.GetUnackedMessagesRequest
-	(*GetUnackedMessagesResponse)(nil), // 18: agynio.api.threads.v1.GetUnackedMessagesResponse
-	(*AckMessagesRequest)(nil),         // 19: agynio.api.threads.v1.AckMessagesRequest
-	(*AckMessagesResponse)(nil),        // 20: agynio.api.threads.v1.AckMessagesResponse
-	(*timestamppb.Timestamp)(nil),      // 21: google.protobuf.Timestamp
+	(*ParticipantIdentifier)(nil),      // 10: agynio.api.threads.v1.ParticipantIdentifier
+	(*AddParticipantResponse)(nil),     // 11: agynio.api.threads.v1.AddParticipantResponse
+	(*SendMessageRequest)(nil),         // 12: agynio.api.threads.v1.SendMessageRequest
+	(*SendMessageResponse)(nil),        // 13: agynio.api.threads.v1.SendMessageResponse
+	(*GetThreadsRequest)(nil),          // 14: agynio.api.threads.v1.GetThreadsRequest
+	(*GetThreadsResponse)(nil),         // 15: agynio.api.threads.v1.GetThreadsResponse
+	(*GetMessagesRequest)(nil),         // 16: agynio.api.threads.v1.GetMessagesRequest
+	(*GetMessagesResponse)(nil),        // 17: agynio.api.threads.v1.GetMessagesResponse
+	(*GetUnackedMessagesRequest)(nil),  // 18: agynio.api.threads.v1.GetUnackedMessagesRequest
+	(*GetUnackedMessagesResponse)(nil), // 19: agynio.api.threads.v1.GetUnackedMessagesResponse
+	(*AckMessagesRequest)(nil),         // 20: agynio.api.threads.v1.AckMessagesRequest
+	(*AckMessagesResponse)(nil),        // 21: agynio.api.threads.v1.AckMessagesResponse
+	(*timestamppb.Timestamp)(nil),      // 22: google.protobuf.Timestamp
 }
 var file_agynio_api_threads_v1_threads_proto_depIdxs = []int32{
 	2,  // 0: agynio.api.threads.v1.Thread.participants:type_name -> agynio.api.threads.v1.Participant
 	0,  // 1: agynio.api.threads.v1.Thread.status:type_name -> agynio.api.threads.v1.ThreadStatus
-	21, // 2: agynio.api.threads.v1.Thread.created_at:type_name -> google.protobuf.Timestamp
-	21, // 3: agynio.api.threads.v1.Thread.updated_at:type_name -> google.protobuf.Timestamp
-	21, // 4: agynio.api.threads.v1.Participant.joined_at:type_name -> google.protobuf.Timestamp
-	21, // 5: agynio.api.threads.v1.Message.created_at:type_name -> google.protobuf.Timestamp
-	21, // 6: agynio.api.threads.v1.MessageRecipient.acked_at:type_name -> google.protobuf.Timestamp
+	22, // 2: agynio.api.threads.v1.Thread.created_at:type_name -> google.protobuf.Timestamp
+	22, // 3: agynio.api.threads.v1.Thread.updated_at:type_name -> google.protobuf.Timestamp
+	22, // 4: agynio.api.threads.v1.Participant.joined_at:type_name -> google.protobuf.Timestamp
+	22, // 5: agynio.api.threads.v1.Message.created_at:type_name -> google.protobuf.Timestamp
+	22, // 6: agynio.api.threads.v1.MessageRecipient.acked_at:type_name -> google.protobuf.Timestamp
 	1,  // 7: agynio.api.threads.v1.CreateThreadResponse.thread:type_name -> agynio.api.threads.v1.Thread
 	1,  // 8: agynio.api.threads.v1.ArchiveThreadResponse.thread:type_name -> agynio.api.threads.v1.Thread
-	1,  // 9: agynio.api.threads.v1.AddParticipantResponse.thread:type_name -> agynio.api.threads.v1.Thread
-	3,  // 10: agynio.api.threads.v1.SendMessageResponse.message:type_name -> agynio.api.threads.v1.Message
-	1,  // 11: agynio.api.threads.v1.GetThreadsResponse.threads:type_name -> agynio.api.threads.v1.Thread
-	3,  // 12: agynio.api.threads.v1.GetMessagesResponse.messages:type_name -> agynio.api.threads.v1.Message
-	3,  // 13: agynio.api.threads.v1.GetUnackedMessagesResponse.messages:type_name -> agynio.api.threads.v1.Message
-	5,  // 14: agynio.api.threads.v1.ThreadsService.CreateThread:input_type -> agynio.api.threads.v1.CreateThreadRequest
-	7,  // 15: agynio.api.threads.v1.ThreadsService.ArchiveThread:input_type -> agynio.api.threads.v1.ArchiveThreadRequest
-	9,  // 16: agynio.api.threads.v1.ThreadsService.AddParticipant:input_type -> agynio.api.threads.v1.AddParticipantRequest
-	11, // 17: agynio.api.threads.v1.ThreadsService.SendMessage:input_type -> agynio.api.threads.v1.SendMessageRequest
-	13, // 18: agynio.api.threads.v1.ThreadsService.GetThreads:input_type -> agynio.api.threads.v1.GetThreadsRequest
-	15, // 19: agynio.api.threads.v1.ThreadsService.GetMessages:input_type -> agynio.api.threads.v1.GetMessagesRequest
-	17, // 20: agynio.api.threads.v1.ThreadsService.GetUnackedMessages:input_type -> agynio.api.threads.v1.GetUnackedMessagesRequest
-	19, // 21: agynio.api.threads.v1.ThreadsService.AckMessages:input_type -> agynio.api.threads.v1.AckMessagesRequest
-	6,  // 22: agynio.api.threads.v1.ThreadsService.CreateThread:output_type -> agynio.api.threads.v1.CreateThreadResponse
-	8,  // 23: agynio.api.threads.v1.ThreadsService.ArchiveThread:output_type -> agynio.api.threads.v1.ArchiveThreadResponse
-	10, // 24: agynio.api.threads.v1.ThreadsService.AddParticipant:output_type -> agynio.api.threads.v1.AddParticipantResponse
-	12, // 25: agynio.api.threads.v1.ThreadsService.SendMessage:output_type -> agynio.api.threads.v1.SendMessageResponse
-	14, // 26: agynio.api.threads.v1.ThreadsService.GetThreads:output_type -> agynio.api.threads.v1.GetThreadsResponse
-	16, // 27: agynio.api.threads.v1.ThreadsService.GetMessages:output_type -> agynio.api.threads.v1.GetMessagesResponse
-	18, // 28: agynio.api.threads.v1.ThreadsService.GetUnackedMessages:output_type -> agynio.api.threads.v1.GetUnackedMessagesResponse
-	20, // 29: agynio.api.threads.v1.ThreadsService.AckMessages:output_type -> agynio.api.threads.v1.AckMessagesResponse
-	22, // [22:30] is the sub-list for method output_type
-	14, // [14:22] is the sub-list for method input_type
-	14, // [14:14] is the sub-list for extension type_name
-	14, // [14:14] is the sub-list for extension extendee
-	0,  // [0:14] is the sub-list for field type_name
+	10, // 9: agynio.api.threads.v1.AddParticipantRequest.participant:type_name -> agynio.api.threads.v1.ParticipantIdentifier
+	1,  // 10: agynio.api.threads.v1.AddParticipantResponse.thread:type_name -> agynio.api.threads.v1.Thread
+	3,  // 11: agynio.api.threads.v1.SendMessageResponse.message:type_name -> agynio.api.threads.v1.Message
+	1,  // 12: agynio.api.threads.v1.GetThreadsResponse.threads:type_name -> agynio.api.threads.v1.Thread
+	3,  // 13: agynio.api.threads.v1.GetMessagesResponse.messages:type_name -> agynio.api.threads.v1.Message
+	3,  // 14: agynio.api.threads.v1.GetUnackedMessagesResponse.messages:type_name -> agynio.api.threads.v1.Message
+	5,  // 15: agynio.api.threads.v1.ThreadsService.CreateThread:input_type -> agynio.api.threads.v1.CreateThreadRequest
+	7,  // 16: agynio.api.threads.v1.ThreadsService.ArchiveThread:input_type -> agynio.api.threads.v1.ArchiveThreadRequest
+	9,  // 17: agynio.api.threads.v1.ThreadsService.AddParticipant:input_type -> agynio.api.threads.v1.AddParticipantRequest
+	12, // 18: agynio.api.threads.v1.ThreadsService.SendMessage:input_type -> agynio.api.threads.v1.SendMessageRequest
+	14, // 19: agynio.api.threads.v1.ThreadsService.GetThreads:input_type -> agynio.api.threads.v1.GetThreadsRequest
+	16, // 20: agynio.api.threads.v1.ThreadsService.GetMessages:input_type -> agynio.api.threads.v1.GetMessagesRequest
+	18, // 21: agynio.api.threads.v1.ThreadsService.GetUnackedMessages:input_type -> agynio.api.threads.v1.GetUnackedMessagesRequest
+	20, // 22: agynio.api.threads.v1.ThreadsService.AckMessages:input_type -> agynio.api.threads.v1.AckMessagesRequest
+	6,  // 23: agynio.api.threads.v1.ThreadsService.CreateThread:output_type -> agynio.api.threads.v1.CreateThreadResponse
+	8,  // 24: agynio.api.threads.v1.ThreadsService.ArchiveThread:output_type -> agynio.api.threads.v1.ArchiveThreadResponse
+	11, // 25: agynio.api.threads.v1.ThreadsService.AddParticipant:output_type -> agynio.api.threads.v1.AddParticipantResponse
+	13, // 26: agynio.api.threads.v1.ThreadsService.SendMessage:output_type -> agynio.api.threads.v1.SendMessageResponse
+	15, // 27: agynio.api.threads.v1.ThreadsService.GetThreads:output_type -> agynio.api.threads.v1.GetThreadsResponse
+	17, // 28: agynio.api.threads.v1.ThreadsService.GetMessages:output_type -> agynio.api.threads.v1.GetMessagesResponse
+	19, // 29: agynio.api.threads.v1.ThreadsService.GetUnackedMessages:output_type -> agynio.api.threads.v1.GetUnackedMessagesResponse
+	21, // 30: agynio.api.threads.v1.ThreadsService.AckMessages:output_type -> agynio.api.threads.v1.AckMessagesResponse
+	23, // [23:31] is the sub-list for method output_type
+	15, // [15:23] is the sub-list for method input_type
+	15, // [15:15] is the sub-list for extension type_name
+	15, // [15:15] is the sub-list for extension extendee
+	0,  // [0:15] is the sub-list for field type_name
 }
 
 func init() { file_agynio_api_threads_v1_threads_proto_init() }
@@ -1360,13 +1507,19 @@ func file_agynio_api_threads_v1_threads_proto_init() {
 	if File_agynio_api_threads_v1_threads_proto != nil {
 		return
 	}
+	file_agynio_api_threads_v1_threads_proto_msgTypes[8].OneofWrappers = []any{}
+	file_agynio_api_threads_v1_threads_proto_msgTypes[9].OneofWrappers = []any{
+		(*ParticipantIdentifier_ParticipantId)(nil),
+		(*ParticipantIdentifier_ParticipantNickname)(nil),
+	}
+	file_agynio_api_threads_v1_threads_proto_msgTypes[17].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_agynio_api_threads_v1_threads_proto_rawDesc), len(file_agynio_api_threads_v1_threads_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   20,
+			NumMessages:   21,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

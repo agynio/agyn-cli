@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 )
@@ -21,7 +22,14 @@ const (
 	ConfigDir         = ".agyn"
 	ConfigFile        = "config.yaml"
 	CredentialsFile   = "credentials"
+	GatewayURLEnv     = "AGYN_GATEWAY_URL"
+	GatewayAddressEnv = "GATEWAY_ADDRESS"
 )
+
+type GatewayTarget struct {
+	URL      string
+	UsesZiti bool
+}
 
 func Load() (*Config, error) {
 	cfg := &Config{Gateway: GatewayConfig{URL: DefaultGatewayURL}}
@@ -52,11 +60,29 @@ func Load() (*Config, error) {
 }
 
 func (c *Config) ResolveGatewayURL(flagURL string) string {
+	return c.ResolveGatewayTarget(flagURL).URL
+}
+
+func (c *Config) ResolveGatewayTarget(flagURL string) GatewayTarget {
 	if flagURL != "" {
-		return flagURL
+		return GatewayTarget{URL: normalizeGatewayURL(flagURL)}
 	}
-	if envURL := os.Getenv("AGYN_GATEWAY_URL"); envURL != "" {
-		return envURL
+	if envAddress := os.Getenv(GatewayAddressEnv); envAddress != "" {
+		return GatewayTarget{URL: normalizeGatewayURL(envAddress), UsesZiti: true}
 	}
-	return c.Gateway.URL
+	if envURL := os.Getenv(GatewayURLEnv); envURL != "" {
+		return GatewayTarget{URL: normalizeGatewayURL(envURL)}
+	}
+	return GatewayTarget{URL: normalizeGatewayURL(c.Gateway.URL)}
+}
+
+func normalizeGatewayURL(value string) string {
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" {
+		return ""
+	}
+	if strings.Contains(trimmed, "://") {
+		return trimmed
+	}
+	return "http://" + trimmed
 }

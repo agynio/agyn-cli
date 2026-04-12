@@ -58,6 +58,23 @@ const (
 	// UsersServiceResolveAPITokenProcedure is the fully-qualified name of the UsersService's
 	// ResolveAPIToken RPC.
 	UsersServiceResolveAPITokenProcedure = "/agynio.api.users.v1.UsersService/ResolveAPIToken"
+	// UsersServiceGetMeProcedure is the fully-qualified name of the UsersService's GetMe RPC.
+	UsersServiceGetMeProcedure = "/agynio.api.users.v1.UsersService/GetMe"
+	// UsersServiceListUsersProcedure is the fully-qualified name of the UsersService's ListUsers RPC.
+	UsersServiceListUsersProcedure = "/agynio.api.users.v1.UsersService/ListUsers"
+	// UsersServiceCreateUserProcedure is the fully-qualified name of the UsersService's CreateUser RPC.
+	UsersServiceCreateUserProcedure = "/agynio.api.users.v1.UsersService/CreateUser"
+	// UsersServiceDeleteUserProcedure is the fully-qualified name of the UsersService's DeleteUser RPC.
+	UsersServiceDeleteUserProcedure = "/agynio.api.users.v1.UsersService/DeleteUser"
+	// UsersServiceCreateDeviceProcedure is the fully-qualified name of the UsersService's CreateDevice
+	// RPC.
+	UsersServiceCreateDeviceProcedure = "/agynio.api.users.v1.UsersService/CreateDevice"
+	// UsersServiceListDevicesProcedure is the fully-qualified name of the UsersService's ListDevices
+	// RPC.
+	UsersServiceListDevicesProcedure = "/agynio.api.users.v1.UsersService/ListDevices"
+	// UsersServiceDeleteDeviceProcedure is the fully-qualified name of the UsersService's DeleteDevice
+	// RPC.
+	UsersServiceDeleteDeviceProcedure = "/agynio.api.users.v1.UsersService/DeleteDevice"
 )
 
 // UsersServiceClient is a client for the agynio.api.users.v1.UsersService service.
@@ -71,6 +88,16 @@ type UsersServiceClient interface {
 	ListAPITokens(context.Context, *connect.Request[v1.ListAPITokensRequest]) (*connect.Response[v1.ListAPITokensResponse], error)
 	RevokeAPIToken(context.Context, *connect.Request[v1.RevokeAPITokenRequest]) (*connect.Response[v1.RevokeAPITokenResponse], error)
 	ResolveAPIToken(context.Context, *connect.Request[v1.ResolveAPITokenRequest]) (*connect.Response[v1.ResolveAPITokenResponse], error)
+	// --- Current User ---
+	GetMe(context.Context, *connect.Request[v1.GetMeRequest]) (*connect.Response[v1.GetMeResponse], error)
+	// --- Admin User Management ---
+	ListUsers(context.Context, *connect.Request[v1.ListUsersRequest]) (*connect.Response[v1.ListUsersResponse], error)
+	CreateUser(context.Context, *connect.Request[v1.CreateUserRequest]) (*connect.Response[v1.CreateUserResponse], error)
+	DeleteUser(context.Context, *connect.Request[v1.DeleteUserRequest]) (*connect.Response[v1.DeleteUserResponse], error)
+	// --- Devices ---
+	CreateDevice(context.Context, *connect.Request[v1.CreateDeviceRequest]) (*connect.Response[v1.CreateDeviceResponse], error)
+	ListDevices(context.Context, *connect.Request[v1.ListDevicesRequest]) (*connect.Response[v1.ListDevicesResponse], error)
+	DeleteDevice(context.Context, *connect.Request[v1.DeleteDeviceRequest]) (*connect.Response[v1.DeleteDeviceResponse], error)
 }
 
 // NewUsersServiceClient constructs a client for the agynio.api.users.v1.UsersService service. By
@@ -138,6 +165,48 @@ func NewUsersServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			connect.WithSchema(usersServiceMethods.ByName("ResolveAPIToken")),
 			connect.WithClientOptions(opts...),
 		),
+		getMe: connect.NewClient[v1.GetMeRequest, v1.GetMeResponse](
+			httpClient,
+			baseURL+UsersServiceGetMeProcedure,
+			connect.WithSchema(usersServiceMethods.ByName("GetMe")),
+			connect.WithClientOptions(opts...),
+		),
+		listUsers: connect.NewClient[v1.ListUsersRequest, v1.ListUsersResponse](
+			httpClient,
+			baseURL+UsersServiceListUsersProcedure,
+			connect.WithSchema(usersServiceMethods.ByName("ListUsers")),
+			connect.WithClientOptions(opts...),
+		),
+		createUser: connect.NewClient[v1.CreateUserRequest, v1.CreateUserResponse](
+			httpClient,
+			baseURL+UsersServiceCreateUserProcedure,
+			connect.WithSchema(usersServiceMethods.ByName("CreateUser")),
+			connect.WithClientOptions(opts...),
+		),
+		deleteUser: connect.NewClient[v1.DeleteUserRequest, v1.DeleteUserResponse](
+			httpClient,
+			baseURL+UsersServiceDeleteUserProcedure,
+			connect.WithSchema(usersServiceMethods.ByName("DeleteUser")),
+			connect.WithClientOptions(opts...),
+		),
+		createDevice: connect.NewClient[v1.CreateDeviceRequest, v1.CreateDeviceResponse](
+			httpClient,
+			baseURL+UsersServiceCreateDeviceProcedure,
+			connect.WithSchema(usersServiceMethods.ByName("CreateDevice")),
+			connect.WithClientOptions(opts...),
+		),
+		listDevices: connect.NewClient[v1.ListDevicesRequest, v1.ListDevicesResponse](
+			httpClient,
+			baseURL+UsersServiceListDevicesProcedure,
+			connect.WithSchema(usersServiceMethods.ByName("ListDevices")),
+			connect.WithClientOptions(opts...),
+		),
+		deleteDevice: connect.NewClient[v1.DeleteDeviceRequest, v1.DeleteDeviceResponse](
+			httpClient,
+			baseURL+UsersServiceDeleteDeviceProcedure,
+			connect.WithSchema(usersServiceMethods.ByName("DeleteDevice")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -152,6 +221,13 @@ type usersServiceClient struct {
 	listAPITokens        *connect.Client[v1.ListAPITokensRequest, v1.ListAPITokensResponse]
 	revokeAPIToken       *connect.Client[v1.RevokeAPITokenRequest, v1.RevokeAPITokenResponse]
 	resolveAPIToken      *connect.Client[v1.ResolveAPITokenRequest, v1.ResolveAPITokenResponse]
+	getMe                *connect.Client[v1.GetMeRequest, v1.GetMeResponse]
+	listUsers            *connect.Client[v1.ListUsersRequest, v1.ListUsersResponse]
+	createUser           *connect.Client[v1.CreateUserRequest, v1.CreateUserResponse]
+	deleteUser           *connect.Client[v1.DeleteUserRequest, v1.DeleteUserResponse]
+	createDevice         *connect.Client[v1.CreateDeviceRequest, v1.CreateDeviceResponse]
+	listDevices          *connect.Client[v1.ListDevicesRequest, v1.ListDevicesResponse]
+	deleteDevice         *connect.Client[v1.DeleteDeviceRequest, v1.DeleteDeviceResponse]
 }
 
 // ResolveOrCreateUser calls agynio.api.users.v1.UsersService.ResolveOrCreateUser.
@@ -199,6 +275,41 @@ func (c *usersServiceClient) ResolveAPIToken(ctx context.Context, req *connect.R
 	return c.resolveAPIToken.CallUnary(ctx, req)
 }
 
+// GetMe calls agynio.api.users.v1.UsersService.GetMe.
+func (c *usersServiceClient) GetMe(ctx context.Context, req *connect.Request[v1.GetMeRequest]) (*connect.Response[v1.GetMeResponse], error) {
+	return c.getMe.CallUnary(ctx, req)
+}
+
+// ListUsers calls agynio.api.users.v1.UsersService.ListUsers.
+func (c *usersServiceClient) ListUsers(ctx context.Context, req *connect.Request[v1.ListUsersRequest]) (*connect.Response[v1.ListUsersResponse], error) {
+	return c.listUsers.CallUnary(ctx, req)
+}
+
+// CreateUser calls agynio.api.users.v1.UsersService.CreateUser.
+func (c *usersServiceClient) CreateUser(ctx context.Context, req *connect.Request[v1.CreateUserRequest]) (*connect.Response[v1.CreateUserResponse], error) {
+	return c.createUser.CallUnary(ctx, req)
+}
+
+// DeleteUser calls agynio.api.users.v1.UsersService.DeleteUser.
+func (c *usersServiceClient) DeleteUser(ctx context.Context, req *connect.Request[v1.DeleteUserRequest]) (*connect.Response[v1.DeleteUserResponse], error) {
+	return c.deleteUser.CallUnary(ctx, req)
+}
+
+// CreateDevice calls agynio.api.users.v1.UsersService.CreateDevice.
+func (c *usersServiceClient) CreateDevice(ctx context.Context, req *connect.Request[v1.CreateDeviceRequest]) (*connect.Response[v1.CreateDeviceResponse], error) {
+	return c.createDevice.CallUnary(ctx, req)
+}
+
+// ListDevices calls agynio.api.users.v1.UsersService.ListDevices.
+func (c *usersServiceClient) ListDevices(ctx context.Context, req *connect.Request[v1.ListDevicesRequest]) (*connect.Response[v1.ListDevicesResponse], error) {
+	return c.listDevices.CallUnary(ctx, req)
+}
+
+// DeleteDevice calls agynio.api.users.v1.UsersService.DeleteDevice.
+func (c *usersServiceClient) DeleteDevice(ctx context.Context, req *connect.Request[v1.DeleteDeviceRequest]) (*connect.Response[v1.DeleteDeviceResponse], error) {
+	return c.deleteDevice.CallUnary(ctx, req)
+}
+
 // UsersServiceHandler is an implementation of the agynio.api.users.v1.UsersService service.
 type UsersServiceHandler interface {
 	ResolveOrCreateUser(context.Context, *connect.Request[v1.ResolveOrCreateUserRequest]) (*connect.Response[v1.ResolveOrCreateUserResponse], error)
@@ -210,6 +321,16 @@ type UsersServiceHandler interface {
 	ListAPITokens(context.Context, *connect.Request[v1.ListAPITokensRequest]) (*connect.Response[v1.ListAPITokensResponse], error)
 	RevokeAPIToken(context.Context, *connect.Request[v1.RevokeAPITokenRequest]) (*connect.Response[v1.RevokeAPITokenResponse], error)
 	ResolveAPIToken(context.Context, *connect.Request[v1.ResolveAPITokenRequest]) (*connect.Response[v1.ResolveAPITokenResponse], error)
+	// --- Current User ---
+	GetMe(context.Context, *connect.Request[v1.GetMeRequest]) (*connect.Response[v1.GetMeResponse], error)
+	// --- Admin User Management ---
+	ListUsers(context.Context, *connect.Request[v1.ListUsersRequest]) (*connect.Response[v1.ListUsersResponse], error)
+	CreateUser(context.Context, *connect.Request[v1.CreateUserRequest]) (*connect.Response[v1.CreateUserResponse], error)
+	DeleteUser(context.Context, *connect.Request[v1.DeleteUserRequest]) (*connect.Response[v1.DeleteUserResponse], error)
+	// --- Devices ---
+	CreateDevice(context.Context, *connect.Request[v1.CreateDeviceRequest]) (*connect.Response[v1.CreateDeviceResponse], error)
+	ListDevices(context.Context, *connect.Request[v1.ListDevicesRequest]) (*connect.Response[v1.ListDevicesResponse], error)
+	DeleteDevice(context.Context, *connect.Request[v1.DeleteDeviceRequest]) (*connect.Response[v1.DeleteDeviceResponse], error)
 }
 
 // NewUsersServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -273,6 +394,48 @@ func NewUsersServiceHandler(svc UsersServiceHandler, opts ...connect.HandlerOpti
 		connect.WithSchema(usersServiceMethods.ByName("ResolveAPIToken")),
 		connect.WithHandlerOptions(opts...),
 	)
+	usersServiceGetMeHandler := connect.NewUnaryHandler(
+		UsersServiceGetMeProcedure,
+		svc.GetMe,
+		connect.WithSchema(usersServiceMethods.ByName("GetMe")),
+		connect.WithHandlerOptions(opts...),
+	)
+	usersServiceListUsersHandler := connect.NewUnaryHandler(
+		UsersServiceListUsersProcedure,
+		svc.ListUsers,
+		connect.WithSchema(usersServiceMethods.ByName("ListUsers")),
+		connect.WithHandlerOptions(opts...),
+	)
+	usersServiceCreateUserHandler := connect.NewUnaryHandler(
+		UsersServiceCreateUserProcedure,
+		svc.CreateUser,
+		connect.WithSchema(usersServiceMethods.ByName("CreateUser")),
+		connect.WithHandlerOptions(opts...),
+	)
+	usersServiceDeleteUserHandler := connect.NewUnaryHandler(
+		UsersServiceDeleteUserProcedure,
+		svc.DeleteUser,
+		connect.WithSchema(usersServiceMethods.ByName("DeleteUser")),
+		connect.WithHandlerOptions(opts...),
+	)
+	usersServiceCreateDeviceHandler := connect.NewUnaryHandler(
+		UsersServiceCreateDeviceProcedure,
+		svc.CreateDevice,
+		connect.WithSchema(usersServiceMethods.ByName("CreateDevice")),
+		connect.WithHandlerOptions(opts...),
+	)
+	usersServiceListDevicesHandler := connect.NewUnaryHandler(
+		UsersServiceListDevicesProcedure,
+		svc.ListDevices,
+		connect.WithSchema(usersServiceMethods.ByName("ListDevices")),
+		connect.WithHandlerOptions(opts...),
+	)
+	usersServiceDeleteDeviceHandler := connect.NewUnaryHandler(
+		UsersServiceDeleteDeviceProcedure,
+		svc.DeleteDevice,
+		connect.WithSchema(usersServiceMethods.ByName("DeleteDevice")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/agynio.api.users.v1.UsersService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case UsersServiceResolveOrCreateUserProcedure:
@@ -293,6 +456,20 @@ func NewUsersServiceHandler(svc UsersServiceHandler, opts ...connect.HandlerOpti
 			usersServiceRevokeAPITokenHandler.ServeHTTP(w, r)
 		case UsersServiceResolveAPITokenProcedure:
 			usersServiceResolveAPITokenHandler.ServeHTTP(w, r)
+		case UsersServiceGetMeProcedure:
+			usersServiceGetMeHandler.ServeHTTP(w, r)
+		case UsersServiceListUsersProcedure:
+			usersServiceListUsersHandler.ServeHTTP(w, r)
+		case UsersServiceCreateUserProcedure:
+			usersServiceCreateUserHandler.ServeHTTP(w, r)
+		case UsersServiceDeleteUserProcedure:
+			usersServiceDeleteUserHandler.ServeHTTP(w, r)
+		case UsersServiceCreateDeviceProcedure:
+			usersServiceCreateDeviceHandler.ServeHTTP(w, r)
+		case UsersServiceListDevicesProcedure:
+			usersServiceListDevicesHandler.ServeHTTP(w, r)
+		case UsersServiceDeleteDeviceProcedure:
+			usersServiceDeleteDeviceHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -336,4 +513,32 @@ func (UnimplementedUsersServiceHandler) RevokeAPIToken(context.Context, *connect
 
 func (UnimplementedUsersServiceHandler) ResolveAPIToken(context.Context, *connect.Request[v1.ResolveAPITokenRequest]) (*connect.Response[v1.ResolveAPITokenResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("agynio.api.users.v1.UsersService.ResolveAPIToken is not implemented"))
+}
+
+func (UnimplementedUsersServiceHandler) GetMe(context.Context, *connect.Request[v1.GetMeRequest]) (*connect.Response[v1.GetMeResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("agynio.api.users.v1.UsersService.GetMe is not implemented"))
+}
+
+func (UnimplementedUsersServiceHandler) ListUsers(context.Context, *connect.Request[v1.ListUsersRequest]) (*connect.Response[v1.ListUsersResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("agynio.api.users.v1.UsersService.ListUsers is not implemented"))
+}
+
+func (UnimplementedUsersServiceHandler) CreateUser(context.Context, *connect.Request[v1.CreateUserRequest]) (*connect.Response[v1.CreateUserResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("agynio.api.users.v1.UsersService.CreateUser is not implemented"))
+}
+
+func (UnimplementedUsersServiceHandler) DeleteUser(context.Context, *connect.Request[v1.DeleteUserRequest]) (*connect.Response[v1.DeleteUserResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("agynio.api.users.v1.UsersService.DeleteUser is not implemented"))
+}
+
+func (UnimplementedUsersServiceHandler) CreateDevice(context.Context, *connect.Request[v1.CreateDeviceRequest]) (*connect.Response[v1.CreateDeviceResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("agynio.api.users.v1.UsersService.CreateDevice is not implemented"))
+}
+
+func (UnimplementedUsersServiceHandler) ListDevices(context.Context, *connect.Request[v1.ListDevicesRequest]) (*connect.Response[v1.ListDevicesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("agynio.api.users.v1.UsersService.ListDevices is not implemented"))
+}
+
+func (UnimplementedUsersServiceHandler) DeleteDevice(context.Context, *connect.Request[v1.DeleteDeviceRequest]) (*connect.Response[v1.DeleteDeviceResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("agynio.api.users.v1.UsersService.DeleteDevice is not implemented"))
 }
