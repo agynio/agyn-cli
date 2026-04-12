@@ -47,7 +47,7 @@ func (s RefStore) Load() (map[string]string, error) {
 
 func (s RefStore) Save(refs map[string]string) error {
 	if refs == nil {
-		refs = map[string]string{}
+		return fmt.Errorf("thread refs map is nil")
 	}
 	data, err := json.MarshalIndent(refs, "", "  ")
 	if err != nil {
@@ -65,13 +65,4 @@ func (s RefStore) Save(refs map[string]string) error {
 func ResolveRef(refs map[string]string, value string) (string, bool) {
 	threadID, ok := refs[value]
 	return threadID, ok
-}
-
-func RefForThread(refs map[string]string, threadID string) string {
-	for ref, id := range refs {
-		if id == threadID {
-			return ref
-		}
-	}
-	return ""
 }

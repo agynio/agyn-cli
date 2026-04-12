@@ -34,7 +34,4 @@ func TestRefLookup(t *testing.T) {
 	if !ok || threadID != "thread-a" {
 		t.Fatalf("expected alpha to resolve to thread-a")
 	}
-	if ref := RefForThread(refs, "thread-b"); ref != "beta" {
-		t.Fatalf("expected beta ref, got %q", ref)
-	}
 }

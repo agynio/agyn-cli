@@ -24,6 +24,7 @@ type contextKey struct{}
 var (
 	gatewayURLFlag string
 	outputFlag     string
+	formatFlag     string
 	noColorFlag    bool
 )
 
@@ -37,7 +38,16 @@ var rootCmd = &cobra.Command{
 			return err
 		}
 
-		format, err := output.ParseFormat(outputFlag)
+		outputValue := outputFlag
+		outputChanged := cmd.Flags().Changed("output")
+		formatChanged := cmd.Flags().Changed("format")
+		if formatChanged && outputChanged {
+			return fmt.Errorf("--output and --format are mutually exclusive")
+		}
+		if formatChanged {
+			outputValue = formatFlag
+		}
+		format, err := output.ParseFormat(outputValue)
 		if err != nil {
 			return err
 		}
@@ -84,6 +94,6 @@ func withRunContext(ctx context.Context, runContext *RunContext) context.Context
 func init() {
 	rootCmd.PersistentFlags().StringVar(&gatewayURLFlag, "gateway-url", "", "Gateway base URL")
 	rootCmd.PersistentFlags().StringVarP(&outputFlag, "output", "o", string(output.FormatTable), "Output format: table, json, or yaml")
-	rootCmd.PersistentFlags().StringVar(&outputFlag, "format", string(output.FormatTable), "Output format: table, json, or yaml")
+	rootCmd.PersistentFlags().StringVar(&formatFlag, "format", string(output.FormatTable), "Output format: table, json, or yaml")
 	rootCmd.PersistentFlags().BoolVar(&noColorFlag, "no-color", false, "Disable color output")
 }

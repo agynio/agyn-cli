@@ -182,6 +182,10 @@ func runThreadsCreate(cmd *cobra.Command, _ []string) error {
 	if len(participantIDs) == 0 {
 		return fmt.Errorf("at least one participant is required")
 	}
+	sendMessage := strings.TrimSpace(threadsCreateSend)
+	if (sendMessage != "" || threadsCreateWait > 0) && agentID == "" {
+		return fmt.Errorf("%s is required for this command", agentIDEnv)
+	}
 
 	threadsClient := gatewayv1connect.NewThreadsGatewayClient(runContext.Clients.HTTPClient, runContext.Clients.BaseURL, runContext.Clients.ConnectOpts()...)
 	createResp, err := threadsClient.CreateThread(cmd.Context(), connect.NewRequest(&threadsv1.CreateThreadRequest{ParticipantIds: participantIDs}))
@@ -208,15 +212,11 @@ func runThreadsCreate(cmd *cobra.Command, _ []string) error {
 	}
 
 	var messageID string
-	if strings.TrimSpace(threadsCreateSend) != "" {
-		senderID, err := requireAgentID()
-		if err != nil {
-			return err
-		}
+	if sendMessage != "" {
 		sendResp, err := threadsClient.SendMessage(cmd.Context(), connect.NewRequest(&threadsv1.SendMessageRequest{
 			ThreadId: threadID,
-			SenderId: senderID,
-			Body:     threadsCreateSend,
+			SenderId: agentID,
+			Body:     sendMessage,
 		}))
 		if err != nil {
 			return fmt.Errorf("send message: %w", err)
@@ -228,27 +228,7 @@ func runThreadsCreate(cmd *cobra.Command, _ []string) error {
 	}
 
 	if threadsCreateWait > 0 {
-		senderID, err := requireAgentID()
-		if err != nil {
-			return err
-		}
-		protoMessages, err := waitForUnreadMessages(cmd.Context(), runContext, []threadTarget{{ID: threadID, Ref: threadsCreateRef}}, senderID, time.Duration(threadsCreateWait)*time.Second)
-		if err != nil {
-			return err
-		}
-		view, err := toMessageViews(protoMessages, refs)
-		if err != nil {
-			return err
-		}
-		if err := outputMessages(cmd, runContext.OutputFormat, view, false); err != nil {
-			return err
-		}
-		if len(view) > 0 {
-			if err := ackMessages(cmd.Context(), threadsClient, senderID, view); err != nil {
-				return err
-			}
-		}
-		return nil
+		return waitOutputAndAck(cmd.Context(), cmd, runContext, threadsClient, []threadTarget{{ID: threadID, Ref: threadsCreateRef}}, agentID, refs, time.Duration(threadsCreateWait)*time.Second, false)
 	}
 
 	if runContext.OutputFormat == output.FormatTable {
@@ -312,23 +292,7 @@ func runThreadsSend(cmd *cobra.Command, _ []string) error {
 	messageID := sendResp.Msg.GetMessage().GetId()
 
 	if threadsSendWait > 0 {
-		protoMessages, err := waitForUnreadMessages(cmd.Context(), runContext, threadTargets, senderID, time.Duration(threadsSendWait)*time.Second)
-		if err != nil {
-			return err
-		}
-		view, err := toMessageViews(protoMessages, refs)
-		if err != nil {
-			return err
-		}
-		if err := outputMessages(cmd, runContext.OutputFormat, view, false); err != nil {
-			return err
-		}
-		if len(view) > 0 {
-			if err := ackMessages(cmd.Context(), threadsClient, senderID, view); err != nil {
-				return err
-			}
-		}
-		return nil
+		return waitOutputAndAck(cmd.Context(), cmd, runContext, threadsClient, threadTargets, senderID, refs, time.Duration(threadsSendWait)*time.Second, false)
 	}
 
 	if runContext.OutputFormat == output.FormatTable {
@@ -371,24 +335,9 @@ func runThreadsRead(cmd *cobra.Command, _ []string) error {
 			return err
 		}
 		if len(protoMessages) == 0 && threadsReadWait > 0 {
-			protoMessages, err = waitForUnreadMessages(cmd.Context(), runContext, threadTargets, participantID, time.Duration(threadsReadWait)*time.Second)
-			if err != nil {
-				return err
-			}
+			return waitOutputAndAck(cmd.Context(), cmd, runContext, threadsClient, threadTargets, participantID, refs, time.Duration(threadsReadWait)*time.Second, includeThreadLine)
 		}
-		view, err := toMessageViews(protoMessages, refs)
-		if err != nil {
-			return err
-		}
-		if err := outputMessages(cmd, runContext.OutputFormat, view, includeThreadLine); err != nil {
-			return err
-		}
-		if len(view) > 0 {
-			if err := ackMessages(cmd.Context(), threadsClient, participantID, view); err != nil {
-				return err
-			}
-		}
-		return nil
+		return outputAndAck(cmd.Context(), cmd, runContext.OutputFormat, threadsClient, participantID, protoMessages, refs, includeThreadLine)
 	}
 
 	messages, err := fetchMessages(cmd.Context(), threadsClient, threadTargets)
@@ -579,35 +528,47 @@ func participantIdentifier(value string) (*threadsv1.ParticipantIdentifier, erro
 
 func fetchUnreadMessages(ctx context.Context, client gatewayv1connect.ThreadsGatewayClient, targets []threadTarget, participantID string) ([]*threadsv1.Message, error) {
 	threadIDs := extractThreadIDs(targets)
-	request := &threadsv1.GetUnackedMessagesRequest{
-		ParticipantId: participantID,
-		PageSize:      defaultPageSize,
-	}
-	if len(threadIDs) == 1 {
-		request.ThreadId = proto.String(threadIDs[0])
-	}
-	resp, err := client.GetUnackedMessages(ctx, connect.NewRequest(request))
-	if err != nil {
-		return nil, fmt.Errorf("get unread messages: %w", err)
-	}
-	messages := resp.Msg.GetMessages()
-	if len(threadIDs) <= 1 {
-		return messages, nil
-	}
-	allowed := make(map[string]struct{}, len(threadIDs))
-	for _, id := range threadIDs {
-		allowed[id] = struct{}{}
-	}
-	filtered := make([]*threadsv1.Message, 0, len(messages))
-	for _, msg := range messages {
-		if msg == nil {
-			continue
-		}
-		if _, ok := allowed[msg.GetThreadId()]; ok {
-			filtered = append(filtered, msg)
+	allowed := map[string]struct{}{}
+	if len(threadIDs) > 1 {
+		allowed = make(map[string]struct{}, len(threadIDs))
+		for _, id := range threadIDs {
+			allowed[id] = struct{}{}
 		}
 	}
-	return filtered, nil
+
+	pageToken := ""
+	all := []*threadsv1.Message{}
+	for {
+		request := &threadsv1.GetUnackedMessagesRequest{
+			ParticipantId: participantID,
+			PageSize:      defaultPageSize,
+			PageToken:     pageToken,
+		}
+		if len(threadIDs) == 1 {
+			request.ThreadId = proto.String(threadIDs[0])
+		}
+		resp, err := client.GetUnackedMessages(ctx, connect.NewRequest(request))
+		if err != nil {
+			return nil, fmt.Errorf("get unread messages: %w", err)
+		}
+		messages := resp.Msg.GetMessages()
+		for _, msg := range messages {
+			if msg == nil {
+				return nil, fmt.Errorf("unread message is nil")
+			}
+			if len(allowed) > 0 {
+				if _, ok := allowed[msg.GetThreadId()]; !ok {
+					continue
+				}
+			}
+			all = append(all, msg)
+		}
+		pageToken = resp.Msg.GetNextPageToken()
+		if pageToken == "" {
+			break
+		}
+	}
+	return all, nil
 }
 
 func fetchMessages(ctx context.Context, client gatewayv1connect.ThreadsGatewayClient, targets []threadTarget) ([]*threadsv1.Message, error) {
@@ -670,9 +631,6 @@ func toMessageView(msg *threadsv1.Message, refIndex map[string]string) (messageV
 		return messageView{}, fmt.Errorf("message.created_at is required")
 	}
 	fileIDs := append([]string{}, msg.GetFileIds()...)
-	if msg.GetBody() == "" && len(fileIDs) == 0 {
-		return messageView{}, fmt.Errorf("message body or file ids are required")
-	}
 	return messageView{
 		ID:        msg.GetId(),
 		ThreadID:  msg.GetThreadId(),
@@ -724,6 +682,28 @@ func renderMessages(w io.Writer, messages []messageView, includeThreadLine bool)
 	return nil
 }
 
+func outputAndAck(ctx context.Context, cmd *cobra.Command, format output.Format, client gatewayv1connect.ThreadsGatewayClient, participantID string, messages []*threadsv1.Message, refs map[string]string, includeThreadLine bool) error {
+	view, err := toMessageViews(messages, refs)
+	if err != nil {
+		return err
+	}
+	if err := outputMessages(cmd, format, view, includeThreadLine); err != nil {
+		return err
+	}
+	if len(view) == 0 {
+		return nil
+	}
+	return ackMessages(ctx, client, participantID, view)
+}
+
+func waitOutputAndAck(ctx context.Context, cmd *cobra.Command, runContext *RunContext, client gatewayv1connect.ThreadsGatewayClient, targets []threadTarget, participantID string, refs map[string]string, timeout time.Duration, includeThreadLine bool) error {
+	protoMessages, err := waitForUnreadMessages(ctx, runContext, targets, participantID, timeout)
+	if err != nil {
+		return err
+	}
+	return outputAndAck(ctx, cmd, runContext.OutputFormat, client, participantID, protoMessages, refs, includeThreadLine)
+}
+
 func ackMessages(ctx context.Context, client gatewayv1connect.ThreadsGatewayClient, participantID string, messages []messageView) error {
 	if len(messages) == 0 {
 		return nil
@@ -731,9 +711,6 @@ func ackMessages(ctx context.Context, client gatewayv1connect.ThreadsGatewayClie
 	ids := make([]string, 0, len(messages))
 	seen := map[string]struct{}{}
 	for _, msg := range messages {
-		if msg.ID == "" {
-			return fmt.Errorf("message id is required")
-		}
 		if _, ok := seen[msg.ID]; ok {
 			continue
 		}
@@ -791,7 +768,10 @@ func waitForNotificationMessages(ctx context.Context, client gatewayv1connect.No
 	if len(messages) > 0 {
 		return messages, nil
 	}
-	fetchedIDs := messageIDSet(messages)
+	fetchedIDs, err := messageIDSet(messages)
+	if err != nil {
+		return nil, err
+	}
 	buffered := drainNotifications(events)
 	if hasPendingNotifications(buffered, fetchedIDs) {
 		messages, err = fetch(ctx)
@@ -801,7 +781,10 @@ func waitForNotificationMessages(ctx context.Context, client gatewayv1connect.No
 		if len(messages) > 0 {
 			return messages, nil
 		}
-		fetchedIDs = messageIDSet(messages)
+		fetchedIDs, err = messageIDSet(messages)
+		if err != nil {
+			return nil, err
+		}
 	}
 	for {
 		select {
@@ -828,7 +811,10 @@ func waitForNotificationMessages(ctx context.Context, client gatewayv1connect.No
 			if len(messages) > 0 {
 				return messages, nil
 			}
-			fetchedIDs = messageIDSet(messages)
+			fetchedIDs, err = messageIDSet(messages)
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 }
@@ -929,15 +915,17 @@ func hasPendingNotifications(events []messageNotification, fetched map[string]st
 	return false
 }
 
-func messageIDSet(messages []*threadsv1.Message) map[string]struct{} {
+func messageIDSet(messages []*threadsv1.Message) (map[string]struct{}, error) {
 	ids := map[string]struct{}{}
 	for _, msg := range messages {
 		if msg == nil {
-			continue
+			return nil, fmt.Errorf("message is nil")
 		}
-		if msg.GetId() != "" {
-			ids[msg.GetId()] = struct{}{}
+		id := msg.GetId()
+		if id == "" {
+			return nil, fmt.Errorf("message.id is required")
 		}
+		ids[id] = struct{}{}
 	}
-	return ids
+	return ids, nil
 }

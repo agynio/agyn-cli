@@ -79,7 +79,7 @@ func (c *Config) ResolveGatewayTarget(flagURL string) GatewayTarget {
 func normalizeGatewayURL(value string) string {
 	trimmed := strings.TrimSpace(value)
 	if trimmed == "" {
-		return ""
+		return DefaultGatewayURL
 	}
 	if strings.Contains(trimmed, "://") {
 		return trimmed
