@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"connectrpc.com/connect"
-	exposev1 "github.com/agynio/agyn-cli/gen/agynio/api/expose/v1"
+	gatewayv1 "github.com/agynio/agyn-cli/gen/agynio/api/gateway/v1"
 	"github.com/agynio/agyn-cli/gen/agynio/api/gateway/v1/gatewayv1connect"
 	"github.com/agynio/agyn-cli/internal/output"
 	"github.com/spf13/cobra"
@@ -24,20 +24,13 @@ func newExposeListCmd() *cobra.Command {
 				return fmt.Errorf("gateway client unavailable")
 			}
 
-			workloadID, err := resolveWorkloadID()
-			if err != nil {
-				return err
-			}
-
 			client := gatewayv1connect.NewExposeGatewayClient(
 				runContext.Clients.HTTPClient,
 				runContext.Clients.BaseURL,
 				runContext.Clients.ConnectOpts()...,
 			)
 
-			response, err := client.ListExposures(cmd.Context(), connect.NewRequest(&exposev1.ListExposuresRequest{
-				WorkloadId: workloadID,
-			}))
+			response, err := client.ListExposures(cmd.Context(), connect.NewRequest(&gatewayv1.ListExposuresRequest{}))
 			if err != nil {
 				return err
 			}

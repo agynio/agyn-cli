@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"connectrpc.com/connect"
-	exposev1 "github.com/agynio/agyn-cli/gen/agynio/api/expose/v1"
+	gatewayv1 "github.com/agynio/agyn-cli/gen/agynio/api/gateway/v1"
 	"github.com/agynio/agyn-cli/gen/agynio/api/gateway/v1/gatewayv1connect"
 	"github.com/spf13/cobra"
 )
@@ -16,11 +16,6 @@ func newExposeRemoveCmd() *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			port, err := parsePort(args[0])
-			if err != nil {
-				return err
-			}
-
-			workloadID, err := resolveWorkloadID()
 			if err != nil {
 				return err
 			}
@@ -39,9 +34,8 @@ func newExposeRemoveCmd() *cobra.Command {
 				runContext.Clients.ConnectOpts()...,
 			)
 
-			_, err = client.RemoveExposure(cmd.Context(), connect.NewRequest(&exposev1.RemoveExposureRequest{
-				WorkloadId: workloadID,
-				Port:       int32(port),
+			_, err = client.RemoveExposure(cmd.Context(), connect.NewRequest(&gatewayv1.RemoveExposureRequest{
+				Port: int32(port),
 			}))
 			if err != nil {
 				return err

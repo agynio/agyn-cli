@@ -11,6 +11,7 @@ import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
+	sync "sync"
 	unsafe "unsafe"
 )
 
@@ -21,29 +22,190 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+type AddExposureRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Port          int32                  `protobuf:"varint,1,opt,name=port,proto3" json:"port,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AddExposureRequest) Reset() {
+	*x = AddExposureRequest{}
+	mi := &file_agynio_api_gateway_v1_expose_proto_msgTypes[0]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AddExposureRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AddExposureRequest) ProtoMessage() {}
+
+func (x *AddExposureRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_agynio_api_gateway_v1_expose_proto_msgTypes[0]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AddExposureRequest.ProtoReflect.Descriptor instead.
+func (*AddExposureRequest) Descriptor() ([]byte, []int) {
+	return file_agynio_api_gateway_v1_expose_proto_rawDescGZIP(), []int{0}
+}
+
+func (x *AddExposureRequest) GetPort() int32 {
+	if x != nil {
+		return x.Port
+	}
+	return 0
+}
+
+type RemoveExposureRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Port          int32                  `protobuf:"varint,1,opt,name=port,proto3" json:"port,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RemoveExposureRequest) Reset() {
+	*x = RemoveExposureRequest{}
+	mi := &file_agynio_api_gateway_v1_expose_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RemoveExposureRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RemoveExposureRequest) ProtoMessage() {}
+
+func (x *RemoveExposureRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_agynio_api_gateway_v1_expose_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RemoveExposureRequest.ProtoReflect.Descriptor instead.
+func (*RemoveExposureRequest) Descriptor() ([]byte, []int) {
+	return file_agynio_api_gateway_v1_expose_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *RemoveExposureRequest) GetPort() int32 {
+	if x != nil {
+		return x.Port
+	}
+	return 0
+}
+
+type ListExposuresRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	PageSize      int32                  `protobuf:"varint,1,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"`
+	PageToken     string                 `protobuf:"bytes,2,opt,name=page_token,json=pageToken,proto3" json:"page_token,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListExposuresRequest) Reset() {
+	*x = ListExposuresRequest{}
+	mi := &file_agynio_api_gateway_v1_expose_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListExposuresRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListExposuresRequest) ProtoMessage() {}
+
+func (x *ListExposuresRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_agynio_api_gateway_v1_expose_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListExposuresRequest.ProtoReflect.Descriptor instead.
+func (*ListExposuresRequest) Descriptor() ([]byte, []int) {
+	return file_agynio_api_gateway_v1_expose_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *ListExposuresRequest) GetPageSize() int32 {
+	if x != nil {
+		return x.PageSize
+	}
+	return 0
+}
+
+func (x *ListExposuresRequest) GetPageToken() string {
+	if x != nil {
+		return x.PageToken
+	}
+	return ""
+}
+
 var File_agynio_api_gateway_v1_expose_proto protoreflect.FileDescriptor
 
 const file_agynio_api_gateway_v1_expose_proto_rawDesc = "" +
 	"\n" +
-	"\"agynio/api/gateway/v1/expose.proto\x12\x15agynio.api.gateway.v1\x1a!agynio/api/expose/v1/expose.proto2\xca\x02\n" +
-	"\rExposeGateway\x12b\n" +
-	"\vAddExposure\x12(.agynio.api.expose.v1.AddExposureRequest\x1a).agynio.api.expose.v1.AddExposureResponse\x12k\n" +
-	"\x0eRemoveExposure\x12+.agynio.api.expose.v1.RemoveExposureRequest\x1a,.agynio.api.expose.v1.RemoveExposureResponse\x12h\n" +
-	"\rListExposures\x12*.agynio.api.expose.v1.ListExposuresRequest\x1a+.agynio.api.expose.v1.ListExposuresResponseB\xdf\x01\n" +
+	"\"agynio/api/gateway/v1/expose.proto\x12\x15agynio.api.gateway.v1\x1a!agynio/api/expose/v1/expose.proto\"(\n" +
+	"\x12AddExposureRequest\x12\x12\n" +
+	"\x04port\x18\x01 \x01(\x05R\x04port\"+\n" +
+	"\x15RemoveExposureRequest\x12\x12\n" +
+	"\x04port\x18\x01 \x01(\x05R\x04port\"R\n" +
+	"\x14ListExposuresRequest\x12\x1b\n" +
+	"\tpage_size\x18\x01 \x01(\x05R\bpageSize\x12\x1d\n" +
+	"\n" +
+	"page_token\x18\x02 \x01(\tR\tpageToken2\xcd\x02\n" +
+	"\rExposeGateway\x12c\n" +
+	"\vAddExposure\x12).agynio.api.gateway.v1.AddExposureRequest\x1a).agynio.api.expose.v1.AddExposureResponse\x12l\n" +
+	"\x0eRemoveExposure\x12,.agynio.api.gateway.v1.RemoveExposureRequest\x1a,.agynio.api.expose.v1.RemoveExposureResponse\x12i\n" +
+	"\rListExposures\x12+.agynio.api.gateway.v1.ListExposuresRequest\x1a+.agynio.api.expose.v1.ListExposuresResponseB\xdf\x01\n" +
 	"\x19com.agynio.api.gateway.v1B\vExposeProtoP\x01Z>github.com/agynio/agyn-cli/gen/agynio/api/gateway/v1;gatewayv1\xa2\x02\x03AAG\xaa\x02\x15Agynio.Api.Gateway.V1\xca\x02\x15Agynio\\Api\\Gateway\\V1\xe2\x02!Agynio\\Api\\Gateway\\V1\\GPBMetadata\xea\x02\x18Agynio::Api::Gateway::V1b\x06proto3"
 
+var (
+	file_agynio_api_gateway_v1_expose_proto_rawDescOnce sync.Once
+	file_agynio_api_gateway_v1_expose_proto_rawDescData []byte
+)
+
+func file_agynio_api_gateway_v1_expose_proto_rawDescGZIP() []byte {
+	file_agynio_api_gateway_v1_expose_proto_rawDescOnce.Do(func() {
+		file_agynio_api_gateway_v1_expose_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_agynio_api_gateway_v1_expose_proto_rawDesc), len(file_agynio_api_gateway_v1_expose_proto_rawDesc)))
+	})
+	return file_agynio_api_gateway_v1_expose_proto_rawDescData
+}
+
+var file_agynio_api_gateway_v1_expose_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
 var file_agynio_api_gateway_v1_expose_proto_goTypes = []any{
-	(*v1.AddExposureRequest)(nil),     // 0: agynio.api.expose.v1.AddExposureRequest
-	(*v1.RemoveExposureRequest)(nil),  // 1: agynio.api.expose.v1.RemoveExposureRequest
-	(*v1.ListExposuresRequest)(nil),   // 2: agynio.api.expose.v1.ListExposuresRequest
+	(*AddExposureRequest)(nil),        // 0: agynio.api.gateway.v1.AddExposureRequest
+	(*RemoveExposureRequest)(nil),     // 1: agynio.api.gateway.v1.RemoveExposureRequest
+	(*ListExposuresRequest)(nil),      // 2: agynio.api.gateway.v1.ListExposuresRequest
 	(*v1.AddExposureResponse)(nil),    // 3: agynio.api.expose.v1.AddExposureResponse
 	(*v1.RemoveExposureResponse)(nil), // 4: agynio.api.expose.v1.RemoveExposureResponse
 	(*v1.ListExposuresResponse)(nil),  // 5: agynio.api.expose.v1.ListExposuresResponse
 }
 var file_agynio_api_gateway_v1_expose_proto_depIdxs = []int32{
-	0, // 0: agynio.api.gateway.v1.ExposeGateway.AddExposure:input_type -> agynio.api.expose.v1.AddExposureRequest
-	1, // 1: agynio.api.gateway.v1.ExposeGateway.RemoveExposure:input_type -> agynio.api.expose.v1.RemoveExposureRequest
-	2, // 2: agynio.api.gateway.v1.ExposeGateway.ListExposures:input_type -> agynio.api.expose.v1.ListExposuresRequest
+	0, // 0: agynio.api.gateway.v1.ExposeGateway.AddExposure:input_type -> agynio.api.gateway.v1.AddExposureRequest
+	1, // 1: agynio.api.gateway.v1.ExposeGateway.RemoveExposure:input_type -> agynio.api.gateway.v1.RemoveExposureRequest
+	2, // 2: agynio.api.gateway.v1.ExposeGateway.ListExposures:input_type -> agynio.api.gateway.v1.ListExposuresRequest
 	3, // 3: agynio.api.gateway.v1.ExposeGateway.AddExposure:output_type -> agynio.api.expose.v1.AddExposureResponse
 	4, // 4: agynio.api.gateway.v1.ExposeGateway.RemoveExposure:output_type -> agynio.api.expose.v1.RemoveExposureResponse
 	5, // 5: agynio.api.gateway.v1.ExposeGateway.ListExposures:output_type -> agynio.api.expose.v1.ListExposuresResponse
@@ -65,12 +227,13 @@ func file_agynio_api_gateway_v1_expose_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_agynio_api_gateway_v1_expose_proto_rawDesc), len(file_agynio_api_gateway_v1_expose_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   0,
+			NumMessages:   3,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
 		GoTypes:           file_agynio_api_gateway_v1_expose_proto_goTypes,
 		DependencyIndexes: file_agynio_api_gateway_v1_expose_proto_depIdxs,
+		MessageInfos:      file_agynio_api_gateway_v1_expose_proto_msgTypes,
 	}.Build()
 	File_agynio_api_gateway_v1_expose_proto = out.File
 	file_agynio_api_gateway_v1_expose_proto_goTypes = nil
