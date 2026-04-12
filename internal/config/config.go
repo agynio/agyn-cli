@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 )
@@ -56,11 +57,22 @@ func (c *Config) ResolveGatewayURL(flagURL string) string {
 	if flagURL != "" {
 		return flagURL
 	}
-	if envURL := os.Getenv("AGYN_GATEWAY_URL"); envURL != "" {
+	if envURL := normalizeGatewayEnvURL(os.Getenv("AGYN_GATEWAY_URL")); envURL != "" {
 		return envURL
 	}
-	if envURL := os.Getenv(GatewayAddressEnv); envURL != "" {
+	if envURL := normalizeGatewayEnvURL(os.Getenv(GatewayAddressEnv)); envURL != "" {
 		return envURL
 	}
 	return c.Gateway.URL
+}
+
+func normalizeGatewayEnvURL(rawURL string) string {
+	trimmed := strings.TrimSpace(rawURL)
+	if trimmed == "" {
+		return ""
+	}
+	if strings.Contains(trimmed, "://") {
+		return trimmed
+	}
+	return "http://" + trimmed
 }
