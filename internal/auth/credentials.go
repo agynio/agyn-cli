@@ -9,7 +9,11 @@ import (
 	"github.com/agynio/agyn-cli/internal/config"
 )
 
-func LoadToken() (string, error) {
+type TokenOptions struct {
+	AllowMissing bool
+}
+
+func LoadToken(opts TokenOptions) (string, error) {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return "", fmt.Errorf("home dir: %w", err)
@@ -19,6 +23,9 @@ func LoadToken() (string, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
+			if opts.AllowMissing {
+				return "", nil
+			}
 			return "", fmt.Errorf("no credentials found; run 'agyn auth login' or place a token in %s", path)
 		}
 		return "", fmt.Errorf("read credentials: %w", err)

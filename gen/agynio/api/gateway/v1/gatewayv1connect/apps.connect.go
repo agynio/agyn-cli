@@ -34,22 +34,55 @@ const (
 // reflection-formatted method names, remove the leading slash and convert the remaining slash to a
 // period.
 const (
-	// AppsGatewayRegisterAppProcedure is the fully-qualified name of the AppsGateway's RegisterApp RPC.
-	AppsGatewayRegisterAppProcedure = "/agynio.api.gateway.v1.AppsGateway/RegisterApp"
+	// AppsGatewayCreateAppProcedure is the fully-qualified name of the AppsGateway's CreateApp RPC.
+	AppsGatewayCreateAppProcedure = "/agynio.api.gateway.v1.AppsGateway/CreateApp"
+	// AppsGatewayUpdateAppProcedure is the fully-qualified name of the AppsGateway's UpdateApp RPC.
+	AppsGatewayUpdateAppProcedure = "/agynio.api.gateway.v1.AppsGateway/UpdateApp"
 	// AppsGatewayGetAppProcedure is the fully-qualified name of the AppsGateway's GetApp RPC.
 	AppsGatewayGetAppProcedure = "/agynio.api.gateway.v1.AppsGateway/GetApp"
+	// AppsGatewayGetAppBySlugProcedure is the fully-qualified name of the AppsGateway's GetAppBySlug
+	// RPC.
+	AppsGatewayGetAppBySlugProcedure = "/agynio.api.gateway.v1.AppsGateway/GetAppBySlug"
 	// AppsGatewayListAppsProcedure is the fully-qualified name of the AppsGateway's ListApps RPC.
 	AppsGatewayListAppsProcedure = "/agynio.api.gateway.v1.AppsGateway/ListApps"
 	// AppsGatewayDeleteAppProcedure is the fully-qualified name of the AppsGateway's DeleteApp RPC.
 	AppsGatewayDeleteAppProcedure = "/agynio.api.gateway.v1.AppsGateway/DeleteApp"
+	// AppsGatewayEnrollAppProcedure is the fully-qualified name of the AppsGateway's EnrollApp RPC.
+	AppsGatewayEnrollAppProcedure = "/agynio.api.gateway.v1.AppsGateway/EnrollApp"
+	// AppsGatewayInstallAppProcedure is the fully-qualified name of the AppsGateway's InstallApp RPC.
+	AppsGatewayInstallAppProcedure = "/agynio.api.gateway.v1.AppsGateway/InstallApp"
+	// AppsGatewayGetInstallationProcedure is the fully-qualified name of the AppsGateway's
+	// GetInstallation RPC.
+	AppsGatewayGetInstallationProcedure = "/agynio.api.gateway.v1.AppsGateway/GetInstallation"
+	// AppsGatewayGetInstallationBySlugProcedure is the fully-qualified name of the AppsGateway's
+	// GetInstallationBySlug RPC.
+	AppsGatewayGetInstallationBySlugProcedure = "/agynio.api.gateway.v1.AppsGateway/GetInstallationBySlug"
+	// AppsGatewayListInstallationsProcedure is the fully-qualified name of the AppsGateway's
+	// ListInstallations RPC.
+	AppsGatewayListInstallationsProcedure = "/agynio.api.gateway.v1.AppsGateway/ListInstallations"
+	// AppsGatewayUpdateInstallationProcedure is the fully-qualified name of the AppsGateway's
+	// UpdateInstallation RPC.
+	AppsGatewayUpdateInstallationProcedure = "/agynio.api.gateway.v1.AppsGateway/UpdateInstallation"
+	// AppsGatewayUninstallAppProcedure is the fully-qualified name of the AppsGateway's UninstallApp
+	// RPC.
+	AppsGatewayUninstallAppProcedure = "/agynio.api.gateway.v1.AppsGateway/UninstallApp"
 )
 
 // AppsGatewayClient is a client for the agynio.api.gateway.v1.AppsGateway service.
 type AppsGatewayClient interface {
-	RegisterApp(context.Context, *connect.Request[v1.RegisterAppRequest]) (*connect.Response[v1.RegisterAppResponse], error)
+	CreateApp(context.Context, *connect.Request[v1.CreateAppRequest]) (*connect.Response[v1.CreateAppResponse], error)
+	UpdateApp(context.Context, *connect.Request[v1.UpdateAppRequest]) (*connect.Response[v1.UpdateAppResponse], error)
 	GetApp(context.Context, *connect.Request[v1.GetAppRequest]) (*connect.Response[v1.GetAppResponse], error)
+	GetAppBySlug(context.Context, *connect.Request[v1.GetAppBySlugRequest]) (*connect.Response[v1.GetAppBySlugResponse], error)
 	ListApps(context.Context, *connect.Request[v1.ListAppsRequest]) (*connect.Response[v1.ListAppsResponse], error)
 	DeleteApp(context.Context, *connect.Request[v1.DeleteAppRequest]) (*connect.Response[v1.DeleteAppResponse], error)
+	EnrollApp(context.Context, *connect.Request[v1.EnrollAppRequest]) (*connect.Response[v1.EnrollAppResponse], error)
+	InstallApp(context.Context, *connect.Request[v1.InstallAppRequest]) (*connect.Response[v1.InstallAppResponse], error)
+	GetInstallation(context.Context, *connect.Request[v1.GetInstallationRequest]) (*connect.Response[v1.GetInstallationResponse], error)
+	GetInstallationBySlug(context.Context, *connect.Request[v1.GetInstallationBySlugRequest]) (*connect.Response[v1.GetInstallationBySlugResponse], error)
+	ListInstallations(context.Context, *connect.Request[v1.ListInstallationsRequest]) (*connect.Response[v1.ListInstallationsResponse], error)
+	UpdateInstallation(context.Context, *connect.Request[v1.UpdateInstallationRequest]) (*connect.Response[v1.UpdateInstallationResponse], error)
+	UninstallApp(context.Context, *connect.Request[v1.UninstallAppRequest]) (*connect.Response[v1.UninstallAppResponse], error)
 }
 
 // NewAppsGatewayClient constructs a client for the agynio.api.gateway.v1.AppsGateway service. By
@@ -63,16 +96,28 @@ func NewAppsGatewayClient(httpClient connect.HTTPClient, baseURL string, opts ..
 	baseURL = strings.TrimRight(baseURL, "/")
 	appsGatewayMethods := v11.File_agynio_api_gateway_v1_apps_proto.Services().ByName("AppsGateway").Methods()
 	return &appsGatewayClient{
-		registerApp: connect.NewClient[v1.RegisterAppRequest, v1.RegisterAppResponse](
+		createApp: connect.NewClient[v1.CreateAppRequest, v1.CreateAppResponse](
 			httpClient,
-			baseURL+AppsGatewayRegisterAppProcedure,
-			connect.WithSchema(appsGatewayMethods.ByName("RegisterApp")),
+			baseURL+AppsGatewayCreateAppProcedure,
+			connect.WithSchema(appsGatewayMethods.ByName("CreateApp")),
+			connect.WithClientOptions(opts...),
+		),
+		updateApp: connect.NewClient[v1.UpdateAppRequest, v1.UpdateAppResponse](
+			httpClient,
+			baseURL+AppsGatewayUpdateAppProcedure,
+			connect.WithSchema(appsGatewayMethods.ByName("UpdateApp")),
 			connect.WithClientOptions(opts...),
 		),
 		getApp: connect.NewClient[v1.GetAppRequest, v1.GetAppResponse](
 			httpClient,
 			baseURL+AppsGatewayGetAppProcedure,
 			connect.WithSchema(appsGatewayMethods.ByName("GetApp")),
+			connect.WithClientOptions(opts...),
+		),
+		getAppBySlug: connect.NewClient[v1.GetAppBySlugRequest, v1.GetAppBySlugResponse](
+			httpClient,
+			baseURL+AppsGatewayGetAppBySlugProcedure,
+			connect.WithSchema(appsGatewayMethods.ByName("GetAppBySlug")),
 			connect.WithClientOptions(opts...),
 		),
 		listApps: connect.NewClient[v1.ListAppsRequest, v1.ListAppsResponse](
@@ -87,25 +132,86 @@ func NewAppsGatewayClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(appsGatewayMethods.ByName("DeleteApp")),
 			connect.WithClientOptions(opts...),
 		),
+		enrollApp: connect.NewClient[v1.EnrollAppRequest, v1.EnrollAppResponse](
+			httpClient,
+			baseURL+AppsGatewayEnrollAppProcedure,
+			connect.WithSchema(appsGatewayMethods.ByName("EnrollApp")),
+			connect.WithClientOptions(opts...),
+		),
+		installApp: connect.NewClient[v1.InstallAppRequest, v1.InstallAppResponse](
+			httpClient,
+			baseURL+AppsGatewayInstallAppProcedure,
+			connect.WithSchema(appsGatewayMethods.ByName("InstallApp")),
+			connect.WithClientOptions(opts...),
+		),
+		getInstallation: connect.NewClient[v1.GetInstallationRequest, v1.GetInstallationResponse](
+			httpClient,
+			baseURL+AppsGatewayGetInstallationProcedure,
+			connect.WithSchema(appsGatewayMethods.ByName("GetInstallation")),
+			connect.WithClientOptions(opts...),
+		),
+		getInstallationBySlug: connect.NewClient[v1.GetInstallationBySlugRequest, v1.GetInstallationBySlugResponse](
+			httpClient,
+			baseURL+AppsGatewayGetInstallationBySlugProcedure,
+			connect.WithSchema(appsGatewayMethods.ByName("GetInstallationBySlug")),
+			connect.WithClientOptions(opts...),
+		),
+		listInstallations: connect.NewClient[v1.ListInstallationsRequest, v1.ListInstallationsResponse](
+			httpClient,
+			baseURL+AppsGatewayListInstallationsProcedure,
+			connect.WithSchema(appsGatewayMethods.ByName("ListInstallations")),
+			connect.WithClientOptions(opts...),
+		),
+		updateInstallation: connect.NewClient[v1.UpdateInstallationRequest, v1.UpdateInstallationResponse](
+			httpClient,
+			baseURL+AppsGatewayUpdateInstallationProcedure,
+			connect.WithSchema(appsGatewayMethods.ByName("UpdateInstallation")),
+			connect.WithClientOptions(opts...),
+		),
+		uninstallApp: connect.NewClient[v1.UninstallAppRequest, v1.UninstallAppResponse](
+			httpClient,
+			baseURL+AppsGatewayUninstallAppProcedure,
+			connect.WithSchema(appsGatewayMethods.ByName("UninstallApp")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // appsGatewayClient implements AppsGatewayClient.
 type appsGatewayClient struct {
-	registerApp *connect.Client[v1.RegisterAppRequest, v1.RegisterAppResponse]
-	getApp      *connect.Client[v1.GetAppRequest, v1.GetAppResponse]
-	listApps    *connect.Client[v1.ListAppsRequest, v1.ListAppsResponse]
-	deleteApp   *connect.Client[v1.DeleteAppRequest, v1.DeleteAppResponse]
+	createApp             *connect.Client[v1.CreateAppRequest, v1.CreateAppResponse]
+	updateApp             *connect.Client[v1.UpdateAppRequest, v1.UpdateAppResponse]
+	getApp                *connect.Client[v1.GetAppRequest, v1.GetAppResponse]
+	getAppBySlug          *connect.Client[v1.GetAppBySlugRequest, v1.GetAppBySlugResponse]
+	listApps              *connect.Client[v1.ListAppsRequest, v1.ListAppsResponse]
+	deleteApp             *connect.Client[v1.DeleteAppRequest, v1.DeleteAppResponse]
+	enrollApp             *connect.Client[v1.EnrollAppRequest, v1.EnrollAppResponse]
+	installApp            *connect.Client[v1.InstallAppRequest, v1.InstallAppResponse]
+	getInstallation       *connect.Client[v1.GetInstallationRequest, v1.GetInstallationResponse]
+	getInstallationBySlug *connect.Client[v1.GetInstallationBySlugRequest, v1.GetInstallationBySlugResponse]
+	listInstallations     *connect.Client[v1.ListInstallationsRequest, v1.ListInstallationsResponse]
+	updateInstallation    *connect.Client[v1.UpdateInstallationRequest, v1.UpdateInstallationResponse]
+	uninstallApp          *connect.Client[v1.UninstallAppRequest, v1.UninstallAppResponse]
 }
 
-// RegisterApp calls agynio.api.gateway.v1.AppsGateway.RegisterApp.
-func (c *appsGatewayClient) RegisterApp(ctx context.Context, req *connect.Request[v1.RegisterAppRequest]) (*connect.Response[v1.RegisterAppResponse], error) {
-	return c.registerApp.CallUnary(ctx, req)
+// CreateApp calls agynio.api.gateway.v1.AppsGateway.CreateApp.
+func (c *appsGatewayClient) CreateApp(ctx context.Context, req *connect.Request[v1.CreateAppRequest]) (*connect.Response[v1.CreateAppResponse], error) {
+	return c.createApp.CallUnary(ctx, req)
+}
+
+// UpdateApp calls agynio.api.gateway.v1.AppsGateway.UpdateApp.
+func (c *appsGatewayClient) UpdateApp(ctx context.Context, req *connect.Request[v1.UpdateAppRequest]) (*connect.Response[v1.UpdateAppResponse], error) {
+	return c.updateApp.CallUnary(ctx, req)
 }
 
 // GetApp calls agynio.api.gateway.v1.AppsGateway.GetApp.
 func (c *appsGatewayClient) GetApp(ctx context.Context, req *connect.Request[v1.GetAppRequest]) (*connect.Response[v1.GetAppResponse], error) {
 	return c.getApp.CallUnary(ctx, req)
+}
+
+// GetAppBySlug calls agynio.api.gateway.v1.AppsGateway.GetAppBySlug.
+func (c *appsGatewayClient) GetAppBySlug(ctx context.Context, req *connect.Request[v1.GetAppBySlugRequest]) (*connect.Response[v1.GetAppBySlugResponse], error) {
+	return c.getAppBySlug.CallUnary(ctx, req)
 }
 
 // ListApps calls agynio.api.gateway.v1.AppsGateway.ListApps.
@@ -118,12 +224,56 @@ func (c *appsGatewayClient) DeleteApp(ctx context.Context, req *connect.Request[
 	return c.deleteApp.CallUnary(ctx, req)
 }
 
+// EnrollApp calls agynio.api.gateway.v1.AppsGateway.EnrollApp.
+func (c *appsGatewayClient) EnrollApp(ctx context.Context, req *connect.Request[v1.EnrollAppRequest]) (*connect.Response[v1.EnrollAppResponse], error) {
+	return c.enrollApp.CallUnary(ctx, req)
+}
+
+// InstallApp calls agynio.api.gateway.v1.AppsGateway.InstallApp.
+func (c *appsGatewayClient) InstallApp(ctx context.Context, req *connect.Request[v1.InstallAppRequest]) (*connect.Response[v1.InstallAppResponse], error) {
+	return c.installApp.CallUnary(ctx, req)
+}
+
+// GetInstallation calls agynio.api.gateway.v1.AppsGateway.GetInstallation.
+func (c *appsGatewayClient) GetInstallation(ctx context.Context, req *connect.Request[v1.GetInstallationRequest]) (*connect.Response[v1.GetInstallationResponse], error) {
+	return c.getInstallation.CallUnary(ctx, req)
+}
+
+// GetInstallationBySlug calls agynio.api.gateway.v1.AppsGateway.GetInstallationBySlug.
+func (c *appsGatewayClient) GetInstallationBySlug(ctx context.Context, req *connect.Request[v1.GetInstallationBySlugRequest]) (*connect.Response[v1.GetInstallationBySlugResponse], error) {
+	return c.getInstallationBySlug.CallUnary(ctx, req)
+}
+
+// ListInstallations calls agynio.api.gateway.v1.AppsGateway.ListInstallations.
+func (c *appsGatewayClient) ListInstallations(ctx context.Context, req *connect.Request[v1.ListInstallationsRequest]) (*connect.Response[v1.ListInstallationsResponse], error) {
+	return c.listInstallations.CallUnary(ctx, req)
+}
+
+// UpdateInstallation calls agynio.api.gateway.v1.AppsGateway.UpdateInstallation.
+func (c *appsGatewayClient) UpdateInstallation(ctx context.Context, req *connect.Request[v1.UpdateInstallationRequest]) (*connect.Response[v1.UpdateInstallationResponse], error) {
+	return c.updateInstallation.CallUnary(ctx, req)
+}
+
+// UninstallApp calls agynio.api.gateway.v1.AppsGateway.UninstallApp.
+func (c *appsGatewayClient) UninstallApp(ctx context.Context, req *connect.Request[v1.UninstallAppRequest]) (*connect.Response[v1.UninstallAppResponse], error) {
+	return c.uninstallApp.CallUnary(ctx, req)
+}
+
 // AppsGatewayHandler is an implementation of the agynio.api.gateway.v1.AppsGateway service.
 type AppsGatewayHandler interface {
-	RegisterApp(context.Context, *connect.Request[v1.RegisterAppRequest]) (*connect.Response[v1.RegisterAppResponse], error)
+	CreateApp(context.Context, *connect.Request[v1.CreateAppRequest]) (*connect.Response[v1.CreateAppResponse], error)
+	UpdateApp(context.Context, *connect.Request[v1.UpdateAppRequest]) (*connect.Response[v1.UpdateAppResponse], error)
 	GetApp(context.Context, *connect.Request[v1.GetAppRequest]) (*connect.Response[v1.GetAppResponse], error)
+	GetAppBySlug(context.Context, *connect.Request[v1.GetAppBySlugRequest]) (*connect.Response[v1.GetAppBySlugResponse], error)
 	ListApps(context.Context, *connect.Request[v1.ListAppsRequest]) (*connect.Response[v1.ListAppsResponse], error)
 	DeleteApp(context.Context, *connect.Request[v1.DeleteAppRequest]) (*connect.Response[v1.DeleteAppResponse], error)
+	EnrollApp(context.Context, *connect.Request[v1.EnrollAppRequest]) (*connect.Response[v1.EnrollAppResponse], error)
+	InstallApp(context.Context, *connect.Request[v1.InstallAppRequest]) (*connect.Response[v1.InstallAppResponse], error)
+	GetInstallation(context.Context, *connect.Request[v1.GetInstallationRequest]) (*connect.Response[v1.GetInstallationResponse], error)
+	GetInstallationBySlug(context.Context, *connect.Request[v1.GetInstallationBySlugRequest]) (*connect.Response[v1.GetInstallationBySlugResponse], error)
+	ListInstallations(context.Context, *connect.Request[v1.ListInstallationsRequest]) (*connect.Response[v1.ListInstallationsResponse], error)
+	UpdateInstallation(context.Context, *connect.Request[v1.UpdateInstallationRequest]) (*connect.Response[v1.UpdateInstallationResponse], error)
+	UninstallApp(context.Context, *connect.Request[v1.UninstallAppRequest]) (*connect.Response[v1.UninstallAppResponse], error)
 }
 
 // NewAppsGatewayHandler builds an HTTP handler from the service implementation. It returns the path
@@ -133,16 +283,28 @@ type AppsGatewayHandler interface {
 // and JSON codecs. They also support gzip compression.
 func NewAppsGatewayHandler(svc AppsGatewayHandler, opts ...connect.HandlerOption) (string, http.Handler) {
 	appsGatewayMethods := v11.File_agynio_api_gateway_v1_apps_proto.Services().ByName("AppsGateway").Methods()
-	appsGatewayRegisterAppHandler := connect.NewUnaryHandler(
-		AppsGatewayRegisterAppProcedure,
-		svc.RegisterApp,
-		connect.WithSchema(appsGatewayMethods.ByName("RegisterApp")),
+	appsGatewayCreateAppHandler := connect.NewUnaryHandler(
+		AppsGatewayCreateAppProcedure,
+		svc.CreateApp,
+		connect.WithSchema(appsGatewayMethods.ByName("CreateApp")),
+		connect.WithHandlerOptions(opts...),
+	)
+	appsGatewayUpdateAppHandler := connect.NewUnaryHandler(
+		AppsGatewayUpdateAppProcedure,
+		svc.UpdateApp,
+		connect.WithSchema(appsGatewayMethods.ByName("UpdateApp")),
 		connect.WithHandlerOptions(opts...),
 	)
 	appsGatewayGetAppHandler := connect.NewUnaryHandler(
 		AppsGatewayGetAppProcedure,
 		svc.GetApp,
 		connect.WithSchema(appsGatewayMethods.ByName("GetApp")),
+		connect.WithHandlerOptions(opts...),
+	)
+	appsGatewayGetAppBySlugHandler := connect.NewUnaryHandler(
+		AppsGatewayGetAppBySlugProcedure,
+		svc.GetAppBySlug,
+		connect.WithSchema(appsGatewayMethods.ByName("GetAppBySlug")),
 		connect.WithHandlerOptions(opts...),
 	)
 	appsGatewayListAppsHandler := connect.NewUnaryHandler(
@@ -157,16 +319,76 @@ func NewAppsGatewayHandler(svc AppsGatewayHandler, opts ...connect.HandlerOption
 		connect.WithSchema(appsGatewayMethods.ByName("DeleteApp")),
 		connect.WithHandlerOptions(opts...),
 	)
+	appsGatewayEnrollAppHandler := connect.NewUnaryHandler(
+		AppsGatewayEnrollAppProcedure,
+		svc.EnrollApp,
+		connect.WithSchema(appsGatewayMethods.ByName("EnrollApp")),
+		connect.WithHandlerOptions(opts...),
+	)
+	appsGatewayInstallAppHandler := connect.NewUnaryHandler(
+		AppsGatewayInstallAppProcedure,
+		svc.InstallApp,
+		connect.WithSchema(appsGatewayMethods.ByName("InstallApp")),
+		connect.WithHandlerOptions(opts...),
+	)
+	appsGatewayGetInstallationHandler := connect.NewUnaryHandler(
+		AppsGatewayGetInstallationProcedure,
+		svc.GetInstallation,
+		connect.WithSchema(appsGatewayMethods.ByName("GetInstallation")),
+		connect.WithHandlerOptions(opts...),
+	)
+	appsGatewayGetInstallationBySlugHandler := connect.NewUnaryHandler(
+		AppsGatewayGetInstallationBySlugProcedure,
+		svc.GetInstallationBySlug,
+		connect.WithSchema(appsGatewayMethods.ByName("GetInstallationBySlug")),
+		connect.WithHandlerOptions(opts...),
+	)
+	appsGatewayListInstallationsHandler := connect.NewUnaryHandler(
+		AppsGatewayListInstallationsProcedure,
+		svc.ListInstallations,
+		connect.WithSchema(appsGatewayMethods.ByName("ListInstallations")),
+		connect.WithHandlerOptions(opts...),
+	)
+	appsGatewayUpdateInstallationHandler := connect.NewUnaryHandler(
+		AppsGatewayUpdateInstallationProcedure,
+		svc.UpdateInstallation,
+		connect.WithSchema(appsGatewayMethods.ByName("UpdateInstallation")),
+		connect.WithHandlerOptions(opts...),
+	)
+	appsGatewayUninstallAppHandler := connect.NewUnaryHandler(
+		AppsGatewayUninstallAppProcedure,
+		svc.UninstallApp,
+		connect.WithSchema(appsGatewayMethods.ByName("UninstallApp")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/agynio.api.gateway.v1.AppsGateway/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
-		case AppsGatewayRegisterAppProcedure:
-			appsGatewayRegisterAppHandler.ServeHTTP(w, r)
+		case AppsGatewayCreateAppProcedure:
+			appsGatewayCreateAppHandler.ServeHTTP(w, r)
+		case AppsGatewayUpdateAppProcedure:
+			appsGatewayUpdateAppHandler.ServeHTTP(w, r)
 		case AppsGatewayGetAppProcedure:
 			appsGatewayGetAppHandler.ServeHTTP(w, r)
+		case AppsGatewayGetAppBySlugProcedure:
+			appsGatewayGetAppBySlugHandler.ServeHTTP(w, r)
 		case AppsGatewayListAppsProcedure:
 			appsGatewayListAppsHandler.ServeHTTP(w, r)
 		case AppsGatewayDeleteAppProcedure:
 			appsGatewayDeleteAppHandler.ServeHTTP(w, r)
+		case AppsGatewayEnrollAppProcedure:
+			appsGatewayEnrollAppHandler.ServeHTTP(w, r)
+		case AppsGatewayInstallAppProcedure:
+			appsGatewayInstallAppHandler.ServeHTTP(w, r)
+		case AppsGatewayGetInstallationProcedure:
+			appsGatewayGetInstallationHandler.ServeHTTP(w, r)
+		case AppsGatewayGetInstallationBySlugProcedure:
+			appsGatewayGetInstallationBySlugHandler.ServeHTTP(w, r)
+		case AppsGatewayListInstallationsProcedure:
+			appsGatewayListInstallationsHandler.ServeHTTP(w, r)
+		case AppsGatewayUpdateInstallationProcedure:
+			appsGatewayUpdateInstallationHandler.ServeHTTP(w, r)
+		case AppsGatewayUninstallAppProcedure:
+			appsGatewayUninstallAppHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -176,12 +398,20 @@ func NewAppsGatewayHandler(svc AppsGatewayHandler, opts ...connect.HandlerOption
 // UnimplementedAppsGatewayHandler returns CodeUnimplemented from all methods.
 type UnimplementedAppsGatewayHandler struct{}
 
-func (UnimplementedAppsGatewayHandler) RegisterApp(context.Context, *connect.Request[v1.RegisterAppRequest]) (*connect.Response[v1.RegisterAppResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("agynio.api.gateway.v1.AppsGateway.RegisterApp is not implemented"))
+func (UnimplementedAppsGatewayHandler) CreateApp(context.Context, *connect.Request[v1.CreateAppRequest]) (*connect.Response[v1.CreateAppResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("agynio.api.gateway.v1.AppsGateway.CreateApp is not implemented"))
+}
+
+func (UnimplementedAppsGatewayHandler) UpdateApp(context.Context, *connect.Request[v1.UpdateAppRequest]) (*connect.Response[v1.UpdateAppResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("agynio.api.gateway.v1.AppsGateway.UpdateApp is not implemented"))
 }
 
 func (UnimplementedAppsGatewayHandler) GetApp(context.Context, *connect.Request[v1.GetAppRequest]) (*connect.Response[v1.GetAppResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("agynio.api.gateway.v1.AppsGateway.GetApp is not implemented"))
+}
+
+func (UnimplementedAppsGatewayHandler) GetAppBySlug(context.Context, *connect.Request[v1.GetAppBySlugRequest]) (*connect.Response[v1.GetAppBySlugResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("agynio.api.gateway.v1.AppsGateway.GetAppBySlug is not implemented"))
 }
 
 func (UnimplementedAppsGatewayHandler) ListApps(context.Context, *connect.Request[v1.ListAppsRequest]) (*connect.Response[v1.ListAppsResponse], error) {
@@ -190,4 +420,32 @@ func (UnimplementedAppsGatewayHandler) ListApps(context.Context, *connect.Reques
 
 func (UnimplementedAppsGatewayHandler) DeleteApp(context.Context, *connect.Request[v1.DeleteAppRequest]) (*connect.Response[v1.DeleteAppResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("agynio.api.gateway.v1.AppsGateway.DeleteApp is not implemented"))
+}
+
+func (UnimplementedAppsGatewayHandler) EnrollApp(context.Context, *connect.Request[v1.EnrollAppRequest]) (*connect.Response[v1.EnrollAppResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("agynio.api.gateway.v1.AppsGateway.EnrollApp is not implemented"))
+}
+
+func (UnimplementedAppsGatewayHandler) InstallApp(context.Context, *connect.Request[v1.InstallAppRequest]) (*connect.Response[v1.InstallAppResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("agynio.api.gateway.v1.AppsGateway.InstallApp is not implemented"))
+}
+
+func (UnimplementedAppsGatewayHandler) GetInstallation(context.Context, *connect.Request[v1.GetInstallationRequest]) (*connect.Response[v1.GetInstallationResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("agynio.api.gateway.v1.AppsGateway.GetInstallation is not implemented"))
+}
+
+func (UnimplementedAppsGatewayHandler) GetInstallationBySlug(context.Context, *connect.Request[v1.GetInstallationBySlugRequest]) (*connect.Response[v1.GetInstallationBySlugResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("agynio.api.gateway.v1.AppsGateway.GetInstallationBySlug is not implemented"))
+}
+
+func (UnimplementedAppsGatewayHandler) ListInstallations(context.Context, *connect.Request[v1.ListInstallationsRequest]) (*connect.Response[v1.ListInstallationsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("agynio.api.gateway.v1.AppsGateway.ListInstallations is not implemented"))
+}
+
+func (UnimplementedAppsGatewayHandler) UpdateInstallation(context.Context, *connect.Request[v1.UpdateInstallationRequest]) (*connect.Response[v1.UpdateInstallationResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("agynio.api.gateway.v1.AppsGateway.UpdateInstallation is not implemented"))
+}
+
+func (UnimplementedAppsGatewayHandler) UninstallApp(context.Context, *connect.Request[v1.UninstallAppRequest]) (*connect.Response[v1.UninstallAppResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("agynio.api.gateway.v1.AppsGateway.UninstallApp is not implemented"))
 }

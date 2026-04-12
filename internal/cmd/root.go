@@ -24,6 +24,7 @@ type contextKey struct{}
 var (
 	gatewayURLFlag string
 	outputFlag     string
+	formatFlag     string
 	noColorFlag    bool
 )
 
@@ -37,18 +38,27 @@ var rootCmd = &cobra.Command{
 			return err
 		}
 
-		format, err := output.ParseFormat(outputFlag)
+		outputValue := outputFlag
+		outputChanged := cmd.Flags().Changed("output")
+		formatChanged := cmd.Flags().Changed("format")
+		if formatChanged && outputChanged {
+			return fmt.Errorf("--output and --format are mutually exclusive")
+		}
+		if formatChanged {
+			outputValue = formatFlag
+		}
+		format, err := output.ParseFormat(outputValue)
 		if err != nil {
 			return err
 		}
 
-		token, err := auth.LoadToken()
+		target := cfg.ResolveGatewayTarget(gatewayURLFlag)
+		token, err := auth.LoadToken(auth.TokenOptions{AllowMissing: target.UsesZiti})
 		if err != nil {
 			return err
 		}
 
-		baseURL := cfg.ResolveGatewayURL(gatewayURLFlag)
-		clients := gateway.NewClients(baseURL, token)
+		clients := gateway.NewClients(target.URL, token)
 
 		runContext := &RunContext{
 			Config:       cfg,
@@ -84,5 +94,6 @@ func withRunContext(ctx context.Context, runContext *RunContext) context.Context
 func init() {
 	rootCmd.PersistentFlags().StringVar(&gatewayURLFlag, "gateway-url", "", "Gateway base URL")
 	rootCmd.PersistentFlags().StringVarP(&outputFlag, "output", "o", string(output.FormatTable), "Output format: table, json, or yaml")
+	rootCmd.PersistentFlags().StringVar(&formatFlag, "format", string(output.FormatTable), "Output format: table, json, or yaml")
 	rootCmd.PersistentFlags().BoolVar(&noColorFlag, "no-color", false, "Disable color output")
 }
