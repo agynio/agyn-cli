@@ -22,6 +22,7 @@ const (
 	ConfigDir         = ".agyn"
 	ConfigFile        = "config.yaml"
 	CredentialsFile   = "credentials"
+	AgynGatewayURLEnv = "AGYN_GATEWAY_URL"
 	GatewayAddressEnv = "GATEWAY_ADDRESS"
 )
 
@@ -57,7 +58,7 @@ func (c *Config) ResolveGatewayURL(flagURL string) string {
 	if flagURL != "" {
 		return flagURL
 	}
-	if envURL := normalizeGatewayEnvURL(os.Getenv("AGYN_GATEWAY_URL")); envURL != "" {
+	if envURL := normalizeGatewayEnvURL(os.Getenv(AgynGatewayURLEnv)); envURL != "" {
 		return envURL
 	}
 	if envURL := normalizeGatewayEnvURL(os.Getenv(GatewayAddressEnv)); envURL != "" {

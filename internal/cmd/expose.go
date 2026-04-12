@@ -20,6 +20,7 @@ type exposureOutput struct {
 const (
 	workloadIDEnv          = "WORKLOAD_ID"
 	agentIDEnv             = "AGENT_ID"
+	hostnameEnv            = "HOSTNAME"
 	workloadHostnamePrefix = "workload-"
 )
 
@@ -52,7 +53,7 @@ func resolveWorkloadID() (string, error) {
 		return value, nil
 	}
 
-	hostname := strings.TrimSpace(os.Getenv("HOSTNAME"))
+	hostname := strings.TrimSpace(os.Getenv(hostnameEnv))
 	if strings.HasPrefix(hostname, workloadHostnamePrefix) {
 		suffix := strings.TrimPrefix(hostname, workloadHostnamePrefix)
 		if suffix != "" {
@@ -60,7 +61,7 @@ func resolveWorkloadID() (string, error) {
 		}
 	}
 
-	return "", fmt.Errorf("workload id unavailable; set %s or ensure HOSTNAME starts with %q", workloadIDEnv, workloadHostnamePrefix)
+	return "", fmt.Errorf("workload id unavailable; set %s or ensure %s starts with %q", workloadIDEnv, hostnameEnv, workloadHostnamePrefix)
 }
 
 func agentIDFromEnv() string {
