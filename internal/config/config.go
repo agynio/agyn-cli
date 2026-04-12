@@ -21,6 +21,7 @@ const (
 	ConfigDir         = ".agyn"
 	ConfigFile        = "config.yaml"
 	CredentialsFile   = "credentials"
+	GatewayAddressEnv = "GATEWAY_ADDRESS"
 )
 
 func Load() (*Config, error) {
@@ -56,6 +57,9 @@ func (c *Config) ResolveGatewayURL(flagURL string) string {
 		return flagURL
 	}
 	if envURL := os.Getenv("AGYN_GATEWAY_URL"); envURL != "" {
+		return envURL
+	}
+	if envURL := os.Getenv(GatewayAddressEnv); envURL != "" {
 		return envURL
 	}
 	return c.Gateway.URL
