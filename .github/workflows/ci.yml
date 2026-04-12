@@ -18,5 +18,7 @@ jobs:
         run: go vet ./...
       - name: Test
         run: go test ./...
+      - name: Command smoke test
+        run: bash scripts/command_smoke_test.sh
       - name: Build
         run: go build ./cmd/agyn
