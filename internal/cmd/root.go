@@ -2,8 +2,10 @@ package cmd
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/agynio/agyn-cli/internal/auth"
 	"github.com/agynio/agyn-cli/internal/config"
@@ -44,12 +46,11 @@ var rootCmd = &cobra.Command{
 
 		var clients *gateway.Clients
 		if requiresAuth(cmd) {
-			token, err := auth.LoadToken()
+			baseURL := cfg.ResolveGatewayURL(gatewayURLFlag)
+			token, err := loadAuthToken(baseURL)
 			if err != nil {
 				return err
 			}
-
-			baseURL := cfg.ResolveGatewayURL(gatewayURLFlag)
 			clients = gateway.NewClients(baseURL, token)
 		}
 
@@ -92,6 +93,27 @@ func requiresAuth(cmd *cobra.Command) bool {
 		return false
 	}
 	return true
+}
+
+func loadAuthToken(baseURL string) (string, error) {
+	token, err := auth.LoadToken()
+	if err == nil {
+		return token, nil
+	}
+	if allowMissingToken(err, baseURL) {
+		return "", nil
+	}
+	return "", err
+}
+
+func allowMissingToken(err error, baseURL string) bool {
+	if !errors.Is(err, auth.ErrCredentialsNotFound) {
+		return false
+	}
+	if strings.TrimSpace(os.Getenv("GATEWAY_ADDRESS")) != "" {
+		return true
+	}
+	return strings.Contains(strings.ToLower(baseURL), ".ziti")
 }
 
 func init() {

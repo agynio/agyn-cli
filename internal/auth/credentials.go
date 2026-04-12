@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -8,6 +9,20 @@ import (
 
 	"github.com/agynio/agyn-cli/internal/config"
 )
+
+var ErrCredentialsNotFound = errors.New("credentials not found")
+
+type credentialsNotFoundError struct {
+	path string
+}
+
+func (e credentialsNotFoundError) Error() string {
+	return fmt.Sprintf("no credentials found; run 'agyn auth login' or place a token in %s", e.path)
+}
+
+func (e credentialsNotFoundError) Is(target error) bool {
+	return target == ErrCredentialsNotFound
+}
 
 func LoadToken() (string, error) {
 	home, err := os.UserHomeDir()
@@ -19,7 +34,7 @@ func LoadToken() (string, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return "", fmt.Errorf("no credentials found; run 'agyn auth login' or place a token in %s", path)
+			return "", credentialsNotFoundError{path: path}
 		}
 		return "", fmt.Errorf("read credentials: %w", err)
 	}
