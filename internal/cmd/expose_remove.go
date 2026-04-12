@@ -34,7 +34,7 @@ func newExposeRemoveCmd() *cobra.Command {
 				runContext.Clients.ConnectOpts()...,
 			)
 
-			_, err = client.RemoveExposure(cmd.Context(), connect.NewRequest(&gatewayv1.RemoveExposureRequest{
+			_, err = client.RemoveExposureForCaller(cmd.Context(), connect.NewRequest(&gatewayv1.RemoveExposureForCallerRequest{
 				Port: int32(port),
 			}))
 			if err != nil {

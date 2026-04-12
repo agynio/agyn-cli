@@ -30,7 +30,7 @@ func newExposeListCmd() *cobra.Command {
 				runContext.Clients.ConnectOpts()...,
 			)
 
-			response, err := client.ListExposures(cmd.Context(), connect.NewRequest(&gatewayv1.ListExposuresRequest{}))
+			response, err := client.ListExposuresForCaller(cmd.Context(), connect.NewRequest(&gatewayv1.ListExposuresForCallerRequest{}))
 			if err != nil {
 				return err
 			}

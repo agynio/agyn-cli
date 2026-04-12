@@ -35,7 +35,7 @@ func newExposeAddCmd() *cobra.Command {
 				runContext.Clients.ConnectOpts()...,
 			)
 
-			response, err := client.AddExposure(cmd.Context(), connect.NewRequest(&gatewayv1.AddExposureRequest{
+			response, err := client.AddExposureForCaller(cmd.Context(), connect.NewRequest(&gatewayv1.AddExposureForCallerRequest{
 				Port: int32(port),
 			}))
 			if err != nil {
