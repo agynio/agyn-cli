@@ -5,11 +5,12 @@ import (
 	"testing"
 
 	"github.com/agynio/agyn-cli/internal/auth"
+	"github.com/agynio/agyn-cli/internal/config"
 )
 
 func TestLoadAuthTokenAllowsMissingCredentialsInPod(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
-	t.Setenv("GATEWAY_ADDRESS", "https://gateway.ziti")
+	t.Setenv(config.GatewayAddressEnv, "https://gateway.ziti")
 
 	token, err := loadAuthToken("https://gateway.agyn.dev")
 	if err != nil {
@@ -22,7 +23,7 @@ func TestLoadAuthTokenAllowsMissingCredentialsInPod(t *testing.T) {
 
 func TestLoadAuthTokenAllowsMissingCredentialsForZitiURL(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
-	t.Setenv("GATEWAY_ADDRESS", "")
+	t.Setenv(config.GatewayAddressEnv, "")
 
 	token, err := loadAuthToken("https://gateway.ziti")
 	if err != nil {
@@ -35,7 +36,7 @@ func TestLoadAuthTokenAllowsMissingCredentialsForZitiURL(t *testing.T) {
 
 func TestLoadAuthTokenMissingCredentialsOutsidePod(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
-	t.Setenv("GATEWAY_ADDRESS", "")
+	t.Setenv(config.GatewayAddressEnv, "")
 
 	_, err := loadAuthToken("https://gateway.agyn.dev")
 	if err == nil {

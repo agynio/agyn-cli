@@ -29,6 +29,11 @@ var (
 	noColorFlag    bool
 )
 
+const (
+	// OpenZiti gateways use .ziti hostnames inside agent pods.
+	zitiGatewaySuffix = ".ziti"
+)
+
 var rootCmd = &cobra.Command{
 	Use:          "agyn",
 	Short:        "Agyn CLI",
@@ -110,10 +115,10 @@ func allowMissingToken(err error, baseURL string) bool {
 	if !errors.Is(err, auth.ErrCredentialsNotFound) {
 		return false
 	}
-	if strings.TrimSpace(os.Getenv("GATEWAY_ADDRESS")) != "" {
+	if strings.TrimSpace(os.Getenv(config.GatewayAddressEnv)) != "" {
 		return true
 	}
-	return strings.Contains(strings.ToLower(baseURL), ".ziti")
+	return strings.Contains(strings.ToLower(baseURL), zitiGatewaySuffix)
 }
 
 func init() {
