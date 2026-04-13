@@ -43,15 +43,6 @@ const (
 	// ExposeGatewayListExposuresProcedure is the fully-qualified name of the ExposeGateway's
 	// ListExposures RPC.
 	ExposeGatewayListExposuresProcedure = "/agynio.api.gateway.v1.ExposeGateway/ListExposures"
-	// ExposeGatewayAddExposureForCallerProcedure is the fully-qualified name of the ExposeGateway's
-	// AddExposureForCaller RPC.
-	ExposeGatewayAddExposureForCallerProcedure = "/agynio.api.gateway.v1.ExposeGateway/AddExposureForCaller"
-	// ExposeGatewayRemoveExposureForCallerProcedure is the fully-qualified name of the ExposeGateway's
-	// RemoveExposureForCaller RPC.
-	ExposeGatewayRemoveExposureForCallerProcedure = "/agynio.api.gateway.v1.ExposeGateway/RemoveExposureForCaller"
-	// ExposeGatewayListExposuresForCallerProcedure is the fully-qualified name of the ExposeGateway's
-	// ListExposuresForCaller RPC.
-	ExposeGatewayListExposuresForCallerProcedure = "/agynio.api.gateway.v1.ExposeGateway/ListExposuresForCaller"
 )
 
 // ExposeGatewayClient is a client for the agynio.api.gateway.v1.ExposeGateway service.
@@ -62,12 +53,6 @@ type ExposeGatewayClient interface {
 	RemoveExposure(context.Context, *connect.Request[v1.RemoveExposureRequest]) (*connect.Response[v1.RemoveExposureResponse], error)
 	// List active exposures for an agent workload.
 	ListExposures(context.Context, *connect.Request[v1.ListExposuresRequest]) (*connect.Response[v1.ListExposuresResponse], error)
-	// Expose a port on the caller's agent workload.
-	AddExposureForCaller(context.Context, *connect.Request[v11.AddExposureForCallerRequest]) (*connect.Response[v11.AddExposureForCallerResponse], error)
-	// Un-expose a port on the caller's agent workload.
-	RemoveExposureForCaller(context.Context, *connect.Request[v11.RemoveExposureForCallerRequest]) (*connect.Response[v11.RemoveExposureForCallerResponse], error)
-	// List active exposures for the caller's agent workload.
-	ListExposuresForCaller(context.Context, *connect.Request[v11.ListExposuresForCallerRequest]) (*connect.Response[v11.ListExposuresForCallerResponse], error)
 }
 
 // NewExposeGatewayClient constructs a client for the agynio.api.gateway.v1.ExposeGateway service.
@@ -99,35 +84,14 @@ func NewExposeGatewayClient(httpClient connect.HTTPClient, baseURL string, opts 
 			connect.WithSchema(exposeGatewayMethods.ByName("ListExposures")),
 			connect.WithClientOptions(opts...),
 		),
-		addExposureForCaller: connect.NewClient[v11.AddExposureForCallerRequest, v11.AddExposureForCallerResponse](
-			httpClient,
-			baseURL+ExposeGatewayAddExposureForCallerProcedure,
-			connect.WithSchema(exposeGatewayMethods.ByName("AddExposureForCaller")),
-			connect.WithClientOptions(opts...),
-		),
-		removeExposureForCaller: connect.NewClient[v11.RemoveExposureForCallerRequest, v11.RemoveExposureForCallerResponse](
-			httpClient,
-			baseURL+ExposeGatewayRemoveExposureForCallerProcedure,
-			connect.WithSchema(exposeGatewayMethods.ByName("RemoveExposureForCaller")),
-			connect.WithClientOptions(opts...),
-		),
-		listExposuresForCaller: connect.NewClient[v11.ListExposuresForCallerRequest, v11.ListExposuresForCallerResponse](
-			httpClient,
-			baseURL+ExposeGatewayListExposuresForCallerProcedure,
-			connect.WithSchema(exposeGatewayMethods.ByName("ListExposuresForCaller")),
-			connect.WithClientOptions(opts...),
-		),
 	}
 }
 
 // exposeGatewayClient implements ExposeGatewayClient.
 type exposeGatewayClient struct {
-	addExposure             *connect.Client[v1.AddExposureRequest, v1.AddExposureResponse]
-	removeExposure          *connect.Client[v1.RemoveExposureRequest, v1.RemoveExposureResponse]
-	listExposures           *connect.Client[v1.ListExposuresRequest, v1.ListExposuresResponse]
-	addExposureForCaller    *connect.Client[v11.AddExposureForCallerRequest, v11.AddExposureForCallerResponse]
-	removeExposureForCaller *connect.Client[v11.RemoveExposureForCallerRequest, v11.RemoveExposureForCallerResponse]
-	listExposuresForCaller  *connect.Client[v11.ListExposuresForCallerRequest, v11.ListExposuresForCallerResponse]
+	addExposure    *connect.Client[v1.AddExposureRequest, v1.AddExposureResponse]
+	removeExposure *connect.Client[v1.RemoveExposureRequest, v1.RemoveExposureResponse]
+	listExposures  *connect.Client[v1.ListExposuresRequest, v1.ListExposuresResponse]
 }
 
 // AddExposure calls agynio.api.gateway.v1.ExposeGateway.AddExposure.
@@ -145,21 +109,6 @@ func (c *exposeGatewayClient) ListExposures(ctx context.Context, req *connect.Re
 	return c.listExposures.CallUnary(ctx, req)
 }
 
-// AddExposureForCaller calls agynio.api.gateway.v1.ExposeGateway.AddExposureForCaller.
-func (c *exposeGatewayClient) AddExposureForCaller(ctx context.Context, req *connect.Request[v11.AddExposureForCallerRequest]) (*connect.Response[v11.AddExposureForCallerResponse], error) {
-	return c.addExposureForCaller.CallUnary(ctx, req)
-}
-
-// RemoveExposureForCaller calls agynio.api.gateway.v1.ExposeGateway.RemoveExposureForCaller.
-func (c *exposeGatewayClient) RemoveExposureForCaller(ctx context.Context, req *connect.Request[v11.RemoveExposureForCallerRequest]) (*connect.Response[v11.RemoveExposureForCallerResponse], error) {
-	return c.removeExposureForCaller.CallUnary(ctx, req)
-}
-
-// ListExposuresForCaller calls agynio.api.gateway.v1.ExposeGateway.ListExposuresForCaller.
-func (c *exposeGatewayClient) ListExposuresForCaller(ctx context.Context, req *connect.Request[v11.ListExposuresForCallerRequest]) (*connect.Response[v11.ListExposuresForCallerResponse], error) {
-	return c.listExposuresForCaller.CallUnary(ctx, req)
-}
-
 // ExposeGatewayHandler is an implementation of the agynio.api.gateway.v1.ExposeGateway service.
 type ExposeGatewayHandler interface {
 	// Expose a port on an agent workload.
@@ -168,12 +117,6 @@ type ExposeGatewayHandler interface {
 	RemoveExposure(context.Context, *connect.Request[v1.RemoveExposureRequest]) (*connect.Response[v1.RemoveExposureResponse], error)
 	// List active exposures for an agent workload.
 	ListExposures(context.Context, *connect.Request[v1.ListExposuresRequest]) (*connect.Response[v1.ListExposuresResponse], error)
-	// Expose a port on the caller's agent workload.
-	AddExposureForCaller(context.Context, *connect.Request[v11.AddExposureForCallerRequest]) (*connect.Response[v11.AddExposureForCallerResponse], error)
-	// Un-expose a port on the caller's agent workload.
-	RemoveExposureForCaller(context.Context, *connect.Request[v11.RemoveExposureForCallerRequest]) (*connect.Response[v11.RemoveExposureForCallerResponse], error)
-	// List active exposures for the caller's agent workload.
-	ListExposuresForCaller(context.Context, *connect.Request[v11.ListExposuresForCallerRequest]) (*connect.Response[v11.ListExposuresForCallerResponse], error)
 }
 
 // NewExposeGatewayHandler builds an HTTP handler from the service implementation. It returns the
@@ -201,24 +144,6 @@ func NewExposeGatewayHandler(svc ExposeGatewayHandler, opts ...connect.HandlerOp
 		connect.WithSchema(exposeGatewayMethods.ByName("ListExposures")),
 		connect.WithHandlerOptions(opts...),
 	)
-	exposeGatewayAddExposureForCallerHandler := connect.NewUnaryHandler(
-		ExposeGatewayAddExposureForCallerProcedure,
-		svc.AddExposureForCaller,
-		connect.WithSchema(exposeGatewayMethods.ByName("AddExposureForCaller")),
-		connect.WithHandlerOptions(opts...),
-	)
-	exposeGatewayRemoveExposureForCallerHandler := connect.NewUnaryHandler(
-		ExposeGatewayRemoveExposureForCallerProcedure,
-		svc.RemoveExposureForCaller,
-		connect.WithSchema(exposeGatewayMethods.ByName("RemoveExposureForCaller")),
-		connect.WithHandlerOptions(opts...),
-	)
-	exposeGatewayListExposuresForCallerHandler := connect.NewUnaryHandler(
-		ExposeGatewayListExposuresForCallerProcedure,
-		svc.ListExposuresForCaller,
-		connect.WithSchema(exposeGatewayMethods.ByName("ListExposuresForCaller")),
-		connect.WithHandlerOptions(opts...),
-	)
 	return "/agynio.api.gateway.v1.ExposeGateway/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case ExposeGatewayAddExposureProcedure:
@@ -227,12 +152,6 @@ func NewExposeGatewayHandler(svc ExposeGatewayHandler, opts ...connect.HandlerOp
 			exposeGatewayRemoveExposureHandler.ServeHTTP(w, r)
 		case ExposeGatewayListExposuresProcedure:
 			exposeGatewayListExposuresHandler.ServeHTTP(w, r)
-		case ExposeGatewayAddExposureForCallerProcedure:
-			exposeGatewayAddExposureForCallerHandler.ServeHTTP(w, r)
-		case ExposeGatewayRemoveExposureForCallerProcedure:
-			exposeGatewayRemoveExposureForCallerHandler.ServeHTTP(w, r)
-		case ExposeGatewayListExposuresForCallerProcedure:
-			exposeGatewayListExposuresForCallerHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -252,16 +171,4 @@ func (UnimplementedExposeGatewayHandler) RemoveExposure(context.Context, *connec
 
 func (UnimplementedExposeGatewayHandler) ListExposures(context.Context, *connect.Request[v1.ListExposuresRequest]) (*connect.Response[v1.ListExposuresResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("agynio.api.gateway.v1.ExposeGateway.ListExposures is not implemented"))
-}
-
-func (UnimplementedExposeGatewayHandler) AddExposureForCaller(context.Context, *connect.Request[v11.AddExposureForCallerRequest]) (*connect.Response[v11.AddExposureForCallerResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("agynio.api.gateway.v1.ExposeGateway.AddExposureForCaller is not implemented"))
-}
-
-func (UnimplementedExposeGatewayHandler) RemoveExposureForCaller(context.Context, *connect.Request[v11.RemoveExposureForCallerRequest]) (*connect.Response[v11.RemoveExposureForCallerResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("agynio.api.gateway.v1.ExposeGateway.RemoveExposureForCaller is not implemented"))
-}
-
-func (UnimplementedExposeGatewayHandler) ListExposuresForCaller(context.Context, *connect.Request[v11.ListExposuresForCallerRequest]) (*connect.Response[v11.ListExposuresForCallerResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("agynio.api.gateway.v1.ExposeGateway.ListExposuresForCaller is not implemented"))
 }

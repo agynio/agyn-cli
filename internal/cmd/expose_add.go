@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"connectrpc.com/connect"
-	gatewayv1 "github.com/agynio/agyn-cli/gen/agynio/api/gateway/v1"
+	exposev1 "github.com/agynio/agyn-cli/gen/agynio/api/expose/v1"
 	"github.com/agynio/agyn-cli/gen/agynio/api/gateway/v1/gatewayv1connect"
 	"github.com/agynio/agyn-cli/internal/output"
 	"github.com/spf13/cobra"
@@ -35,7 +35,7 @@ func newExposeAddCmd() *cobra.Command {
 				runContext.Clients.ConnectOpts()...,
 			)
 
-			response, err := client.AddExposureForCaller(cmd.Context(), connect.NewRequest(&gatewayv1.AddExposureForCallerRequest{
+			response, err := client.AddExposure(cmd.Context(), connect.NewRequest(&exposev1.AddExposureRequest{
 				Port: int32(port),
 			}))
 			if err != nil {
