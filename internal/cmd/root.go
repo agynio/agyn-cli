@@ -97,7 +97,7 @@ func allowMissingToken(cmd *cobra.Command) bool {
 	if strings.TrimSpace(os.Getenv(agentIDEnv)) == "" {
 		return false
 	}
-	return cmd.CommandPath() == "agyn threads send"
+	return strings.HasPrefix(cmd.CommandPath(), "agyn threads")
 }
 
 func init() {
