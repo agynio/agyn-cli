@@ -122,7 +122,6 @@ func hasHelpArg() bool {
 	}
 	return false
 }
-
 func allowMissingToken(cmd *cobra.Command) bool {
 	if strings.TrimSpace(os.Getenv(agentIDEnv)) == "" {
 		return false
