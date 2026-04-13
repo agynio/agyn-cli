@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/agynio/agyn-cli/internal/auth"
 	"github.com/agynio/agyn-cli/internal/config"
@@ -53,7 +54,8 @@ var rootCmd = &cobra.Command{
 		}
 
 		target := cfg.ResolveGatewayTarget(gatewayURLFlag)
-		token, err := auth.LoadToken(auth.TokenOptions{AllowMissing: target.UsesZiti})
+		allowMissing := target.UsesZiti || allowMissingToken(cmd)
+		token, err := auth.LoadToken(auth.TokenOptions{AllowMissing: allowMissing})
 		if err != nil {
 			return err
 		}
@@ -89,6 +91,13 @@ func RunContextFrom(cmd *cobra.Command) (*RunContext, error) {
 
 func withRunContext(ctx context.Context, runContext *RunContext) context.Context {
 	return context.WithValue(ctx, contextKey{}, runContext)
+}
+
+func allowMissingToken(cmd *cobra.Command) bool {
+	if strings.TrimSpace(os.Getenv(agentIDEnv)) == "" {
+		return false
+	}
+	return strings.HasPrefix(cmd.CommandPath(), "agyn threads")
 }
 
 func init() {
