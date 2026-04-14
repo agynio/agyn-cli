@@ -520,9 +520,9 @@ func addParticipant(ctx context.Context, client gatewayv1connect.ThreadsGatewayC
 		return err
 	}
 	_, err = client.AddParticipant(ctx, connect.NewRequest(&threadsv1.AddParticipantRequest{
-		ThreadId:    threadID,
-		Passive:     passive,
-		Participant: identifier,
+		ThreadId:              threadID,
+		Passive:               passive,
+		ParticipantIdentifier: identifier,
 	}))
 	if err != nil {
 		return fmt.Errorf("add participant: %w", err)
@@ -530,19 +530,12 @@ func addParticipant(ctx context.Context, client gatewayv1connect.ThreadsGatewayC
 	return nil
 }
 
-func participantIdentifier(value string) (*threadsv1.ParticipantIdentifier, error) {
+func participantIdentifier(value string) (string, error) {
 	trimmed := strings.TrimSpace(value)
 	if trimmed == "" {
-		return nil, fmt.Errorf("participant is required")
+		return "", fmt.Errorf("participant is required")
 	}
-	if strings.HasPrefix(trimmed, "@") {
-		return &threadsv1.ParticipantIdentifier{
-			Identifier: &threadsv1.ParticipantIdentifier_ParticipantNickname{ParticipantNickname: trimmed},
-		}, nil
-	}
-	return &threadsv1.ParticipantIdentifier{
-		Identifier: &threadsv1.ParticipantIdentifier_ParticipantId{ParticipantId: trimmed},
-	}, nil
+	return trimmed, nil
 }
 
 func fetchUnreadMessages(ctx context.Context, client gatewayv1connect.ThreadsGatewayClient, targets []threadTarget, participantID string) ([]*threadsv1.Message, error) {
