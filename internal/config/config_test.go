@@ -4,7 +4,7 @@ import "testing"
 
 func TestResolveGatewayURLUsesFlag(t *testing.T) {
 	cfg := &Config{Gateway: GatewayConfig{URL: DefaultGatewayURL}}
-	t.Setenv(AgynGatewayURLEnv, "https://env.example")
+	t.Setenv(GatewayURLEnv, "https://env.example")
 	t.Setenv(GatewayAddressEnv, "https://gateway.ziti")
 
 	got := cfg.ResolveGatewayURL("https://flag.example")
@@ -13,14 +13,14 @@ func TestResolveGatewayURLUsesFlag(t *testing.T) {
 	}
 }
 
-func TestResolveGatewayURLPrefersAgynEnv(t *testing.T) {
+func TestResolveGatewayURLPrefersGatewayAddress(t *testing.T) {
 	cfg := &Config{Gateway: GatewayConfig{URL: DefaultGatewayURL}}
-	t.Setenv(AgynGatewayURLEnv, "https://env.example")
+	t.Setenv(GatewayURLEnv, "https://env.example")
 	t.Setenv(GatewayAddressEnv, "https://gateway.ziti")
 
 	got := cfg.ResolveGatewayURL("")
-	if got != "https://env.example" {
-		t.Fatalf("expected AGYN_GATEWAY_URL, got %q", got)
+	if got != "https://gateway.ziti" {
+		t.Fatalf("expected GATEWAY_ADDRESS, got %q", got)
 	}
 }
 
@@ -34,10 +34,10 @@ func TestResolveGatewayURLUsesGatewayAddress(t *testing.T) {
 	}
 }
 
-func TestResolveGatewayURLNormalizesAgynEnv(t *testing.T) {
+func TestResolveGatewayURLNormalizesGatewayEnv(t *testing.T) {
 	cfg := &Config{Gateway: GatewayConfig{URL: DefaultGatewayURL}}
-	t.Setenv(AgynGatewayURLEnv, "gateway.ziti")
-	t.Setenv(GatewayAddressEnv, "https://gateway.agyn.dev")
+	t.Setenv(GatewayURLEnv, "gateway.ziti")
+	t.Setenv(GatewayAddressEnv, "")
 
 	got := cfg.ResolveGatewayURL("")
 	if got != "http://gateway.ziti" {
@@ -47,7 +47,7 @@ func TestResolveGatewayURLNormalizesAgynEnv(t *testing.T) {
 
 func TestResolveGatewayURLNormalizesGatewayAddress(t *testing.T) {
 	cfg := &Config{Gateway: GatewayConfig{URL: DefaultGatewayURL}}
-	t.Setenv(AgynGatewayURLEnv, "")
+	t.Setenv(GatewayURLEnv, "")
 	t.Setenv(GatewayAddressEnv, "gateway.ziti")
 
 	got := cfg.ResolveGatewayURL("")
