@@ -22,9 +22,14 @@ const (
 	ConfigDir         = ".agyn"
 	ConfigFile        = "config.yaml"
 	CredentialsFile   = "credentials"
-	AgynGatewayURLEnv = "AGYN_GATEWAY_URL"
+	GatewayURLEnv     = "AGYN_GATEWAY_URL"
 	GatewayAddressEnv = "GATEWAY_ADDRESS"
 )
+
+type GatewayTarget struct {
+	URL      string
+	UsesZiti bool
+}
 
 func Load() (*Config, error) {
 	cfg := &Config{Gateway: GatewayConfig{URL: DefaultGatewayURL}}
@@ -55,25 +60,38 @@ func Load() (*Config, error) {
 }
 
 func (c *Config) ResolveGatewayURL(flagURL string) string {
-	if flagURL != "" {
-		return flagURL
-	}
-	if envURL := normalizeGatewayEnvURL(os.Getenv(AgynGatewayURLEnv)); envURL != "" {
-		return envURL
-	}
-	if envURL := normalizeGatewayEnvURL(os.Getenv(GatewayAddressEnv)); envURL != "" {
-		return envURL
-	}
-	return c.Gateway.URL
+	return c.ResolveGatewayTarget(flagURL).URL
 }
 
-func normalizeGatewayEnvURL(rawURL string) string {
-	trimmed := strings.TrimSpace(rawURL)
+func (c *Config) ResolveGatewayTarget(flagURL string) GatewayTarget {
+	if flagURL != "" {
+		url := normalizeGatewayURL(flagURL)
+		return GatewayTarget{URL: url, UsesZiti: isZitiURL(url)}
+	}
+	// GATEWAY_ADDRESS is injected in agent pods for in-cluster Ziti routing and
+	// should override any user-configured gateway URL when present.
+	if envAddress := os.Getenv(GatewayAddressEnv); envAddress != "" {
+		return GatewayTarget{URL: normalizeGatewayURL(envAddress), UsesZiti: true}
+	}
+	if envURL := os.Getenv(GatewayURLEnv); envURL != "" {
+		url := normalizeGatewayURL(envURL)
+		return GatewayTarget{URL: url, UsesZiti: isZitiURL(url)}
+	}
+	url := normalizeGatewayURL(c.Gateway.URL)
+	return GatewayTarget{URL: url, UsesZiti: isZitiURL(url)}
+}
+
+func normalizeGatewayURL(value string) string {
+	trimmed := strings.TrimSpace(value)
 	if trimmed == "" {
-		return ""
+		return DefaultGatewayURL
 	}
 	if strings.Contains(trimmed, "://") {
 		return trimmed
 	}
 	return "http://" + trimmed
+}
+
+func isZitiURL(url string) bool {
+	return strings.Contains(strings.ToLower(url), ".ziti")
 }

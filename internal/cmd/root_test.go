@@ -1,48 +1,41 @@
 package cmd
 
 import (
-	"errors"
 	"testing"
 
-	"github.com/agynio/agyn-cli/internal/auth"
-	"github.com/agynio/agyn-cli/internal/config"
+	"github.com/spf13/cobra"
 )
 
-func TestLoadAuthTokenAllowsMissingCredentialsInPod(t *testing.T) {
-	t.Setenv("HOME", t.TempDir())
-	t.Setenv(config.GatewayAddressEnv, "https://gateway.ziti")
-
-	token, err := loadAuthToken("https://gateway.agyn.dev")
-	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
-	}
-	if token != "" {
-		t.Fatalf("expected empty token, got %q", token)
+func TestAllowMissingTokenRequiresAgentID(t *testing.T) {
+	command := buildCommand("threads")
+	if allowMissingToken(command) {
+		t.Fatal("expected false when AGENT_ID is not set")
 	}
 }
 
-func TestLoadAuthTokenAllowsMissingCredentialsForZitiURL(t *testing.T) {
-	t.Setenv("HOME", t.TempDir())
-	t.Setenv(config.GatewayAddressEnv, "")
-
-	token, err := loadAuthToken("https://gateway.ziti")
-	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
-	}
-	if token != "" {
-		t.Fatalf("expected empty token, got %q", token)
+func TestAllowMissingTokenThreadsCommand(t *testing.T) {
+	t.Setenv(agentIDEnv, "agent-123")
+	command := buildCommand("threads", "send")
+	if !allowMissingToken(command) {
+		t.Fatal("expected true for threads command when AGENT_ID is set")
 	}
 }
 
-func TestLoadAuthTokenMissingCredentialsOutsidePod(t *testing.T) {
-	t.Setenv("HOME", t.TempDir())
-	t.Setenv(config.GatewayAddressEnv, "")
+func TestAllowMissingTokenNonThreadsCommand(t *testing.T) {
+	t.Setenv(agentIDEnv, "agent-123")
+	command := buildCommand("apps")
+	if allowMissingToken(command) {
+		t.Fatal("expected false for non-threads command")
+	}
+}
 
-	_, err := loadAuthToken("https://gateway.agyn.dev")
-	if err == nil {
-		t.Fatal("expected error for missing credentials")
+func buildCommand(parts ...string) *cobra.Command {
+	root := &cobra.Command{Use: "agyn"}
+	current := root
+	for _, part := range parts {
+		child := &cobra.Command{Use: part}
+		current.AddCommand(child)
+		current = child
 	}
-	if !errors.Is(err, auth.ErrCredentialsNotFound) {
-		t.Fatalf("expected credentials not found error, got %v", err)
-	}
+	return current
 }

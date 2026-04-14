@@ -211,3 +211,7 @@ func newAuthRevokeTokenCmd() *cobra.Command {
 
 	return cmd
 }
+
+func init() {
+	rootCmd.AddCommand(newAuthCmd())
+}

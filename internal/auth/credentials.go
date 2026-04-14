@@ -24,7 +24,11 @@ func (e credentialsNotFoundError) Is(target error) bool {
 	return target == ErrCredentialsNotFound
 }
 
-func LoadToken() (string, error) {
+type TokenOptions struct {
+	AllowMissing bool
+}
+
+func LoadToken(opts TokenOptions) (string, error) {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return "", fmt.Errorf("home dir: %w", err)
@@ -34,6 +38,9 @@ func LoadToken() (string, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
+			if opts.AllowMissing {
+				return "", nil
+			}
 			return "", credentialsNotFoundError{path: path}
 		}
 		return "", fmt.Errorf("read credentials: %w", err)

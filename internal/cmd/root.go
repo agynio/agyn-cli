@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -29,11 +28,6 @@ var (
 	noColorFlag    bool
 )
 
-const (
-	// OpenZiti gateways use .ziti hostnames inside agent pods.
-	zitiGatewaySuffix = ".ziti"
-)
-
 var rootCmd = &cobra.Command{
 	Use:          "agyn",
 	Short:        "Agyn CLI",
@@ -49,14 +43,15 @@ var rootCmd = &cobra.Command{
 			return err
 		}
 
+		target := cfg.ResolveGatewayTarget(gatewayURLFlag)
 		var clients *gateway.Clients
-		if requiresAuth(cmd) {
-			baseURL := cfg.ResolveGatewayURL(gatewayURLFlag)
-			token, err := loadAuthToken(baseURL)
+		if requiresAuth(cmd, args) {
+			allowMissing := target.UsesZiti || allowMissingToken(cmd)
+			token, err := auth.LoadToken(auth.TokenOptions{AllowMissing: allowMissing})
 			if err != nil {
 				return err
 			}
-			clients = gateway.NewClients(baseURL, token)
+			clients = gateway.NewClients(target.URL, token)
 		}
 
 		runContext := &RunContext{
@@ -90,7 +85,16 @@ func withRunContext(ctx context.Context, runContext *RunContext) context.Context
 	return context.WithValue(ctx, contextKey{}, runContext)
 }
 
-func requiresAuth(cmd *cobra.Command) bool {
+func requiresAuth(cmd *cobra.Command, args []string) bool {
+	if cmd.Name() == "help" {
+		return false
+	}
+	if cmd.Flags().Changed("help") {
+		return false
+	}
+	if hasHelpArg(args) {
+		return false
+	}
 	if cmd.Name() == "auth" {
 		return false
 	}
@@ -100,35 +104,24 @@ func requiresAuth(cmd *cobra.Command) bool {
 	return true
 }
 
-func loadAuthToken(baseURL string) (string, error) {
-	token, err := auth.LoadToken()
-	if err == nil {
-		return token, nil
+func hasHelpArg(args []string) bool {
+	for _, arg := range args {
+		if arg == "--help" || arg == "-h" {
+			return true
+		}
 	}
-	if allowMissingToken(err, baseURL) {
-		return "", nil
-	}
-	return "", err
+	return false
 }
 
-func allowMissingToken(err error, baseURL string) bool {
-	if !errors.Is(err, auth.ErrCredentialsNotFound) {
+func allowMissingToken(cmd *cobra.Command) bool {
+	if strings.TrimSpace(os.Getenv(agentIDEnv)) == "" {
 		return false
 	}
-	if strings.TrimSpace(os.Getenv(config.GatewayAddressEnv)) != "" {
-		return true
-	}
-	return strings.Contains(strings.ToLower(baseURL), zitiGatewaySuffix)
+	return strings.HasPrefix(cmd.CommandPath(), "agyn threads")
 }
 
 func init() {
 	rootCmd.PersistentFlags().StringVar(&gatewayURLFlag, "gateway-url", "", "Gateway base URL")
 	rootCmd.PersistentFlags().StringVarP(&outputFlag, "output", "o", string(output.FormatTable), "Output format: table, json, or yaml")
 	rootCmd.PersistentFlags().BoolVar(&noColorFlag, "no-color", false, "Disable color output")
-	rootCmd.AddCommand(newAuthCmd())
-	rootCmd.AddCommand(newAppsCmd())
-	rootCmd.AddCommand(newAppProxyCmd())
-	rootCmd.AddCommand(newMessagesCmd())
-	rootCmd.AddCommand(newThreadsCmd())
-	rootCmd.AddCommand(newExposeCmd())
 }

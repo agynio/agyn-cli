@@ -255,3 +255,7 @@ func printAppOutput(format output.Format, app appOutput) error {
 
 	return output.Print(format, app)
 }
+
+func init() {
+	rootCmd.AddCommand(newAppsCmd())
+}

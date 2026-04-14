@@ -19,7 +19,6 @@ type exposureOutput struct {
 
 const (
 	workloadIDEnv          = "WORKLOAD_ID"
-	agentIDEnv             = "AGENT_ID"
 	hostnameEnv            = "HOSTNAME"
 	workloadHostnamePrefix = "workload-"
 )
@@ -99,4 +98,8 @@ func exposureOutputFrom(exposure *exposev1.Exposure) (exposureOutput, error) {
 		URL:    exposure.GetUrl(),
 		Status: formatExposureStatus(exposure.GetStatus()),
 	}, nil
+}
+
+func init() {
+	rootCmd.AddCommand(newExposeCmd())
 }
