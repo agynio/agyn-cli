@@ -48,10 +48,13 @@ const (
 // ExposeGatewayClient is a client for the agynio.api.gateway.v1.ExposeGateway service.
 type ExposeGatewayClient interface {
 	// Expose a port on an agent workload.
+	// The gateway defaults workload_id and agent_id from caller context when omitted.
 	AddExposure(context.Context, *connect.Request[v1.AddExposureRequest]) (*connect.Response[v1.AddExposureResponse], error)
 	// Un-expose a port on an agent workload.
+	// The gateway defaults workload_id and agent_id from caller context when omitted.
 	RemoveExposure(context.Context, *connect.Request[v1.RemoveExposureRequest]) (*connect.Response[v1.RemoveExposureResponse], error)
 	// List active exposures for an agent workload.
+	// The gateway defaults workload_id from caller context when omitted.
 	ListExposures(context.Context, *connect.Request[v1.ListExposuresRequest]) (*connect.Response[v1.ListExposuresResponse], error)
 }
 
@@ -112,10 +115,13 @@ func (c *exposeGatewayClient) ListExposures(ctx context.Context, req *connect.Re
 // ExposeGatewayHandler is an implementation of the agynio.api.gateway.v1.ExposeGateway service.
 type ExposeGatewayHandler interface {
 	// Expose a port on an agent workload.
+	// The gateway defaults workload_id and agent_id from caller context when omitted.
 	AddExposure(context.Context, *connect.Request[v1.AddExposureRequest]) (*connect.Response[v1.AddExposureResponse], error)
 	// Un-expose a port on an agent workload.
+	// The gateway defaults workload_id and agent_id from caller context when omitted.
 	RemoveExposure(context.Context, *connect.Request[v1.RemoveExposureRequest]) (*connect.Response[v1.RemoveExposureResponse], error)
 	// List active exposures for an agent workload.
+	// The gateway defaults workload_id from caller context when omitted.
 	ListExposures(context.Context, *connect.Request[v1.ListExposuresRequest]) (*connect.Response[v1.ListExposuresResponse], error)
 }
 
