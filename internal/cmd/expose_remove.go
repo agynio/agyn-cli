@@ -20,11 +20,6 @@ func newExposeRemoveCmd() *cobra.Command {
 				return err
 			}
 
-			workloadID, err := resolveWorkloadID()
-			if err != nil {
-				return err
-			}
-
 			runContext, err := RunContextFrom(cmd)
 			if err != nil {
 				return err
@@ -40,8 +35,7 @@ func newExposeRemoveCmd() *cobra.Command {
 			)
 
 			_, err = client.RemoveExposure(cmd.Context(), connect.NewRequest(&exposev1.RemoveExposureRequest{
-				WorkloadId: workloadID,
-				Port:       int32(port),
+				Port: int32(port),
 			}))
 			if err != nil {
 				return err

@@ -21,11 +21,6 @@ func newExposeAddCmd() *cobra.Command {
 				return err
 			}
 
-			workloadID, err := resolveWorkloadID()
-			if err != nil {
-				return err
-			}
-
 			runContext, err := RunContextFrom(cmd)
 			if err != nil {
 				return err
@@ -40,15 +35,9 @@ func newExposeAddCmd() *cobra.Command {
 				runContext.Clients.ConnectOpts()...,
 			)
 
-			request := &exposev1.AddExposureRequest{
-				WorkloadId: workloadID,
-				Port:       int32(port),
-			}
-			if agentID := agentIDFromEnv(); agentID != "" {
-				request.AgentId = agentID
-			}
-
-			response, err := client.AddExposure(cmd.Context(), connect.NewRequest(request))
+			response, err := client.AddExposure(cmd.Context(), connect.NewRequest(&exposev1.AddExposureRequest{
+				Port: int32(port),
+			}))
 			if err != nil {
 				return err
 			}
