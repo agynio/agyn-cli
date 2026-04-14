@@ -105,13 +105,9 @@ func requiresAuth(cmd *cobra.Command, args []string) bool {
 }
 
 func hasHelpArg(args []string) bool {
-	for i := 0; i < len(args); i++ {
-		arg := args[i]
+	for _, arg := range args {
 		if arg == "--help" || arg == "-h" {
 			return true
-		}
-		if strings.HasPrefix(arg, "--") && i+1 < len(args) {
-			i++
 		}
 	}
 	return false
