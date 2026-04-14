@@ -175,3 +175,7 @@ func messageOutputFrom(message *threadsv1.Message) (messageOutput, error) {
 		CreatedAt: formatTimestamp(message.GetCreatedAt()),
 	}, nil
 }
+
+func init() {
+	rootCmd.AddCommand(newMessagesCmd())
+}

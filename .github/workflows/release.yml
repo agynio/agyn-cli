@@ -19,7 +19,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Ensure tag is on main
         run: |
           git fetch origin main
@@ -27,7 +26,6 @@ jobs:
             echo "Release tag must point to a commit on main."
             exit 1
           fi
-
       - name: Set up Go
         uses: actions/setup-go@v5
         with:

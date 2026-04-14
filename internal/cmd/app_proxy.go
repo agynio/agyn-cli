@@ -18,10 +18,14 @@ import (
 
 func newAppProxyCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:                "app <slug> <command> [flags]",
+		Use:                "app-proxy <slug> <command> [flags]",
+		Aliases:            []string{"app"},
 		Short:              "Invoke an app endpoint through the Gateway proxy",
 		DisableFlagParsing: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if hasHelpArg() {
+				return cmd.Help()
+			}
 			slug, command, payload, err := parseAppProxyArgs(args)
 			if err != nil {
 				return err
@@ -46,7 +50,7 @@ func newAppProxyCmd() *cobra.Command {
 				return fmt.Errorf("gateway URL unavailable")
 			}
 
-			token, err := auth.LoadToken()
+			token, err := auth.LoadToken(auth.TokenOptions{})
 			if err != nil {
 				return err
 			}
@@ -68,9 +72,8 @@ func newAppProxyCmd() *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("send request: %w", err)
 			}
-			defer response.Body.Close()
-
 			responseBody, err := io.ReadAll(response.Body)
+			closeErr := response.Body.Close()
 			if err != nil {
 				return fmt.Errorf("read response: %w", err)
 			}
@@ -80,6 +83,9 @@ func newAppProxyCmd() *cobra.Command {
 					return fmt.Errorf("request failed: %s", response.Status)
 				}
 				return fmt.Errorf("request failed: %s: %s", response.Status, trimmed)
+			}
+			if closeErr != nil {
+				return fmt.Errorf("close response body: %w", closeErr)
 			}
 
 			return printProxyResponse(runContext.OutputFormat, responseBody)
@@ -237,4 +243,8 @@ func appendTrailingNewline(payload []byte) []byte {
 		return payload
 	}
 	return append(payload, '\n')
+}
+
+func init() {
+	rootCmd.AddCommand(newAppProxyCmd())
 }
