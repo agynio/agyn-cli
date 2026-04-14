@@ -23,7 +23,7 @@ func newAppProxyCmd() *cobra.Command {
 		Short:              "Invoke an app endpoint through the Gateway proxy",
 		DisableFlagParsing: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if hasHelpArg() {
+			if hasHelpArg(args) {
 				return cmd.Help()
 			}
 			slug, command, payload, err := parseAppProxyArgs(args)

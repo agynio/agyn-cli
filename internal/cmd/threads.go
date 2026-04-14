@@ -26,22 +26,31 @@ const (
 	messageCreatedEvent       = "message.created"
 )
 
-var (
-	threadsCreateRef   string
-	threadsCreateAdd   []string
-	threadsCreateSend  string
-	threadsCreateWait  int
-	threadsSendThread  string
-	threadsSendMessage string
-	threadsSendFiles   []string
-	threadsSendWait    int
-	threadsReadThreads []string
-	threadsReadUnread  bool
-	threadsReadWait    int
-	threadsAddThread   string
-	threadsAddValues   []string
-	threadsAddPassive  bool
-)
+type threadsCreateArgs struct {
+	ref  string
+	add  []string
+	send string
+	wait int
+}
+
+type threadsSendArgs struct {
+	thread  string
+	message string
+	files   []string
+	wait    int
+}
+
+type threadsReadArgs struct {
+	threads []string
+	unread  bool
+	wait    int
+}
+
+type threadsAddArgs struct {
+	thread  string
+	values  []string
+	passive bool
+}
 
 type messageView struct {
 	ID        string    `json:"id" yaml:"id"`
@@ -94,52 +103,64 @@ func init() {
 }
 
 func newThreadsCreateCmd() *cobra.Command {
+	args := &threadsCreateArgs{}
 	cmd := &cobra.Command{
 		Use:   "create",
 		Short: "Create a new thread",
-		RunE:  runThreadsCreate,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return runThreadsCreate(cmd, args)
+		},
 	}
-	cmd.Flags().StringVar(&threadsCreateRef, "ref", "", "Local ref alias to store")
-	cmd.Flags().StringArrayVar(&threadsCreateAdd, "add", nil, "Participant identity (@nickname or ID)")
-	cmd.Flags().StringVar(&threadsCreateSend, "send", "", "Message to send after creating the thread")
-	cmd.Flags().IntVar(&threadsCreateWait, "wait", 0, "Seconds to wait for a response")
+	cmd.Flags().StringVar(&args.ref, "ref", "", "Local ref alias to store")
+	cmd.Flags().StringArrayVar(&args.add, "add", nil, "Participant identity (@nickname or ID)")
+	cmd.Flags().StringVar(&args.send, "send", "", "Message to send after creating the thread")
+	cmd.Flags().IntVar(&args.wait, "wait", 0, "Seconds to wait for a response")
 	return cmd
 }
 
 func newThreadsSendCmd() *cobra.Command {
+	args := &threadsSendArgs{}
 	cmd := &cobra.Command{
 		Use:   "send",
 		Short: "Send a message to a thread",
-		RunE:  runThreadsSend,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return runThreadsSend(cmd, args)
+		},
 	}
-	cmd.Flags().StringVar(&threadsSendThread, "thread", "", "Thread ref or ID")
-	cmd.Flags().StringVar(&threadsSendMessage, "message", "", "Message body")
-	cmd.Flags().StringArrayVar(&threadsSendFiles, "file", nil, "File ID to include (repeatable)")
-	cmd.Flags().IntVar(&threadsSendWait, "wait", 0, "Seconds to wait for a response")
+	cmd.Flags().StringVar(&args.thread, "thread", "", "Thread ref or ID")
+	cmd.Flags().StringVar(&args.message, "message", "", "Message body")
+	cmd.Flags().StringArrayVar(&args.files, "file", nil, "File ID to include (repeatable)")
+	cmd.Flags().IntVar(&args.wait, "wait", 0, "Seconds to wait for a response")
 	return cmd
 }
 
 func newThreadsReadCmd() *cobra.Command {
+	args := &threadsReadArgs{}
 	cmd := &cobra.Command{
 		Use:   "read",
 		Short: "Read messages from a thread",
-		RunE:  runThreadsRead,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return runThreadsRead(cmd, args)
+		},
 	}
-	cmd.Flags().StringArrayVar(&threadsReadThreads, "thread", nil, "Thread ref or ID (repeatable)")
-	cmd.Flags().BoolVar(&threadsReadUnread, "unread", false, "Only unread messages")
-	cmd.Flags().IntVar(&threadsReadWait, "wait", 0, "Seconds to wait for new messages")
+	cmd.Flags().StringArrayVar(&args.threads, "thread", nil, "Thread ref or ID (repeatable)")
+	cmd.Flags().BoolVar(&args.unread, "unread", false, "Only unread messages")
+	cmd.Flags().IntVar(&args.wait, "wait", 0, "Seconds to wait for new messages")
 	return cmd
 }
 
 func newThreadsAddCmd() *cobra.Command {
+	args := &threadsAddArgs{}
 	cmd := &cobra.Command{
 		Use:   "add",
 		Short: "Add participants to a thread",
-		RunE:  runThreadsAdd,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return runThreadsAdd(cmd, args)
+		},
 	}
-	cmd.Flags().StringVar(&threadsAddThread, "thread", "", "Thread ref or ID")
-	cmd.Flags().StringArrayVar(&threadsAddValues, "participant", nil, "Participant identity (@nickname or ID)")
-	cmd.Flags().BoolVar(&threadsAddPassive, "passive", true, "Mark added participants as passive")
+	cmd.Flags().StringVar(&args.thread, "thread", "", "Thread ref or ID")
+	cmd.Flags().StringArrayVar(&args.values, "participant", nil, "Participant identity (@nickname or ID)")
+	cmd.Flags().BoolVar(&args.passive, "passive", true, "Mark added participants as passive")
 	return cmd
 }
 
@@ -152,12 +173,12 @@ func newThreadsListCmd() *cobra.Command {
 	return cmd
 }
 
-func runThreadsCreate(cmd *cobra.Command, _ []string) error {
+func runThreadsCreate(cmd *cobra.Command, args *threadsCreateArgs) error {
 	runContext, err := RunContextFrom(cmd)
 	if err != nil {
 		return err
 	}
-	if threadsCreateWait < 0 {
+	if args.wait < 0 {
 		return fmt.Errorf("wait must be non-negative")
 	}
 	refsStore, err := threadrefs.DefaultRefStore()
@@ -169,7 +190,7 @@ func runThreadsCreate(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 
-	participantIDs, participantNicknames, err := splitParticipants(threadsCreateAdd)
+	participantIDs, participantNicknames, err := splitParticipants(args.add)
 	if err != nil {
 		return err
 	}
@@ -180,8 +201,8 @@ func runThreadsCreate(cmd *cobra.Command, _ []string) error {
 	if len(participantIDs) == 0 {
 		return fmt.Errorf("at least one participant is required")
 	}
-	sendMessage := strings.TrimSpace(threadsCreateSend)
-	if (sendMessage != "" || threadsCreateWait > 0) && agentID == "" {
+	sendMessage := strings.TrimSpace(args.send)
+	if (sendMessage != "" || args.wait > 0) && agentID == "" {
 		return fmt.Errorf("%s is required for this command", agentIDEnv)
 	}
 
@@ -196,8 +217,8 @@ func runThreadsCreate(cmd *cobra.Command, _ []string) error {
 	}
 	threadID := thread.GetId()
 
-	if threadsCreateRef != "" {
-		refs[threadsCreateRef] = threadID
+	if args.ref != "" {
+		refs[args.ref] = threadID
 		if err := refsStore.Save(refs); err != nil {
 			return err
 		}
@@ -225,8 +246,8 @@ func runThreadsCreate(cmd *cobra.Command, _ []string) error {
 		messageID = sendResp.Msg.GetMessage().GetId()
 	}
 
-	if threadsCreateWait > 0 {
-		return waitOutputAndAck(cmd.Context(), cmd, runContext, threadsClient, []threadTarget{{ID: threadID, Ref: threadsCreateRef}}, agentID, refs, time.Duration(threadsCreateWait)*time.Second, false)
+	if args.wait > 0 {
+		return waitOutputAndAck(cmd.Context(), cmd, runContext, threadsClient, []threadTarget{{ID: threadID, Ref: args.ref}}, agentID, refs, time.Duration(args.wait)*time.Second, false)
 	}
 
 	if runContext.OutputFormat == output.FormatTable {
@@ -235,17 +256,17 @@ func runThreadsCreate(cmd *cobra.Command, _ []string) error {
 	}
 	return output.Print(runContext.OutputFormat, createOutput{
 		ThreadID:  threadID,
-		ThreadRef: threadsCreateRef,
+		ThreadRef: args.ref,
 		MessageID: messageID,
 	})
 }
 
-func runThreadsSend(cmd *cobra.Command, _ []string) error {
+func runThreadsSend(cmd *cobra.Command, args *threadsSendArgs) error {
 	runContext, err := RunContextFrom(cmd)
 	if err != nil {
 		return err
 	}
-	if threadsSendWait < 0 {
+	if args.wait < 0 {
 		return fmt.Errorf("wait must be non-negative")
 	}
 	refsStore, err := threadrefs.DefaultRefStore()
@@ -257,8 +278,8 @@ func runThreadsSend(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 	threadInputs := []string{}
-	if strings.TrimSpace(threadsSendThread) != "" {
-		threadInputs = []string{threadsSendThread}
+	if strings.TrimSpace(args.thread) != "" {
+		threadInputs = []string{args.thread}
 	}
 	threadTargets, err := resolveThreadTargets(threadInputs, refs)
 	if err != nil {
@@ -266,8 +287,8 @@ func runThreadsSend(cmd *cobra.Command, _ []string) error {
 	}
 	threadID := threadTargets[0].ID
 
-	message := strings.TrimSpace(threadsSendMessage)
-	if message == "" && len(threadsSendFiles) == 0 {
+	message := strings.TrimSpace(args.message)
+	if message == "" && len(args.files) == 0 {
 		return fmt.Errorf("message or file ids are required")
 	}
 	senderID, err := requireAgentID()
@@ -279,7 +300,7 @@ func runThreadsSend(cmd *cobra.Command, _ []string) error {
 		ThreadId: threadID,
 		SenderId: senderID,
 		Body:     message,
-		FileIds:  append([]string{}, threadsSendFiles...),
+		FileIds:  append([]string{}, args.files...),
 	}))
 	if err != nil {
 		return fmt.Errorf("send message: %w", err)
@@ -289,8 +310,8 @@ func runThreadsSend(cmd *cobra.Command, _ []string) error {
 	}
 	messageID := sendResp.Msg.GetMessage().GetId()
 
-	if threadsSendWait > 0 {
-		return waitOutputAndAck(cmd.Context(), cmd, runContext, threadsClient, threadTargets, senderID, refs, time.Duration(threadsSendWait)*time.Second, false)
+	if args.wait > 0 {
+		return waitOutputAndAck(cmd.Context(), cmd, runContext, threadsClient, threadTargets, senderID, refs, time.Duration(args.wait)*time.Second, false)
 	}
 
 	if runContext.OutputFormat == output.FormatTable {
@@ -300,12 +321,12 @@ func runThreadsSend(cmd *cobra.Command, _ []string) error {
 	return output.Print(runContext.OutputFormat, sendOutput{MessageID: messageID, ThreadID: threadID})
 }
 
-func runThreadsRead(cmd *cobra.Command, _ []string) error {
+func runThreadsRead(cmd *cobra.Command, args *threadsReadArgs) error {
 	runContext, err := RunContextFrom(cmd)
 	if err != nil {
 		return err
 	}
-	if threadsReadWait < 0 {
+	if args.wait < 0 {
 		return fmt.Errorf("wait must be non-negative")
 	}
 	refsStore, err := threadrefs.DefaultRefStore()
@@ -316,14 +337,14 @@ func runThreadsRead(cmd *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
-	threadTargets, err := resolveThreadTargets(threadsReadThreads, refs)
+	threadTargets, err := resolveThreadTargets(args.threads, refs)
 	if err != nil {
 		return err
 	}
 	includeThreadLine := len(threadTargets) > 1
 
 	threadsClient := gatewayv1connect.NewThreadsGatewayClient(runContext.Clients.HTTPClient, runContext.Clients.BaseURL, runContext.Clients.ConnectOpts()...)
-	if threadsReadUnread {
+	if args.unread {
 		participantID, err := requireAgentID()
 		if err != nil {
 			return err
@@ -332,8 +353,8 @@ func runThreadsRead(cmd *cobra.Command, _ []string) error {
 		if err != nil {
 			return err
 		}
-		if len(protoMessages) == 0 && threadsReadWait > 0 {
-			return waitOutputAndAck(cmd.Context(), cmd, runContext, threadsClient, threadTargets, participantID, refs, time.Duration(threadsReadWait)*time.Second, includeThreadLine)
+		if len(protoMessages) == 0 && args.wait > 0 {
+			return waitOutputAndAck(cmd.Context(), cmd, runContext, threadsClient, threadTargets, participantID, refs, time.Duration(args.wait)*time.Second, includeThreadLine)
 		}
 		return outputAndAck(cmd.Context(), cmd, runContext.OutputFormat, threadsClient, participantID, protoMessages, refs, includeThreadLine)
 	}
@@ -342,8 +363,8 @@ func runThreadsRead(cmd *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
-	if len(messages) == 0 && threadsReadWait > 0 {
-		messages, err = waitForMessages(cmd.Context(), runContext, threadTargets, time.Duration(threadsReadWait)*time.Second, func(ctx context.Context) ([]*threadsv1.Message, error) {
+	if len(messages) == 0 && args.wait > 0 {
+		messages, err = waitForMessages(cmd.Context(), runContext, threadTargets, time.Duration(args.wait)*time.Second, func(ctx context.Context) ([]*threadsv1.Message, error) {
 			return fetchMessages(ctx, threadsClient, threadTargets)
 		})
 		if err != nil {
@@ -357,12 +378,12 @@ func runThreadsRead(cmd *cobra.Command, _ []string) error {
 	return outputMessages(cmd, runContext.OutputFormat, view, includeThreadLine)
 }
 
-func runThreadsAdd(cmd *cobra.Command, _ []string) error {
+func runThreadsAdd(cmd *cobra.Command, args *threadsAddArgs) error {
 	runContext, err := RunContextFrom(cmd)
 	if err != nil {
 		return err
 	}
-	if len(threadsAddValues) == 0 {
+	if len(args.values) == 0 {
 		return fmt.Errorf("participant is required")
 	}
 	refsStore, err := threadrefs.DefaultRefStore()
@@ -374,8 +395,8 @@ func runThreadsAdd(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 	threadInputs := []string{}
-	if strings.TrimSpace(threadsAddThread) != "" {
-		threadInputs = []string{threadsAddThread}
+	if strings.TrimSpace(args.thread) != "" {
+		threadInputs = []string{args.thread}
 	}
 	threadTargets, err := resolveThreadTargets(threadInputs, refs)
 	if err != nil {
@@ -384,8 +405,8 @@ func runThreadsAdd(cmd *cobra.Command, _ []string) error {
 	threadID := threadTargets[0].ID
 
 	threadsClient := gatewayv1connect.NewThreadsGatewayClient(runContext.Clients.HTTPClient, runContext.Clients.BaseURL, runContext.Clients.ConnectOpts()...)
-	for _, participant := range threadsAddValues {
-		if err := addParticipant(cmd.Context(), threadsClient, threadID, participant, threadsAddPassive); err != nil {
+	for _, participant := range args.values {
+		if err := addParticipant(cmd.Context(), threadsClient, threadID, participant, args.passive); err != nil {
 			return err
 		}
 	}
@@ -572,14 +593,22 @@ func fetchUnreadMessages(ctx context.Context, client gatewayv1connect.ThreadsGat
 func fetchMessages(ctx context.Context, client gatewayv1connect.ThreadsGatewayClient, targets []threadTarget) ([]*threadsv1.Message, error) {
 	all := make([]*threadsv1.Message, 0, len(targets)*int(defaultPageSize))
 	for _, target := range targets {
-		resp, err := client.GetMessages(ctx, connect.NewRequest(&threadsv1.GetMessagesRequest{
-			ThreadId: target.ID,
-			PageSize: defaultPageSize,
-		}))
-		if err != nil {
-			return nil, fmt.Errorf("get messages for %s: %w", target.ID, err)
+		pageToken := ""
+		for {
+			resp, err := client.GetMessages(ctx, connect.NewRequest(&threadsv1.GetMessagesRequest{
+				ThreadId:  target.ID,
+				PageSize:  defaultPageSize,
+				PageToken: pageToken,
+			}))
+			if err != nil {
+				return nil, fmt.Errorf("get messages for %s: %w", target.ID, err)
+			}
+			all = append(all, resp.Msg.GetMessages()...)
+			pageToken = resp.Msg.GetNextPageToken()
+			if pageToken == "" {
+				break
+			}
 		}
-		all = append(all, resp.Msg.GetMessages()...)
 	}
 	return all, nil
 }
@@ -766,22 +795,13 @@ func waitForNotificationMessages(ctx context.Context, client gatewayv1connect.No
 	if len(messages) > 0 {
 		return messages, nil
 	}
-	fetchedIDs, err := messageIDSet(messages)
-	if err != nil {
-		return nil, err
-	}
-	buffered := drainNotifications(events)
-	if hasPendingNotifications(buffered, fetchedIDs) {
+	if len(drainNotifications(events)) > 0 {
 		messages, err = fetch(ctx)
 		if err != nil {
 			return nil, err
 		}
 		if len(messages) > 0 {
 			return messages, nil
-		}
-		fetchedIDs, err = messageIDSet(messages)
-		if err != nil {
-			return nil, err
 		}
 	}
 	for {
@@ -795,12 +815,9 @@ func waitForNotificationMessages(ctx context.Context, client gatewayv1connect.No
 			if err != nil {
 				return nil, err
 			}
-		case event, ok := <-events:
+		case _, ok := <-events:
 			if !ok {
 				return nil, fmt.Errorf("notification stream closed")
-			}
-			if _, ok := fetchedIDs[event.MessageID]; ok {
-				continue
 			}
 			messages, err = fetch(ctx)
 			if err != nil {
@@ -808,10 +825,6 @@ func waitForNotificationMessages(ctx context.Context, client gatewayv1connect.No
 			}
 			if len(messages) > 0 {
 				return messages, nil
-			}
-			fetchedIDs, err = messageIDSet(messages)
-			if err != nil {
-				return nil, err
 			}
 		}
 	}
@@ -902,28 +915,4 @@ func drainNotifications(events <-chan messageNotification) []messageNotification
 			return buffer
 		}
 	}
-}
-
-func hasPendingNotifications(events []messageNotification, fetched map[string]struct{}) bool {
-	for _, event := range events {
-		if _, ok := fetched[event.MessageID]; !ok {
-			return true
-		}
-	}
-	return false
-}
-
-func messageIDSet(messages []*threadsv1.Message) (map[string]struct{}, error) {
-	ids := map[string]struct{}{}
-	for _, msg := range messages {
-		if msg == nil {
-			return nil, fmt.Errorf("message is nil")
-		}
-		id := msg.GetId()
-		if id == "" {
-			return nil, fmt.Errorf("message.id is required")
-		}
-		ids[id] = struct{}{}
-	}
-	return ids, nil
 }

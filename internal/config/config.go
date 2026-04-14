@@ -68,6 +68,8 @@ func (c *Config) ResolveGatewayTarget(flagURL string) GatewayTarget {
 		url := normalizeGatewayURL(flagURL)
 		return GatewayTarget{URL: url, UsesZiti: isZitiURL(url)}
 	}
+	// GATEWAY_ADDRESS is injected in agent pods for in-cluster Ziti routing and
+	// should override any user-configured gateway URL when present.
 	if envAddress := os.Getenv(GatewayAddressEnv); envAddress != "" {
 		return GatewayTarget{URL: normalizeGatewayURL(envAddress), UsesZiti: true}
 	}

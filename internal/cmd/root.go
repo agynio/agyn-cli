@@ -25,7 +25,6 @@ type contextKey struct{}
 var (
 	gatewayURLFlag string
 	outputFlag     string
-	formatFlag     string
 	noColorFlag    bool
 )
 
@@ -39,23 +38,14 @@ var rootCmd = &cobra.Command{
 			return err
 		}
 
-		outputValue := outputFlag
-		outputChanged := cmd.Flags().Changed("output")
-		formatChanged := cmd.Flags().Changed("format")
-		if formatChanged && outputChanged {
-			return fmt.Errorf("--output and --format are mutually exclusive")
-		}
-		if formatChanged {
-			outputValue = formatFlag
-		}
-		format, err := output.ParseFormat(outputValue)
+		format, err := output.ParseFormat(outputFlag)
 		if err != nil {
 			return err
 		}
 
 		target := cfg.ResolveGatewayTarget(gatewayURLFlag)
 		var clients *gateway.Clients
-		if requiresAuth(cmd) {
+		if requiresAuth(cmd, args) {
 			allowMissing := target.UsesZiti || allowMissingToken(cmd)
 			token, err := auth.LoadToken(auth.TokenOptions{AllowMissing: allowMissing})
 			if err != nil {
@@ -95,14 +85,14 @@ func withRunContext(ctx context.Context, runContext *RunContext) context.Context
 	return context.WithValue(ctx, contextKey{}, runContext)
 }
 
-func requiresAuth(cmd *cobra.Command) bool {
+func requiresAuth(cmd *cobra.Command, args []string) bool {
 	if cmd.Name() == "help" {
 		return false
 	}
 	if cmd.Flags().Changed("help") {
 		return false
 	}
-	if hasHelpArg() {
+	if hasHelpArg(args) {
 		return false
 	}
 	if cmd.Name() == "auth" {
@@ -114,10 +104,14 @@ func requiresAuth(cmd *cobra.Command) bool {
 	return true
 }
 
-func hasHelpArg() bool {
-	for _, arg := range os.Args[1:] {
+func hasHelpArg(args []string) bool {
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
 		if arg == "--help" || arg == "-h" {
 			return true
+		}
+		if strings.HasPrefix(arg, "--") && i+1 < len(args) {
+			i++
 		}
 	}
 	return false
@@ -133,6 +127,5 @@ func allowMissingToken(cmd *cobra.Command) bool {
 func init() {
 	rootCmd.PersistentFlags().StringVar(&gatewayURLFlag, "gateway-url", "", "Gateway base URL")
 	rootCmd.PersistentFlags().StringVarP(&outputFlag, "output", "o", string(output.FormatTable), "Output format: table, json, or yaml")
-	rootCmd.PersistentFlags().StringVar(&formatFlag, "format", string(output.FormatTable), "Output format: table, json, or yaml")
 	rootCmd.PersistentFlags().BoolVar(&noColorFlag, "no-color", false, "Disable color output")
 }
