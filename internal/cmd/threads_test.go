@@ -59,6 +59,23 @@ func TestSplitParticipants(t *testing.T) {
 	}
 }
 
+func TestParticipantIdentifier(t *testing.T) {
+	identifier, err := participantIdentifier(" @agent ")
+	if err != nil {
+		t.Fatalf("participant identifier: %v", err)
+	}
+	if identifier != "@agent" {
+		t.Fatalf("unexpected identifier: %s", identifier)
+	}
+
+	if _, err := participantIdentifier("@"); err == nil {
+		t.Fatalf("expected error for empty nickname")
+	}
+	if _, err := participantIdentifier(" "); err == nil {
+		t.Fatalf("expected error for empty participant")
+	}
+}
+
 func TestToMessageView(t *testing.T) {
 	createdAt := timestamppb.New(time.Date(2025, 1, 2, 3, 4, 5, 0, time.UTC))
 	msg := &threadsv1.Message{

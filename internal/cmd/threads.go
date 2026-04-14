@@ -535,6 +535,9 @@ func participantIdentifier(value string) (string, error) {
 	if trimmed == "" {
 		return "", fmt.Errorf("participant is required")
 	}
+	if trimmed == "@" {
+		return "", fmt.Errorf("participant nickname is required")
+	}
 	return trimmed, nil
 }
 
