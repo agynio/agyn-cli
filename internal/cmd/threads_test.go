@@ -64,8 +64,24 @@ func TestParticipantIdentifier(t *testing.T) {
 	if err != nil {
 		t.Fatalf("participant identifier: %v", err)
 	}
-	if identifier != "@agent" {
-		t.Fatalf("unexpected identifier: %s", identifier)
+	nickname, ok := identifier.GetIdentifier().(*threadsv1.ParticipantIdentifier_ParticipantNickname)
+	if !ok {
+		t.Fatalf("expected nickname identifier, got %#v", identifier.GetIdentifier())
+	}
+	if nickname.ParticipantNickname != "@agent" {
+		t.Fatalf("unexpected nickname: %s", nickname.ParticipantNickname)
+	}
+
+	identifier, err = participantIdentifier(" agent-1 ")
+	if err != nil {
+		t.Fatalf("participant identifier: %v", err)
+	}
+	participantID, ok := identifier.GetIdentifier().(*threadsv1.ParticipantIdentifier_ParticipantId)
+	if !ok {
+		t.Fatalf("expected participant id identifier, got %#v", identifier.GetIdentifier())
+	}
+	if participantID.ParticipantId != "agent-1" {
+		t.Fatalf("unexpected participant id: %s", participantID.ParticipantId)
 	}
 
 	if _, err := participantIdentifier("@"); err == nil {

@@ -548,23 +548,17 @@ func (x *ArchiveThreadResponse) GetThread() *Thread {
 type AddParticipantRequest struct {
 	state    protoimpl.MessageState `protogen:"open.v1"`
 	ThreadId string                 `protobuf:"bytes,1,opt,name=thread_id,json=threadId,proto3" json:"thread_id,omitempty"` // UUID
-	// Deprecated: use participant_identifier instead.
+	// Deprecated: use participant instead.
 	//
 	// Deprecated: Marked as deprecated in agynio/api/threads/v1/threads.proto.
 	ParticipantId string `protobuf:"bytes,2,opt,name=participant_id,json=participantId,proto3" json:"participant_id,omitempty"` // UUID
-	// Organization scope for nickname resolution. Required when participant_identifier
-	// is an @nickname and caller context lacks an organization id.
+	// Organization scope for nickname resolution. Required with participant_nickname.
 	OrganizationId *string `protobuf:"bytes,4,opt,name=organization_id,json=organizationId,proto3,oneof" json:"organization_id,omitempty"` // UUID
 	// Passive participants receive messages but do not trigger workload starts.
-	Passive bool `protobuf:"varint,5,opt,name=passive,proto3" json:"passive,omitempty"`
-	// Deprecated: use participant_identifier instead.
-	//
-	// Deprecated: Marked as deprecated in agynio/api/threads/v1/threads.proto.
-	Participant *ParticipantIdentifier `protobuf:"bytes,6,opt,name=participant,proto3" json:"participant,omitempty"`
-	// Participant identifier (UUID or @nickname).
-	ParticipantIdentifier string `protobuf:"bytes,7,opt,name=participant_identifier,json=participantIdentifier,proto3" json:"participant_identifier,omitempty"`
-	unknownFields         protoimpl.UnknownFields
-	sizeCache             protoimpl.SizeCache
+	Passive       bool                   `protobuf:"varint,5,opt,name=passive,proto3" json:"passive,omitempty"`
+	Participant   *ParticipantIdentifier `protobuf:"bytes,6,opt,name=participant,proto3" json:"participant,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *AddParticipantRequest) Reset() {
@@ -626,7 +620,6 @@ func (x *AddParticipantRequest) GetPassive() bool {
 	return false
 }
 
-// Deprecated: Marked as deprecated in agynio/api/threads/v1/threads.proto.
 func (x *AddParticipantRequest) GetParticipant() *ParticipantIdentifier {
 	if x != nil {
 		return x.Participant
@@ -634,14 +627,6 @@ func (x *AddParticipantRequest) GetParticipant() *ParticipantIdentifier {
 	return nil
 }
 
-func (x *AddParticipantRequest) GetParticipantIdentifier() string {
-	if x != nil {
-		return x.ParticipantIdentifier
-	}
-	return ""
-}
-
-// Deprecated: use AddParticipantRequest.participant_identifier.
 type ParticipantIdentifier struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Types that are valid to be assigned to Identifier:
@@ -717,7 +702,7 @@ type ParticipantIdentifier_ParticipantId struct {
 }
 
 type ParticipantIdentifier_ParticipantNickname struct {
-	// Nickname to resolve within organization_id.
+	// @nickname to resolve within organization_id.
 	ParticipantNickname string `protobuf:"bytes,2,opt,name=participant_nickname,json=participantNickname,proto3,oneof"`
 }
 
@@ -1367,14 +1352,13 @@ const file_agynio_api_threads_v1_threads_proto_rawDesc = "" +
 	"\x14ArchiveThreadRequest\x12\x1b\n" +
 	"\tthread_id\x18\x01 \x01(\tR\bthreadId\"N\n" +
 	"\x15ArchiveThreadResponse\x125\n" +
-	"\x06thread\x18\x01 \x01(\v2\x1d.agynio.api.threads.v1.ThreadR\x06thread\"\xcc\x02\n" +
+	"\x06thread\x18\x01 \x01(\v2\x1d.agynio.api.threads.v1.ThreadR\x06thread\"\x91\x02\n" +
 	"\x15AddParticipantRequest\x12\x1b\n" +
 	"\tthread_id\x18\x01 \x01(\tR\bthreadId\x12)\n" +
 	"\x0eparticipant_id\x18\x02 \x01(\tB\x02\x18\x01R\rparticipantId\x12,\n" +
 	"\x0forganization_id\x18\x04 \x01(\tH\x00R\x0eorganizationId\x88\x01\x01\x12\x18\n" +
-	"\apassive\x18\x05 \x01(\bR\apassive\x12R\n" +
-	"\vparticipant\x18\x06 \x01(\v2,.agynio.api.threads.v1.ParticipantIdentifierB\x02\x18\x01R\vparticipant\x125\n" +
-	"\x16participant_identifier\x18\a \x01(\tR\x15participantIdentifierB\x12\n" +
+	"\apassive\x18\x05 \x01(\bR\apassive\x12N\n" +
+	"\vparticipant\x18\x06 \x01(\v2,.agynio.api.threads.v1.ParticipantIdentifierR\vparticipantB\x12\n" +
 	"\x10_organization_idJ\x04\b\x03\x10\x04\"\x83\x01\n" +
 	"\x15ParticipantIdentifier\x12'\n" +
 	"\x0eparticipant_id\x18\x01 \x01(\tH\x00R\rparticipantId\x123\n" +
