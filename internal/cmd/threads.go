@@ -27,10 +27,11 @@ const (
 )
 
 type threadsCreateArgs struct {
-	ref  string
-	add  []string
-	send string
-	wait int
+	ref     string
+	add     []string
+	send    string
+	wait    int
+	passive bool
 }
 
 type threadsSendArgs struct {
@@ -113,6 +114,7 @@ func newThreadsCreateCmd() *cobra.Command {
 	}
 	cmd.Flags().StringVar(&args.ref, "ref", "", "Local ref alias to store")
 	cmd.Flags().StringArrayVar(&args.add, "add", nil, "Participant identity (@nickname or ID)")
+	cmd.Flags().BoolVar(&args.passive, "passive", true, "Mark creator as passive")
 	cmd.Flags().StringVar(&args.send, "send", "", "Message to send after creating the thread")
 	cmd.Flags().IntVar(&args.wait, "wait", 0, "Seconds to wait for a response")
 	return cmd
@@ -195,9 +197,7 @@ func runThreadsCreate(cmd *cobra.Command, args *threadsCreateArgs) error {
 		return err
 	}
 	agentID := strings.TrimSpace(os.Getenv(agentIDEnv))
-	if agentID != "" {
-		participantIDs = appendUnique(participantIDs, agentID)
-	}
+	participantIDs = removeValue(participantIDs, agentID)
 	if len(participantIDs) == 0 {
 		return fmt.Errorf("at least one participant is required")
 	}
@@ -216,6 +216,12 @@ func runThreadsCreate(cmd *cobra.Command, args *threadsCreateArgs) error {
 		return fmt.Errorf("create thread: response missing thread id")
 	}
 	threadID := thread.GetId()
+
+	if agentID != "" {
+		if err := addParticipant(cmd.Context(), threadsClient, threadID, agentID, args.passive); err != nil {
+			return err
+		}
+	}
 
 	if args.ref != "" {
 		refs[args.ref] = threadID
@@ -504,6 +510,20 @@ func appendUnique(values []string, value string) []string {
 		}
 	}
 	return append(values, value)
+}
+
+func removeValue(values []string, value string) []string {
+	if value == "" {
+		return values
+	}
+	filtered := make([]string, 0, len(values))
+	for _, existing := range values {
+		if existing == value {
+			continue
+		}
+		filtered = append(filtered, existing)
+	}
+	return filtered
 }
 
 func requireAgentID() (string, error) {
