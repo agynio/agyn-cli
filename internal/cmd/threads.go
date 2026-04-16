@@ -535,6 +535,9 @@ func participantIdentifier(value string) (*threadsv1.ParticipantIdentifier, erro
 	if trimmed == "" {
 		return nil, fmt.Errorf("participant is required")
 	}
+	if trimmed == "@" {
+		return nil, fmt.Errorf("participant nickname is required")
+	}
 	if strings.HasPrefix(trimmed, "@") {
 		return &threadsv1.ParticipantIdentifier{
 			Identifier: &threadsv1.ParticipantIdentifier_ParticipantNickname{ParticipantNickname: trimmed},

@@ -59,6 +59,39 @@ func TestSplitParticipants(t *testing.T) {
 	}
 }
 
+func TestParticipantIdentifier(t *testing.T) {
+	identifier, err := participantIdentifier(" @agent ")
+	if err != nil {
+		t.Fatalf("participant identifier: %v", err)
+	}
+	nickname, ok := identifier.GetIdentifier().(*threadsv1.ParticipantIdentifier_ParticipantNickname)
+	if !ok {
+		t.Fatalf("expected nickname identifier, got %#v", identifier.GetIdentifier())
+	}
+	if nickname.ParticipantNickname != "@agent" {
+		t.Fatalf("unexpected nickname: %s", nickname.ParticipantNickname)
+	}
+
+	identifier, err = participantIdentifier(" agent-1 ")
+	if err != nil {
+		t.Fatalf("participant identifier: %v", err)
+	}
+	participantID, ok := identifier.GetIdentifier().(*threadsv1.ParticipantIdentifier_ParticipantId)
+	if !ok {
+		t.Fatalf("expected participant id identifier, got %#v", identifier.GetIdentifier())
+	}
+	if participantID.ParticipantId != "agent-1" {
+		t.Fatalf("unexpected participant id: %s", participantID.ParticipantId)
+	}
+
+	if _, err := participantIdentifier("@"); err == nil {
+		t.Fatalf("expected error for empty nickname")
+	}
+	if _, err := participantIdentifier(" "); err == nil {
+		t.Fatalf("expected error for empty participant")
+	}
+}
+
 func TestToMessageView(t *testing.T) {
 	createdAt := timestamppb.New(time.Date(2025, 1, 2, 3, 4, 5, 0, time.UTC))
 	msg := &threadsv1.Message{
