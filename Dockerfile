@@ -1,6 +1,13 @@
+ARG BUF_VERSION=1.66.1
+
 FROM golang:1.24-alpine AS generate
+ARG BUF_VERSION
 WORKDIR /src
-RUN go install github.com/bufbuild/buf/cmd/buf@v1.66.1
+RUN apk add --no-cache curl
+RUN curl -sSL \
+      "https://github.com/bufbuild/buf/releases/download/v${BUF_VERSION}/buf-$(uname -s)-$(uname -m)" \
+      -o /usr/local/bin/buf && \
+    chmod +x /usr/local/bin/buf
 COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
