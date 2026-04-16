@@ -195,12 +195,6 @@ func runThreadsCreate(cmd *cobra.Command, args *threadsCreateArgs) error {
 		return err
 	}
 	agentID := strings.TrimSpace(os.Getenv(agentIDEnv))
-	if agentID != "" {
-		participantIDs = appendUnique(participantIDs, agentID)
-	}
-	if len(participantIDs) == 0 {
-		return fmt.Errorf("at least one participant is required")
-	}
 	sendMessage := strings.TrimSpace(args.send)
 	if (sendMessage != "" || args.wait > 0) && agentID == "" {
 		return fmt.Errorf("%s is required for this command", agentIDEnv)
