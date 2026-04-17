@@ -367,11 +367,22 @@ func (x *MessageRecipient) GetAckedAt() *timestamppb.Timestamp {
 	return nil
 }
 
+// Creates a new thread with initial participants.
+// Exactly one of participant_ids (deprecated) or participants must be provided.
+// Setting both is rejected by the server.
 type CreateThreadRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Initial participant UUIDs. At least one required.
-	// Passive participants must be added with AddParticipant.
+	// Deprecated: use participants instead.
+	// Initial participant UUIDs. Passive participants must be added with AddParticipant.
+	//
+	// Deprecated: Marked as deprecated in agynio/api/threads/v1/threads.proto.
 	ParticipantIds []string `protobuf:"bytes,1,rep,name=participant_ids,json=participantIds,proto3" json:"participant_ids,omitempty"`
+	// Initial participants by UUID or nickname.
+	// At least one required unless initiator metadata supplies the only participant.
+	Participants []*ParticipantIdentifier `protobuf:"bytes,2,rep,name=participants,proto3" json:"participants,omitempty"`
+	// Organization context for thread creation; may be derived from the caller
+	// identity when omitted and used as the nickname resolution scope.
+	OrganizationId *string `protobuf:"bytes,3,opt,name=organization_id,json=organizationId,proto3,oneof" json:"organization_id,omitempty"` // UUID
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -406,11 +417,26 @@ func (*CreateThreadRequest) Descriptor() ([]byte, []int) {
 	return file_agynio_api_threads_v1_threads_proto_rawDescGZIP(), []int{4}
 }
 
+// Deprecated: Marked as deprecated in agynio/api/threads/v1/threads.proto.
 func (x *CreateThreadRequest) GetParticipantIds() []string {
 	if x != nil {
 		return x.ParticipantIds
 	}
 	return nil
+}
+
+func (x *CreateThreadRequest) GetParticipants() []*ParticipantIdentifier {
+	if x != nil {
+		return x.Participants
+	}
+	return nil
+}
+
+func (x *CreateThreadRequest) GetOrganizationId() string {
+	if x != nil && x.OrganizationId != nil {
+		return *x.OrganizationId
+	}
+	return ""
 }
 
 type CreateThreadResponse struct {
@@ -552,7 +578,8 @@ type AddParticipantRequest struct {
 	//
 	// Deprecated: Marked as deprecated in agynio/api/threads/v1/threads.proto.
 	ParticipantId string `protobuf:"bytes,2,opt,name=participant_id,json=participantId,proto3" json:"participant_id,omitempty"` // UUID
-	// Organization scope for nickname resolution. Required with participant_nickname.
+	// Organization context for the thread; may be derived from the caller
+	// identity when omitted and used as the nickname resolution scope.
 	OrganizationId *string `protobuf:"bytes,4,opt,name=organization_id,json=organizationId,proto3,oneof" json:"organization_id,omitempty"` // UUID
 	// Passive participants receive messages but do not trigger workload starts.
 	Passive       bool                   `protobuf:"varint,5,opt,name=passive,proto3" json:"passive,omitempty"`
@@ -1344,9 +1371,12 @@ const file_agynio_api_threads_v1_threads_proto_rawDesc = "" +
 	"message_id\x18\x01 \x01(\tR\tmessageId\x12\x1b\n" +
 	"\tthread_id\x18\x02 \x01(\tR\bthreadId\x12%\n" +
 	"\x0eparticipant_id\x18\x03 \x01(\tR\rparticipantId\x125\n" +
-	"\backed_at\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\aackedAt\">\n" +
-	"\x13CreateThreadRequest\x12'\n" +
-	"\x0fparticipant_ids\x18\x01 \x03(\tR\x0eparticipantIds\"M\n" +
+	"\backed_at\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\aackedAt\"\xd6\x01\n" +
+	"\x13CreateThreadRequest\x12+\n" +
+	"\x0fparticipant_ids\x18\x01 \x03(\tB\x02\x18\x01R\x0eparticipantIds\x12P\n" +
+	"\fparticipants\x18\x02 \x03(\v2,.agynio.api.threads.v1.ParticipantIdentifierR\fparticipants\x12,\n" +
+	"\x0forganization_id\x18\x03 \x01(\tH\x00R\x0eorganizationId\x88\x01\x01B\x12\n" +
+	"\x10_organization_id\"M\n" +
 	"\x14CreateThreadResponse\x125\n" +
 	"\x06thread\x18\x01 \x01(\v2\x1d.agynio.api.threads.v1.ThreadR\x06thread\"3\n" +
 	"\x14ArchiveThreadRequest\x12\x1b\n" +
@@ -1471,35 +1501,36 @@ var file_agynio_api_threads_v1_threads_proto_depIdxs = []int32{
 	22, // 4: agynio.api.threads.v1.Participant.joined_at:type_name -> google.protobuf.Timestamp
 	22, // 5: agynio.api.threads.v1.Message.created_at:type_name -> google.protobuf.Timestamp
 	22, // 6: agynio.api.threads.v1.MessageRecipient.acked_at:type_name -> google.protobuf.Timestamp
-	1,  // 7: agynio.api.threads.v1.CreateThreadResponse.thread:type_name -> agynio.api.threads.v1.Thread
-	1,  // 8: agynio.api.threads.v1.ArchiveThreadResponse.thread:type_name -> agynio.api.threads.v1.Thread
-	10, // 9: agynio.api.threads.v1.AddParticipantRequest.participant:type_name -> agynio.api.threads.v1.ParticipantIdentifier
-	1,  // 10: agynio.api.threads.v1.AddParticipantResponse.thread:type_name -> agynio.api.threads.v1.Thread
-	3,  // 11: agynio.api.threads.v1.SendMessageResponse.message:type_name -> agynio.api.threads.v1.Message
-	1,  // 12: agynio.api.threads.v1.GetThreadsResponse.threads:type_name -> agynio.api.threads.v1.Thread
-	3,  // 13: agynio.api.threads.v1.GetMessagesResponse.messages:type_name -> agynio.api.threads.v1.Message
-	3,  // 14: agynio.api.threads.v1.GetUnackedMessagesResponse.messages:type_name -> agynio.api.threads.v1.Message
-	5,  // 15: agynio.api.threads.v1.ThreadsService.CreateThread:input_type -> agynio.api.threads.v1.CreateThreadRequest
-	7,  // 16: agynio.api.threads.v1.ThreadsService.ArchiveThread:input_type -> agynio.api.threads.v1.ArchiveThreadRequest
-	9,  // 17: agynio.api.threads.v1.ThreadsService.AddParticipant:input_type -> agynio.api.threads.v1.AddParticipantRequest
-	12, // 18: agynio.api.threads.v1.ThreadsService.SendMessage:input_type -> agynio.api.threads.v1.SendMessageRequest
-	14, // 19: agynio.api.threads.v1.ThreadsService.GetThreads:input_type -> agynio.api.threads.v1.GetThreadsRequest
-	16, // 20: agynio.api.threads.v1.ThreadsService.GetMessages:input_type -> agynio.api.threads.v1.GetMessagesRequest
-	18, // 21: agynio.api.threads.v1.ThreadsService.GetUnackedMessages:input_type -> agynio.api.threads.v1.GetUnackedMessagesRequest
-	20, // 22: agynio.api.threads.v1.ThreadsService.AckMessages:input_type -> agynio.api.threads.v1.AckMessagesRequest
-	6,  // 23: agynio.api.threads.v1.ThreadsService.CreateThread:output_type -> agynio.api.threads.v1.CreateThreadResponse
-	8,  // 24: agynio.api.threads.v1.ThreadsService.ArchiveThread:output_type -> agynio.api.threads.v1.ArchiveThreadResponse
-	11, // 25: agynio.api.threads.v1.ThreadsService.AddParticipant:output_type -> agynio.api.threads.v1.AddParticipantResponse
-	13, // 26: agynio.api.threads.v1.ThreadsService.SendMessage:output_type -> agynio.api.threads.v1.SendMessageResponse
-	15, // 27: agynio.api.threads.v1.ThreadsService.GetThreads:output_type -> agynio.api.threads.v1.GetThreadsResponse
-	17, // 28: agynio.api.threads.v1.ThreadsService.GetMessages:output_type -> agynio.api.threads.v1.GetMessagesResponse
-	19, // 29: agynio.api.threads.v1.ThreadsService.GetUnackedMessages:output_type -> agynio.api.threads.v1.GetUnackedMessagesResponse
-	21, // 30: agynio.api.threads.v1.ThreadsService.AckMessages:output_type -> agynio.api.threads.v1.AckMessagesResponse
-	23, // [23:31] is the sub-list for method output_type
-	15, // [15:23] is the sub-list for method input_type
-	15, // [15:15] is the sub-list for extension type_name
-	15, // [15:15] is the sub-list for extension extendee
-	0,  // [0:15] is the sub-list for field type_name
+	10, // 7: agynio.api.threads.v1.CreateThreadRequest.participants:type_name -> agynio.api.threads.v1.ParticipantIdentifier
+	1,  // 8: agynio.api.threads.v1.CreateThreadResponse.thread:type_name -> agynio.api.threads.v1.Thread
+	1,  // 9: agynio.api.threads.v1.ArchiveThreadResponse.thread:type_name -> agynio.api.threads.v1.Thread
+	10, // 10: agynio.api.threads.v1.AddParticipantRequest.participant:type_name -> agynio.api.threads.v1.ParticipantIdentifier
+	1,  // 11: agynio.api.threads.v1.AddParticipantResponse.thread:type_name -> agynio.api.threads.v1.Thread
+	3,  // 12: agynio.api.threads.v1.SendMessageResponse.message:type_name -> agynio.api.threads.v1.Message
+	1,  // 13: agynio.api.threads.v1.GetThreadsResponse.threads:type_name -> agynio.api.threads.v1.Thread
+	3,  // 14: agynio.api.threads.v1.GetMessagesResponse.messages:type_name -> agynio.api.threads.v1.Message
+	3,  // 15: agynio.api.threads.v1.GetUnackedMessagesResponse.messages:type_name -> agynio.api.threads.v1.Message
+	5,  // 16: agynio.api.threads.v1.ThreadsService.CreateThread:input_type -> agynio.api.threads.v1.CreateThreadRequest
+	7,  // 17: agynio.api.threads.v1.ThreadsService.ArchiveThread:input_type -> agynio.api.threads.v1.ArchiveThreadRequest
+	9,  // 18: agynio.api.threads.v1.ThreadsService.AddParticipant:input_type -> agynio.api.threads.v1.AddParticipantRequest
+	12, // 19: agynio.api.threads.v1.ThreadsService.SendMessage:input_type -> agynio.api.threads.v1.SendMessageRequest
+	14, // 20: agynio.api.threads.v1.ThreadsService.GetThreads:input_type -> agynio.api.threads.v1.GetThreadsRequest
+	16, // 21: agynio.api.threads.v1.ThreadsService.GetMessages:input_type -> agynio.api.threads.v1.GetMessagesRequest
+	18, // 22: agynio.api.threads.v1.ThreadsService.GetUnackedMessages:input_type -> agynio.api.threads.v1.GetUnackedMessagesRequest
+	20, // 23: agynio.api.threads.v1.ThreadsService.AckMessages:input_type -> agynio.api.threads.v1.AckMessagesRequest
+	6,  // 24: agynio.api.threads.v1.ThreadsService.CreateThread:output_type -> agynio.api.threads.v1.CreateThreadResponse
+	8,  // 25: agynio.api.threads.v1.ThreadsService.ArchiveThread:output_type -> agynio.api.threads.v1.ArchiveThreadResponse
+	11, // 26: agynio.api.threads.v1.ThreadsService.AddParticipant:output_type -> agynio.api.threads.v1.AddParticipantResponse
+	13, // 27: agynio.api.threads.v1.ThreadsService.SendMessage:output_type -> agynio.api.threads.v1.SendMessageResponse
+	15, // 28: agynio.api.threads.v1.ThreadsService.GetThreads:output_type -> agynio.api.threads.v1.GetThreadsResponse
+	17, // 29: agynio.api.threads.v1.ThreadsService.GetMessages:output_type -> agynio.api.threads.v1.GetMessagesResponse
+	19, // 30: agynio.api.threads.v1.ThreadsService.GetUnackedMessages:output_type -> agynio.api.threads.v1.GetUnackedMessagesResponse
+	21, // 31: agynio.api.threads.v1.ThreadsService.AckMessages:output_type -> agynio.api.threads.v1.AckMessagesResponse
+	24, // [24:32] is the sub-list for method output_type
+	16, // [16:24] is the sub-list for method input_type
+	16, // [16:16] is the sub-list for extension type_name
+	16, // [16:16] is the sub-list for extension extendee
+	0,  // [0:16] is the sub-list for field type_name
 }
 
 func init() { file_agynio_api_threads_v1_threads_proto_init() }
@@ -1507,6 +1538,7 @@ func file_agynio_api_threads_v1_threads_proto_init() {
 	if File_agynio_api_threads_v1_threads_proto != nil {
 		return
 	}
+	file_agynio_api_threads_v1_threads_proto_msgTypes[4].OneofWrappers = []any{}
 	file_agynio_api_threads_v1_threads_proto_msgTypes[8].OneofWrappers = []any{}
 	file_agynio_api_threads_v1_threads_proto_msgTypes[9].OneofWrappers = []any{
 		(*ParticipantIdentifier_ParticipantId)(nil),
