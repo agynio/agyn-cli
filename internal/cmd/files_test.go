@@ -69,31 +69,39 @@ func TestFileOutputFrom(t *testing.T) {
 
 func TestResolveDownloadPath(t *testing.T) {
 	info := &filesv1.FileInfo{Filename: "report.txt"}
-	outputPath, err := resolveDownloadPath("", info)
+	destination, err := resolveDownloadPath("", info)
 	if err != nil {
 		t.Fatalf("resolveDownloadPath: %v", err)
 	}
 	expected := filepath.Join(".", "report.txt")
-	if outputPath != expected {
-		t.Fatalf("expected %q, got %q", expected, outputPath)
+	if destination != expected {
+		t.Fatalf("expected %q, got %q", expected, destination)
 	}
 
 	info.Filename = "reports/summary.pdf"
-	outputPath, err = resolveDownloadPath("", info)
+	destination, err = resolveDownloadPath("", info)
 	if err != nil {
 		t.Fatalf("resolveDownloadPath: %v", err)
 	}
 	expected = filepath.Join(".", "summary.pdf")
-	if outputPath != expected {
-		t.Fatalf("expected %q, got %q", expected, outputPath)
+	if destination != expected {
+		t.Fatalf("expected %q, got %q", expected, destination)
 	}
 
-	outputPath, err = resolveDownloadPath("custom.bin", nil)
+	destination, err = resolveDownloadPath("custom.bin", nil)
 	if err != nil {
 		t.Fatalf("resolveDownloadPath with explicit path: %v", err)
 	}
-	if outputPath != "custom.bin" {
-		t.Fatalf("expected custom.bin, got %q", outputPath)
+	if destination != "custom.bin" {
+		t.Fatalf("expected custom.bin, got %q", destination)
+	}
+
+	destination, err = resolveDownloadPath("  custom.bin  ", nil)
+	if err != nil {
+		t.Fatalf("resolveDownloadPath with trimmed path: %v", err)
+	}
+	if destination != "custom.bin" {
+		t.Fatalf("expected custom.bin, got %q", destination)
 	}
 
 	if _, err := resolveDownloadPath("", nil); err == nil {

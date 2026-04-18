@@ -13,25 +13,23 @@ import (
 	"github.com/spf13/cobra"
 )
 
-type filesDownloadArgs struct {
-	outputPath string
-}
-
 func newFilesDownloadCmd() *cobra.Command {
-	args := &filesDownloadArgs{}
 	cmd := &cobra.Command{
-		Use:   "download <file-id>",
+		Use:   "download <file-id> [destination]",
 		Short: "Download a file",
-		Args:  cobra.ExactArgs(1),
+		Args:  cobra.RangeArgs(1, 2),
 		RunE: func(cmd *cobra.Command, input []string) error {
-			return runFilesDownload(cmd, args, input[0])
+			destination := ""
+			if len(input) > 1 {
+				destination = input[1]
+			}
+			return runFilesDownload(cmd, input[0], destination)
 		},
 	}
-	cmd.Flags().StringVar(&args.outputPath, "output-path", "", "Destination path")
 	return cmd
 }
 
-func runFilesDownload(cmd *cobra.Command, args *filesDownloadArgs, fileID string) (err error) {
+func runFilesDownload(cmd *cobra.Command, fileID string, destination string) (err error) {
 	runContext, err := RunContextFrom(cmd)
 	if err != nil {
 		return err
@@ -61,7 +59,7 @@ func runFilesDownload(cmd *cobra.Command, args *filesDownloadArgs, fileID string
 		return fmt.Errorf("file metadata missing from response")
 	}
 
-	outputPath, err := resolveDownloadPath(args.outputPath, fileInfo)
+	outputPath, err := resolveDownloadPath(destination, fileInfo)
 	if err != nil {
 		return err
 	}

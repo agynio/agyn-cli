@@ -14,3 +14,5 @@ commands=(auth apps app-proxy messages threads expose files)
 for command in "${commands[@]}"; do
   "$binary" "$command" --help > /dev/null
 done
+
+"$binary" files download --help > /dev/null
