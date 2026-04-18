@@ -98,6 +98,9 @@ func parseExpiryDuration(value string) (time.Duration, error) {
 	if err != nil {
 		return 0, fmt.Errorf("parse expiry: %w", err)
 	}
+	if duration <= 0 {
+		return 0, fmt.Errorf("expiry must be positive")
+	}
 	return duration, nil
 }
 

@@ -52,6 +52,12 @@ func TestFileOutputFrom(t *testing.T) {
 	if outputData.ID != "file-1" || outputData.Filename != "report.txt" {
 		t.Fatalf("unexpected output: %#v", outputData)
 	}
+	if outputData.ContentType != "text/plain" {
+		t.Fatalf("unexpected content type: %s", outputData.ContentType)
+	}
+	if outputData.SizeBytes != 123 {
+		t.Fatalf("unexpected size: %d", outputData.SizeBytes)
+	}
 	if outputData.CreatedAt != formatTimestamp(createdAt) {
 		t.Fatalf("unexpected created_at: %s", outputData.CreatedAt)
 	}
@@ -109,6 +115,12 @@ func TestParseExpiryDuration(t *testing.T) {
 
 	if _, err := parseExpiryDuration("bad"); err == nil {
 		t.Fatal("expected error for invalid duration")
+	}
+	if _, err := parseExpiryDuration("0s"); err == nil {
+		t.Fatal("expected error for zero duration")
+	}
+	if _, err := parseExpiryDuration("-1h"); err == nil {
+		t.Fatal("expected error for negative duration")
 	}
 	if _, err := parseExpiryDuration(""); err == nil {
 		t.Fatal("expected error for empty duration")
