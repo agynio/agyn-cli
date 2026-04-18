@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"reflect"
 	"testing"
 	"time"
 
@@ -43,18 +42,36 @@ func TestResolveThreadTargets(t *testing.T) {
 	}
 }
 
-func TestSplitParticipants(t *testing.T) {
-	ids, nicknames, err := splitParticipants([]string{"@alice", "user-1", "@bob", "user-1"})
+func TestParticipantIdentifiersFromValues(t *testing.T) {
+	participants, err := participantIdentifiersFromValues([]string{"@alice", "user-1", "@bob", "user-1"})
 	if err != nil {
-		t.Fatalf("split participants: %v", err)
+		t.Fatalf("participants from values: %v", err)
 	}
-	if !reflect.DeepEqual(ids, []string{"user-1"}) {
-		t.Fatalf("unexpected ids: %#v", ids)
+	if len(participants) != 3 {
+		t.Fatalf("expected 3 participants, got %d", len(participants))
 	}
-	if !reflect.DeepEqual(nicknames, []string{"@alice", "@bob"}) {
-		t.Fatalf("unexpected nicknames: %#v", nicknames)
+	nickname, ok := participants[0].GetIdentifier().(*threadsv1.ParticipantIdentifier_ParticipantNickname)
+	if !ok {
+		t.Fatalf("expected nickname identifier, got %#v", participants[0].GetIdentifier())
 	}
-	if _, _, err := splitParticipants([]string{""}); err == nil {
+	if nickname.ParticipantNickname != "@alice" {
+		t.Fatalf("unexpected nickname: %s", nickname.ParticipantNickname)
+	}
+	participantID, ok := participants[1].GetIdentifier().(*threadsv1.ParticipantIdentifier_ParticipantId)
+	if !ok {
+		t.Fatalf("expected participant id identifier, got %#v", participants[1].GetIdentifier())
+	}
+	if participantID.ParticipantId != "user-1" {
+		t.Fatalf("unexpected participant id: %s", participantID.ParticipantId)
+	}
+	nickname, ok = participants[2].GetIdentifier().(*threadsv1.ParticipantIdentifier_ParticipantNickname)
+	if !ok {
+		t.Fatalf("expected nickname identifier, got %#v", participants[2].GetIdentifier())
+	}
+	if nickname.ParticipantNickname != "@bob" {
+		t.Fatalf("unexpected nickname: %s", nickname.ParticipantNickname)
+	}
+	if _, err := participantIdentifiersFromValues([]string{""}); err == nil {
 		t.Fatalf("expected error for empty participant")
 	}
 }

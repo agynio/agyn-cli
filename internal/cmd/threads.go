@@ -27,10 +27,11 @@ const (
 )
 
 type threadsCreateArgs struct {
-	ref  string
-	add  []string
-	send string
-	wait int
+	ref            string
+	add            []string
+	organizationID string
+	send           string
+	wait           int
 }
 
 type threadsSendArgs struct {
@@ -113,6 +114,7 @@ func newThreadsCreateCmd() *cobra.Command {
 	}
 	cmd.Flags().StringVar(&args.ref, "ref", "", "Local ref alias to store")
 	cmd.Flags().StringArrayVar(&args.add, "add", nil, "Participant identity (@nickname or ID)")
+	cmd.Flags().StringVar(&args.organizationID, "organization-id", "", "Organization ID")
 	cmd.Flags().StringVar(&args.send, "send", "", "Message to send after creating the thread")
 	cmd.Flags().IntVar(&args.wait, "wait", 0, "Seconds to wait for a response")
 	return cmd
@@ -190,7 +192,7 @@ func runThreadsCreate(cmd *cobra.Command, args *threadsCreateArgs) error {
 		return err
 	}
 
-	participantIDs, participantNicknames, err := splitParticipants(args.add)
+	participants, err := participantIdentifiersFromValues(args.add)
 	if err != nil {
 		return err
 	}
@@ -201,7 +203,12 @@ func runThreadsCreate(cmd *cobra.Command, args *threadsCreateArgs) error {
 	}
 
 	threadsClient := gatewayv1connect.NewThreadsGatewayClient(runContext.Clients.HTTPClient, runContext.Clients.BaseURL, runContext.Clients.ConnectOpts()...)
-	createResp, err := threadsClient.CreateThread(cmd.Context(), connect.NewRequest(&threadsv1.CreateThreadRequest{ParticipantIds: participantIDs}))
+	createRequest := &threadsv1.CreateThreadRequest{Participants: participants}
+	organizationID := strings.TrimSpace(args.organizationID)
+	if organizationID != "" {
+		createRequest.OrganizationId = &organizationID
+	}
+	createResp, err := threadsClient.CreateThread(cmd.Context(), connect.NewRequest(createRequest))
 	if err != nil {
 		return fmt.Errorf("create thread: %w", err)
 	}
@@ -214,12 +221,6 @@ func runThreadsCreate(cmd *cobra.Command, args *threadsCreateArgs) error {
 	if args.ref != "" {
 		refs[args.ref] = threadID
 		if err := refsStore.Save(refs); err != nil {
-			return err
-		}
-	}
-
-	for _, nickname := range participantNicknames {
-		if err := addParticipant(cmd.Context(), threadsClient, threadID, nickname, false); err != nil {
 			return err
 		}
 	}
@@ -474,30 +475,28 @@ func resolveThreadTargets(inputs []string, refs map[string]string) ([]threadTarg
 	return resolved, nil
 }
 
-func splitParticipants(values []string) ([]string, []string, error) {
-	ids := []string{}
-	nicknames := []string{}
+func participantIdentifiersFromValues(values []string) ([]*threadsv1.ParticipantIdentifier, error) {
+	if len(values) == 0 {
+		return nil, nil
+	}
+	participants := make([]*threadsv1.ParticipantIdentifier, 0, len(values))
+	seen := map[string]struct{}{}
 	for _, value := range values {
 		trimmed := strings.TrimSpace(value)
 		if trimmed == "" {
-			return nil, nil, fmt.Errorf("participant cannot be empty")
+			return nil, fmt.Errorf("participant cannot be empty")
 		}
-		if strings.HasPrefix(trimmed, "@") {
-			nicknames = appendUnique(nicknames, trimmed)
+		if _, ok := seen[trimmed]; ok {
 			continue
 		}
-		ids = appendUnique(ids, trimmed)
-	}
-	return ids, nicknames, nil
-}
-
-func appendUnique(values []string, value string) []string {
-	for _, existing := range values {
-		if existing == value {
-			return values
+		identifier, err := participantIdentifier(trimmed)
+		if err != nil {
+			return nil, err
 		}
+		participants = append(participants, identifier)
+		seen[trimmed] = struct{}{}
 	}
-	return append(values, value)
+	return participants, nil
 }
 
 func requireAgentID() (string, error) {
