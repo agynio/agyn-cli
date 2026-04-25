@@ -359,9 +359,20 @@ func runThreadsRead(cmd *cobra.Command, args *threadsReadArgs) error {
 		return err
 	}
 	if len(messages) == 0 && args.wait > 0 {
-		messages, err = waitForMessages(cmd.Context(), runContext, threadTargets, time.Duration(args.wait)*time.Second, func(ctx context.Context) ([]*threadsv1.Message, error) {
-			return fetchMessages(ctx, threadsClient, threadTargets)
-		})
+		identityID, err := requireAgentID()
+		if err != nil {
+			return err
+		}
+		messages, err = waitForMessages(
+			cmd.Context(),
+			runContext,
+			threadTargets,
+			time.Duration(args.wait)*time.Second,
+			identityID,
+			func(ctx context.Context) ([]*threadsv1.Message, error) {
+				return fetchMessages(ctx, threadsClient, threadTargets)
+			},
+		)
 		if err != nil {
 			return err
 		}
@@ -752,12 +763,19 @@ func ackMessages(ctx context.Context, client gatewayv1connect.ThreadsGatewayClie
 
 func waitForUnreadMessages(ctx context.Context, runContext *RunContext, targets []threadTarget, participantID string, timeout time.Duration) ([]*threadsv1.Message, error) {
 	threadsClient := gatewayv1connect.NewThreadsGatewayClient(runContext.Clients.HTTPClient, runContext.Clients.BaseURL, runContext.Clients.ConnectOpts()...)
-	return waitForMessages(ctx, runContext, targets, timeout, func(ctx context.Context) ([]*threadsv1.Message, error) {
+	return waitForMessages(ctx, runContext, targets, timeout, participantID, func(ctx context.Context) ([]*threadsv1.Message, error) {
 		return fetchUnreadMessages(ctx, threadsClient, targets, participantID)
 	})
 }
 
-func waitForMessages(ctx context.Context, runContext *RunContext, targets []threadTarget, timeout time.Duration, fetch func(context.Context) ([]*threadsv1.Message, error)) ([]*threadsv1.Message, error) {
+func waitForMessages(
+	ctx context.Context,
+	runContext *RunContext,
+	targets []threadTarget,
+	timeout time.Duration,
+	identityID string,
+	fetch func(context.Context) ([]*threadsv1.Message, error),
+) ([]*threadsv1.Message, error) {
 	notificationsClient := gatewayv1connect.NewNotificationsGatewayClient(runContext.Clients.HTTPClient, runContext.Clients.BaseURL, runContext.Clients.ConnectOpts()...)
 	threadSet := make(map[string]struct{}, len(targets))
 	for _, target := range targets {
@@ -769,7 +787,7 @@ func waitForMessages(ctx context.Context, runContext *RunContext, targets []thre
 		waitCtx, cancel = context.WithTimeout(ctx, timeout)
 		defer cancel()
 	}
-	messages, err := waitForNotificationMessages(waitCtx, notificationsClient, threadSet, fetch)
+	messages, err := waitForNotificationMessages(waitCtx, notificationsClient, threadSet, identityID, fetch)
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
 			return nil, fmt.Errorf("wait timed out")
@@ -779,8 +797,14 @@ func waitForMessages(ctx context.Context, runContext *RunContext, targets []thre
 	return messages, nil
 }
 
-func waitForNotificationMessages(ctx context.Context, client gatewayv1connect.NotificationsGatewayClient, targetThreads map[string]struct{}, fetch func(context.Context) ([]*threadsv1.Message, error)) ([]*threadsv1.Message, error) {
-	events, errs, err := subscribeMessageNotifications(ctx, client, targetThreads)
+func waitForNotificationMessages(
+	ctx context.Context,
+	client gatewayv1connect.NotificationsGatewayClient,
+	targetThreads map[string]struct{},
+	identityID string,
+	fetch func(context.Context) ([]*threadsv1.Message, error),
+) ([]*threadsv1.Message, error) {
+	events, errs, err := subscribeMessageNotifications(ctx, client, targetThreads, identityID)
 	if err != nil {
 		return nil, err
 	}
@@ -826,8 +850,15 @@ func waitForNotificationMessages(ctx context.Context, client gatewayv1connect.No
 	}
 }
 
-func subscribeMessageNotifications(ctx context.Context, client gatewayv1connect.NotificationsGatewayClient, targetThreads map[string]struct{}) (<-chan messageNotification, <-chan error, error) {
-	stream, err := client.Subscribe(ctx, connect.NewRequest(&notificationsv1.SubscribeRequest{}))
+func subscribeMessageNotifications(
+	ctx context.Context,
+	client gatewayv1connect.NotificationsGatewayClient,
+	targetThreads map[string]struct{},
+	identityID string,
+) (<-chan messageNotification, <-chan error, error) {
+	stream, err := client.Subscribe(ctx, connect.NewRequest(&notificationsv1.SubscribeRequest{
+		Rooms: []string{fmt.Sprintf("thread_participant:%s", identityID)},
+	}))
 	if err != nil {
 		return nil, nil, fmt.Errorf("subscribe notifications: %w", err)
 	}
