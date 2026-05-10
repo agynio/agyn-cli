@@ -22,8 +22,9 @@ import (
 )
 
 const (
-	defaultPageSize     int32 = 20
-	messageCreatedEvent       = "message.created"
+	defaultPageSize           int32 = 20
+	messageCreatedEvent             = "message.created"
+	threadParticipantSelfRoom       = "thread_participant:me"
 )
 
 type threadsCreateArgs struct {
@@ -359,16 +360,11 @@ func runThreadsRead(cmd *cobra.Command, args *threadsReadArgs) error {
 		return err
 	}
 	if len(messages) == 0 && args.wait > 0 {
-		identityID, err := requireAgentID()
-		if err != nil {
-			return err
-		}
 		messages, err = waitForMessages(
 			cmd.Context(),
 			runContext,
 			threadTargets,
 			time.Duration(args.wait)*time.Second,
-			identityID,
 			func(ctx context.Context) ([]*threadsv1.Message, error) {
 				return fetchMessages(ctx, threadsClient, threadTargets)
 			},
@@ -763,7 +759,7 @@ func ackMessages(ctx context.Context, client gatewayv1connect.ThreadsGatewayClie
 
 func waitForUnreadMessages(ctx context.Context, runContext *RunContext, targets []threadTarget, participantID string, timeout time.Duration) ([]*threadsv1.Message, error) {
 	threadsClient := gatewayv1connect.NewThreadsGatewayClient(runContext.Clients.HTTPClient, runContext.Clients.BaseURL, runContext.Clients.ConnectOpts()...)
-	return waitForMessages(ctx, runContext, targets, timeout, participantID, func(ctx context.Context) ([]*threadsv1.Message, error) {
+	return waitForMessages(ctx, runContext, targets, timeout, func(ctx context.Context) ([]*threadsv1.Message, error) {
 		return fetchUnreadMessages(ctx, threadsClient, targets, participantID)
 	})
 }
@@ -773,7 +769,6 @@ func waitForMessages(
 	runContext *RunContext,
 	targets []threadTarget,
 	timeout time.Duration,
-	identityID string,
 	fetch func(context.Context) ([]*threadsv1.Message, error),
 ) ([]*threadsv1.Message, error) {
 	notificationsClient := gatewayv1connect.NewNotificationsGatewayClient(runContext.Clients.HTTPClient, runContext.Clients.BaseURL, runContext.Clients.ConnectOpts()...)
@@ -787,7 +782,7 @@ func waitForMessages(
 		waitCtx, cancel = context.WithTimeout(ctx, timeout)
 		defer cancel()
 	}
-	messages, err := waitForNotificationMessages(waitCtx, notificationsClient, threadSet, identityID, fetch)
+	messages, err := waitForNotificationMessages(waitCtx, notificationsClient, threadSet, fetch)
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
 			return nil, fmt.Errorf("wait timed out")
@@ -801,10 +796,9 @@ func waitForNotificationMessages(
 	ctx context.Context,
 	client gatewayv1connect.NotificationsGatewayClient,
 	targetThreads map[string]struct{},
-	identityID string,
 	fetch func(context.Context) ([]*threadsv1.Message, error),
 ) ([]*threadsv1.Message, error) {
-	events, errs, err := subscribeMessageNotifications(ctx, client, targetThreads, identityID)
+	events, errs, err := subscribeMessageNotifications(ctx, client, targetThreads)
 	if err != nil {
 		return nil, err
 	}
@@ -830,14 +824,14 @@ func waitForNotificationMessages(
 			return nil, ctx.Err()
 		case err, ok := <-errs:
 			if !ok {
-				return nil, fmt.Errorf("notification stream closed")
+				return nil, fmt.Errorf("notification stream closed before a message arrived")
 			}
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("subscribe notifications: %w", err)
 			}
 		case _, ok := <-events:
 			if !ok {
-				return nil, fmt.Errorf("notification stream closed")
+				return nil, fmt.Errorf("notification stream closed before a message arrived")
 			}
 			messages, err = fetch(ctx)
 			if err != nil {
@@ -854,10 +848,9 @@ func subscribeMessageNotifications(
 	ctx context.Context,
 	client gatewayv1connect.NotificationsGatewayClient,
 	targetThreads map[string]struct{},
-	identityID string,
 ) (<-chan messageNotification, <-chan error, error) {
 	stream, err := client.Subscribe(ctx, connect.NewRequest(&notificationsv1.SubscribeRequest{
-		Rooms: []string{fmt.Sprintf("thread_participant:%s", identityID)},
+		Rooms: []string{threadParticipantSelfRoom},
 	}))
 	if err != nil {
 		return nil, nil, fmt.Errorf("subscribe notifications: %w", err)
@@ -871,7 +864,7 @@ func subscribeMessageNotifications(
 			resp := stream.Msg()
 			notification, ok, err := parseMessageCreated(resp.GetEnvelope())
 			if err != nil {
-				errs <- err
+				errs <- fmt.Errorf("stream error: %w", err)
 				return
 			}
 			if !ok {
@@ -889,7 +882,7 @@ func subscribeMessageNotifications(
 			}
 		}
 		if err := stream.Err(); err != nil {
-			errs <- err
+			errs <- fmt.Errorf("stream error: %w", err)
 		}
 	}()
 	return events, errs, nil
