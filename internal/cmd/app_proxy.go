@@ -41,18 +41,23 @@ func newAppProxyCmd() *cobra.Command {
 				return err
 			}
 			baseURL := ""
+			client := http.DefaultClient
+			authorizationToken := ""
 			if runContext.Clients != nil {
 				baseURL = runContext.Clients.BaseURL
+				client = runContext.Clients.HTTPClient
 			} else if runContext.Config != nil {
-				baseURL = runContext.Config.ResolveGatewayURL("")
+				target := runContext.Config.ResolveGatewayTarget("")
+				baseURL = target.URL
+				allowMissing := target.UsesZiti
+				token, err := auth.LoadToken(auth.TokenOptions{AllowMissing: allowMissing})
+				if err != nil {
+					return err
+				}
+				authorizationToken = token
 			}
 			if baseURL == "" {
 				return fmt.Errorf("gateway URL unavailable")
-			}
-
-			token, err := auth.LoadToken(auth.TokenOptions{})
-			if err != nil {
-				return err
 			}
 
 			body, err := json.Marshal(payload)
@@ -66,9 +71,11 @@ func newAppProxyCmd() *cobra.Command {
 				return fmt.Errorf("build request: %w", err)
 			}
 			request.Header.Set("Content-Type", "application/json")
-			request.Header.Set("Authorization", "Bearer "+token)
+			if authorizationToken != "" {
+				request.Header.Set("Authorization", "Bearer "+authorizationToken)
+			}
 
-			response, err := http.DefaultClient.Do(request)
+			response, err := client.Do(request)
 			if err != nil {
 				return fmt.Errorf("send request: %w", err)
 			}
