@@ -507,9 +507,13 @@ func participantIdentifiersFromValues(values []string) ([]*threadsv1.Participant
 }
 
 func requireAgentID() (string, error) {
+	identityID := strings.TrimSpace(os.Getenv(agynIdentityIDEnv))
+	if identityID != "" {
+		return identityID, nil
+	}
 	agentID := strings.TrimSpace(os.Getenv(agentIDEnv))
 	if agentID == "" {
-		return "", fmt.Errorf("%s is required for this command", agentIDEnv)
+		return "", fmt.Errorf("%s is required for this command", agynIdentityIDEnv)
 	}
 	return agentID, nil
 }

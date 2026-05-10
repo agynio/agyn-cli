@@ -114,7 +114,7 @@ func hasHelpArg(args []string) bool {
 }
 
 func allowMissingToken(cmd *cobra.Command) bool {
-	if strings.TrimSpace(os.Getenv(agentIDEnv)) == "" {
+	if strings.TrimSpace(os.Getenv(agentIDEnv)) == "" && strings.TrimSpace(os.Getenv(agynIdentityIDEnv)) == "" {
 		return false
 	}
 	return strings.HasPrefix(cmd.CommandPath(), "agyn threads")
