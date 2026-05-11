@@ -29,6 +29,16 @@ func TestParseAppProxyArgs(t *testing.T) {
 	}
 }
 
+func TestParseAppProxyArgsMissingFlagValueBeforeNextFlag(t *testing.T) {
+	_, _, _, err := parseAppProxyArgs([]string{"reminders", "create-reminder", "--thread", "--delay", "300"})
+	if err == nil {
+		t.Fatalf("expected missing flag value error")
+	}
+	if err.Error() != "missing value for flag --thread" {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
 func TestAppProxyCommandDoesNotSendOrganizationHeader(t *testing.T) {
 	t.Setenv(agentIDEnv, "")
 	t.Setenv(agynIdentityIDEnv, "")
