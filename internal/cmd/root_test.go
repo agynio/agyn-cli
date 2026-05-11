@@ -7,6 +7,8 @@ import (
 )
 
 func TestAllowMissingTokenRequiresAgentID(t *testing.T) {
+	t.Setenv(agentIDEnv, "")
+	t.Setenv(agynIdentityIDEnv, "")
 	command := buildCommand("threads")
 	if allowMissingToken(command) {
 		t.Fatal("expected false when AGENT_ID is not set")
@@ -14,6 +16,7 @@ func TestAllowMissingTokenRequiresAgentID(t *testing.T) {
 }
 
 func TestAllowMissingTokenThreadsCommand(t *testing.T) {
+	t.Setenv(agynIdentityIDEnv, "")
 	t.Setenv(agentIDEnv, "agent-123")
 	command := buildCommand("threads", "send")
 	if !allowMissingToken(command) {
@@ -22,6 +25,7 @@ func TestAllowMissingTokenThreadsCommand(t *testing.T) {
 }
 
 func TestAllowMissingTokenNonThreadsCommand(t *testing.T) {
+	t.Setenv(agynIdentityIDEnv, "")
 	t.Setenv(agentIDEnv, "agent-123")
 	command := buildCommand("apps")
 	if allowMissingToken(command) {
