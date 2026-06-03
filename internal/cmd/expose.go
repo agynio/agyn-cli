@@ -9,10 +9,13 @@ import (
 )
 
 type exposureOutput struct {
-	ID     string `json:"id" yaml:"id"`
-	Port   int32  `json:"port" yaml:"port"`
-	URL    string `json:"url" yaml:"url"`
-	Status string `json:"status" yaml:"status"`
+	ID                   string `json:"id" yaml:"id"`
+	Port                 int32  `json:"port" yaml:"port"`
+	URL                  string `json:"url" yaml:"url"`
+	Status               string `json:"status" yaml:"status"`
+	OpenZitiServiceID    string `json:"openziti_service_id" yaml:"openziti_service_id"`
+	OpenZitiBindPolicyID string `json:"openziti_bind_policy_id" yaml:"openziti_bind_policy_id"`
+	OpenZitiDialPolicyID string `json:"openziti_dial_policy_id" yaml:"openziti_dial_policy_id"`
 }
 
 func newExposeCmd() *cobra.Command {
@@ -65,10 +68,13 @@ func exposureOutputFrom(exposure *exposev1.Exposure) (exposureOutput, error) {
 		return exposureOutput{}, fmt.Errorf("exposure metadata missing in response")
 	}
 	return exposureOutput{
-		ID:     meta.GetId(),
-		Port:   exposure.GetPort(),
-		URL:    exposure.GetUrl(),
-		Status: formatExposureStatus(exposure.GetStatus()),
+		ID:                   meta.GetId(),
+		Port:                 exposure.GetPort(),
+		URL:                  exposure.GetUrl(),
+		Status:               formatExposureStatus(exposure.GetStatus()),
+		OpenZitiServiceID:    exposure.GetOpenzitiServiceId(),
+		OpenZitiBindPolicyID: exposure.GetOpenzitiBindPolicyId(),
+		OpenZitiDialPolicyID: exposure.GetOpenzitiDialPolicyId(),
 	}, nil
 }
 
