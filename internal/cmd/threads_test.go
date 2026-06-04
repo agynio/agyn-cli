@@ -1,16 +1,48 @@
 package cmd
 
 import (
+	"bytes"
+	"context"
 	"errors"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
 
+	"connectrpc.com/connect"
+	"github.com/agynio/agyn-cli/gen/agynio/api/gateway/v1/gatewayv1connect"
 	notificationsv1 "github.com/agynio/agyn-cli/gen/agynio/api/notifications/v1"
 	threadsv1 "github.com/agynio/agyn-cli/gen/agynio/api/threads/v1"
+	"github.com/agynio/agyn-cli/internal/gateway"
+	"github.com/agynio/agyn-cli/internal/output"
 	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
+
+type recordingThreadsGateway struct {
+	gatewayv1connect.UnimplementedThreadsGatewayHandler
+	createThreadRequest *threadsv1.CreateThreadRequest
+	sendMessageRequest  *threadsv1.SendMessageRequest
+}
+
+func (s *recordingThreadsGateway) CreateThread(ctx context.Context, req *connect.Request[threadsv1.CreateThreadRequest]) (*connect.Response[threadsv1.CreateThreadResponse], error) {
+	s.createThreadRequest = req.Msg
+	return connect.NewResponse(&threadsv1.CreateThreadResponse{Thread: &threadsv1.Thread{Id: "thread-created"}}), nil
+}
+
+func (s *recordingThreadsGateway) SendMessage(ctx context.Context, req *connect.Request[threadsv1.SendMessageRequest]) (*connect.Response[threadsv1.SendMessageResponse], error) {
+	s.sendMessageRequest = req.Msg
+	return connect.NewResponse(&threadsv1.SendMessageResponse{Message: &threadsv1.Message{Id: "message-1"}}), nil
+}
+
+func newThreadsGatewayTestServer(t *testing.T, service *recordingThreadsGateway) *httptest.Server {
+	t.Helper()
+	path, handler := gatewayv1connect.NewThreadsGatewayHandler(service)
+	mux := http.NewServeMux()
+	mux.Handle(path, handler)
+	return httptest.NewServer(mux)
+}
 
 func TestResolveThreadTargets(t *testing.T) {
 	refs := map[string]string{"research": "thread-1"}
@@ -106,6 +138,71 @@ func TestMessageBodyPreservation(t *testing.T) {
 	}
 	if message != "  \t\n  " {
 		t.Fatalf("expected blank file message body to be preserved, got %q", message)
+	}
+}
+
+func TestThreadsSendPreservesMessageBody(t *testing.T) {
+	body := "  keep `backticks`, $dollars, and trailing spaces  "
+	service := &recordingThreadsGateway{}
+	server := newThreadsGatewayTestServer(t, service)
+	defer server.Close()
+
+	cmd := newThreadsSendCmd()
+	cmd.SetOut(&bytes.Buffer{})
+	cmd.SetContext(withRunContext(context.Background(), &RunContext{
+		Clients:      gateway.NewClients(server.URL, "token-1"),
+		OutputFormat: output.FormatTable,
+	}))
+	cmd.SetArgs([]string{"--thread", "thread-1", "--message", body})
+	t.Setenv(agynIdentityIDEnv, "identity-1")
+	t.Setenv(agentIDEnv, "")
+	t.Setenv("HOME", t.TempDir())
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("execute threads send: %v", err)
+	}
+	if service.sendMessageRequest == nil {
+		t.Fatal("expected send message request")
+	}
+	if service.sendMessageRequest.GetSenderId() != "identity-1" {
+		t.Fatalf("expected AGYN_IDENTITY_ID sender, got %q", service.sendMessageRequest.GetSenderId())
+	}
+	if service.sendMessageRequest.GetBody() != body {
+		t.Fatalf("expected message body to be preserved, got %q", service.sendMessageRequest.GetBody())
+	}
+}
+
+func TestThreadsCreateSendPreservesMessageBodyWithIdentityID(t *testing.T) {
+	body := "  create with `backticks` and trailing spaces  "
+	service := &recordingThreadsGateway{}
+	server := newThreadsGatewayTestServer(t, service)
+	defer server.Close()
+
+	cmd := newThreadsCreateCmd()
+	cmd.SetOut(&bytes.Buffer{})
+	cmd.SetContext(withRunContext(context.Background(), &RunContext{
+		Clients:      gateway.NewClients(server.URL, "token-1"),
+		OutputFormat: output.FormatTable,
+	}))
+	cmd.SetArgs([]string{"--send", body})
+	t.Setenv(agynIdentityIDEnv, "identity-1")
+	t.Setenv(agentIDEnv, "")
+	t.Setenv("HOME", t.TempDir())
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("execute threads create: %v", err)
+	}
+	if service.createThreadRequest == nil {
+		t.Fatal("expected create thread request")
+	}
+	if service.sendMessageRequest == nil {
+		t.Fatal("expected send message request")
+	}
+	if service.sendMessageRequest.GetSenderId() != "identity-1" {
+		t.Fatalf("expected AGYN_IDENTITY_ID sender, got %q", service.sendMessageRequest.GetSenderId())
+	}
+	if service.sendMessageRequest.GetBody() != body {
+		t.Fatalf("expected create send body to be preserved, got %q", service.sendMessageRequest.GetBody())
 	}
 }
 

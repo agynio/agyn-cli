@@ -198,10 +198,10 @@ func runThreadsCreate(cmd *cobra.Command, args *threadsCreateArgs) error {
 	if err != nil {
 		return err
 	}
-	agentID := strings.TrimSpace(os.Getenv(agentIDEnv))
 	sendMessage, hasSendMessage := optionalMessageBody(args.send)
-	if (hasSendMessage || args.wait > 0) && agentID == "" {
-		return fmt.Errorf("%s is required for this command", agentIDEnv)
+	agentID, err := requireAgentIDForThreadCreate(hasSendMessage || args.wait > 0)
+	if err != nil {
+		return err
 	}
 
 	threadsClient := gatewayv1connect.NewThreadsGatewayClient(runContext.Clients.HTTPClient, runContext.Clients.BaseURL, runContext.Clients.ConnectOpts()...)
@@ -517,6 +517,13 @@ func requireAgentID() (string, error) {
 		return "", fmt.Errorf("%s is required for this command", agynIdentityIDEnv)
 	}
 	return agentID, nil
+}
+
+func requireAgentIDForThreadCreate(required bool) (string, error) {
+	if !required {
+		return "", nil
+	}
+	return requireAgentID()
 }
 
 func optionalMessageBody(value string) (string, bool) {
