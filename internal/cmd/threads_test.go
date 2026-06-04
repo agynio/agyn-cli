@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -73,6 +75,79 @@ func TestParticipantIdentifiersFromValues(t *testing.T) {
 	}
 	if _, err := participantIdentifiersFromValues([]string{""}); err == nil {
 		t.Fatalf("expected error for empty participant")
+	}
+}
+
+func TestMessageBodyPreservation(t *testing.T) {
+	body := "  keep `backticks`, $dollars, and trailing spaces  "
+
+	message, err := requiredMessageBody(body, false)
+	if err != nil {
+		t.Fatalf("required message body: %v", err)
+	}
+	if message != body {
+		t.Fatalf("expected message body to be preserved, got %q", message)
+	}
+
+	message, ok := optionalMessageBody(body)
+	if !ok {
+		t.Fatal("expected optional message body to be present")
+	}
+	if message != body {
+		t.Fatalf("expected optional message body to be preserved, got %q", message)
+	}
+
+	if _, err := requiredMessageBody("  \t\n  ", false); err == nil {
+		t.Fatal("expected blank message without files to be rejected")
+	}
+	message, err = requiredMessageBody("  \t\n  ", true)
+	if err != nil {
+		t.Fatalf("expected blank message with files to be allowed: %v", err)
+	}
+	if message != "  \t\n  " {
+		t.Fatalf("expected blank file message body to be preserved, got %q", message)
+	}
+}
+
+func TestFormatNotificationStreamError(t *testing.T) {
+	err := formatNotificationStreamError(errors.New("decode frame"))
+	if err == nil {
+		t.Fatal("expected formatted error")
+	}
+	message := err.Error()
+	for _, want := range []string{
+		"notification subscription stream failed",
+		"decode frame",
+		"try again",
+		"check gateway/proxy logs",
+		"run without --wait and then use agyn threads read --wait",
+		"quote shell-special characters such as backticks",
+	} {
+		if !strings.Contains(message, want) {
+			t.Fatalf("expected %q in %q", want, message)
+		}
+	}
+	if strings.Contains(message, "stream error") {
+		t.Fatalf("expected generic stream error to be avoided, got %q", message)
+	}
+
+	err = formatNotificationStreamError(errors.New(incompleteEnvelopeError))
+	if err == nil {
+		t.Fatal("expected incomplete envelope error")
+	}
+	message = err.Error()
+	for _, want := range []string{
+		incompleteEnvelopeError,
+		"message send may have succeeded",
+		"complete Connect envelope",
+	} {
+		if !strings.Contains(message, want) {
+			t.Fatalf("expected %q in %q", want, message)
+		}
+	}
+
+	if formatNotificationStreamError(nil) != nil {
+		t.Fatal("expected nil error to stay nil")
 	}
 }
 

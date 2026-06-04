@@ -25,6 +25,7 @@ const (
 	defaultPageSize           int32 = 20
 	messageCreatedEvent             = "message.created"
 	threadParticipantSelfRoom       = "thread_participant:me"
+	incompleteEnvelopeError         = "protocol error: incomplete envelope: unexpected EOF"
 )
 
 type threadsCreateArgs struct {
@@ -116,7 +117,7 @@ func newThreadsCreateCmd() *cobra.Command {
 	cmd.Flags().StringVar(&args.ref, "ref", "", "Local ref alias to store")
 	cmd.Flags().StringArrayVar(&args.add, "add", nil, "Participant identity (@nickname or ID)")
 	cmd.Flags().StringVar(&args.organizationID, "organization-id", "", "Organization ID")
-	cmd.Flags().StringVar(&args.send, "send", "", "Message to send after creating the thread")
+	cmd.Flags().StringVar(&args.send, "send", "", "Message to send after creating the thread; quote shell-special characters such as backticks")
 	cmd.Flags().IntVar(&args.wait, "wait", 0, "Seconds to wait for a response")
 	return cmd
 }
@@ -131,7 +132,7 @@ func newThreadsSendCmd() *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVar(&args.thread, "thread", "", "Thread ref or ID")
-	cmd.Flags().StringVar(&args.message, "message", "", "Message body")
+	cmd.Flags().StringVar(&args.message, "message", "", "Message body; quote shell-special characters such as backticks")
 	cmd.Flags().StringArrayVar(&args.files, "file", nil, "File ID to include (repeatable)")
 	cmd.Flags().IntVar(&args.wait, "wait", 0, "Seconds to wait for a response")
 	return cmd
@@ -198,8 +199,8 @@ func runThreadsCreate(cmd *cobra.Command, args *threadsCreateArgs) error {
 		return err
 	}
 	agentID := strings.TrimSpace(os.Getenv(agentIDEnv))
-	sendMessage := strings.TrimSpace(args.send)
-	if (sendMessage != "" || args.wait > 0) && agentID == "" {
+	sendMessage, hasSendMessage := optionalMessageBody(args.send)
+	if (hasSendMessage || args.wait > 0) && agentID == "" {
 		return fmt.Errorf("%s is required for this command", agentIDEnv)
 	}
 
@@ -227,7 +228,7 @@ func runThreadsCreate(cmd *cobra.Command, args *threadsCreateArgs) error {
 	}
 
 	var messageID string
-	if sendMessage != "" {
+	if hasSendMessage {
 		sendResp, err := threadsClient.SendMessage(cmd.Context(), connect.NewRequest(&threadsv1.SendMessageRequest{
 			ThreadId: threadID,
 			SenderId: agentID,
@@ -283,9 +284,9 @@ func runThreadsSend(cmd *cobra.Command, args *threadsSendArgs) error {
 	}
 	threadID := threadTargets[0].ID
 
-	message := strings.TrimSpace(args.message)
-	if message == "" && len(args.files) == 0 {
-		return fmt.Errorf("message or file ids are required")
+	message, err := requiredMessageBody(args.message, len(args.files) > 0)
+	if err != nil {
+		return err
 	}
 	senderID, err := requireAgentID()
 	if err != nil {
@@ -516,6 +517,17 @@ func requireAgentID() (string, error) {
 		return "", fmt.Errorf("%s is required for this command", agynIdentityIDEnv)
 	}
 	return agentID, nil
+}
+
+func optionalMessageBody(value string) (string, bool) {
+	return value, strings.TrimSpace(value) != ""
+}
+
+func requiredMessageBody(value string, hasFiles bool) (string, error) {
+	if strings.TrimSpace(value) == "" && !hasFiles {
+		return "", fmt.Errorf("message or file ids are required")
+	}
+	return value, nil
 }
 
 func addParticipant(ctx context.Context, client gatewayv1connect.ThreadsGatewayClient, threadID, participant string, passive bool) error {
@@ -828,14 +840,14 @@ func waitForNotificationMessages(
 			return nil, ctx.Err()
 		case err, ok := <-errs:
 			if !ok {
-				return nil, fmt.Errorf("notification stream closed before a message arrived")
+				return nil, formatNotificationStreamError(errors.New("closed before a message arrived"))
 			}
 			if err != nil {
-				return nil, fmt.Errorf("subscribe notifications: %w", err)
+				return nil, err
 			}
 		case _, ok := <-events:
 			if !ok {
-				return nil, fmt.Errorf("notification stream closed before a message arrived")
+				return nil, formatNotificationStreamError(errors.New("closed before a message arrived"))
 			}
 			messages, err = fetch(ctx)
 			if err != nil {
@@ -857,7 +869,7 @@ func subscribeMessageNotifications(
 		Rooms: []string{threadParticipantSelfRoom},
 	}))
 	if err != nil {
-		return nil, nil, fmt.Errorf("subscribe notifications: %w", err)
+		return nil, nil, formatNotificationStreamError(err)
 	}
 	events := make(chan messageNotification, 32)
 	errs := make(chan error, 1)
@@ -868,7 +880,7 @@ func subscribeMessageNotifications(
 			resp := stream.Msg()
 			notification, ok, err := parseMessageCreated(resp.GetEnvelope())
 			if err != nil {
-				errs <- fmt.Errorf("stream error: %w", err)
+				errs <- formatNotificationStreamError(err)
 				return
 			}
 			if !ok {
@@ -886,10 +898,25 @@ func subscribeMessageNotifications(
 			}
 		}
 		if err := stream.Err(); err != nil {
-			errs <- fmt.Errorf("stream error: %w", err)
+			errs <- formatNotificationStreamError(err)
 		}
 	}()
 	return events, errs, nil
+}
+
+func formatNotificationStreamError(err error) error {
+	if err == nil {
+		return nil
+	}
+
+	detail := err.Error()
+	message := "notification subscription stream failed while waiting for thread messages (used by agyn threads create/send/read --wait): " + detail
+	if strings.Contains(detail, incompleteEnvelopeError) {
+		message += "; the message send may have succeeded, but the wait stream ended before the gateway sent a complete Connect envelope"
+	}
+	message += "; try again, check gateway/proxy logs if the problem persists, or run without --wait and then use agyn threads read --wait; quote shell-special characters such as backticks in message bodies"
+
+	return errors.New(message)
 }
 
 func parseMessageCreated(envelope *notificationsv1.NotificationEnvelope) (messageNotification, bool, error) {

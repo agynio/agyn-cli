@@ -84,7 +84,7 @@ func newMessagesSendCmd() *cobra.Command {
 
 	cmd.Flags().StringVar(&threadID, "thread", "", "Thread ID")
 	cmd.Flags().StringVar(&senderID, "sender", "", "Sender ID")
-	cmd.Flags().StringVar(&body, "body", "", "Message body")
+	cmd.Flags().StringVar(&body, "body", "", "Message body; quote shell-special characters such as backticks")
 	_ = cmd.MarkFlagRequired("thread")
 	_ = cmd.MarkFlagRequired("sender")
 	_ = cmd.MarkFlagRequired("body")
