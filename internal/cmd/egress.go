@@ -197,6 +197,14 @@ func newEgressRuleUpdateCmd() *cobra.Command {
 				return err
 			}
 			request := &egressv1.UpdateEgressRuleRequest{Id: input[0]}
+			var current *egressv1.EgressRule
+			if matcherFlagsChanged(cmd) || effectFlagsChanged(cmd) {
+				response, err := client.GetEgressRule(cmd.Context(), connect.NewRequest(&egressv1.GetEgressRuleRequest{Id: input[0]}))
+				if err != nil {
+					return err
+				}
+				current = response.Msg.GetEgressRule()
+			}
 			if cmd.Flags().Changed("name") {
 				request.Name = &args.name
 			}
@@ -204,14 +212,14 @@ func newEgressRuleUpdateCmd() *cobra.Command {
 				request.Description = &args.description
 			}
 			if matcherFlagsChanged(cmd) {
-				matcher, err := buildEgressMatcher(args)
+				matcher, err := buildMergedEgressMatcher(cmd, args, current.GetMatcher())
 				if err != nil {
 					return err
 				}
 				request.Matcher = matcher
 			}
 			if effectFlagsChanged(cmd) {
-				effect, err := buildEgressEffect(args)
+				effect, err := buildMergedEgressEffect(cmd, args, current.GetEffect())
 				if err != nil {
 					return err
 				}
@@ -320,6 +328,70 @@ func matcherFlagsChanged(cmd *cobra.Command) bool {
 
 func effectFlagsChanged(cmd *cobra.Command) bool {
 	return cmd.Flags().Changed("action") || cmd.Flags().Changed("header")
+}
+
+func buildMergedEgressMatcher(cmd *cobra.Command, args *egressRuleArgs, current *egressv1.EgressRuleMatcher) (*egressv1.EgressRuleMatcher, error) {
+	if current == nil {
+		return nil, fmt.Errorf("egress rule matcher missing from response")
+	}
+	merged := &egressRuleArgs{
+		domain:  current.GetDomainPattern(),
+		ports:   append([]int32(nil), current.GetPorts()...),
+		methods: append([]string(nil), current.GetMethods()...),
+		path:    current.GetPathPattern(),
+	}
+	if cmd.Flags().Changed("domain") {
+		merged.domain = args.domain
+	}
+	if cmd.Flags().Changed("port") {
+		merged.ports = args.ports
+	}
+	if cmd.Flags().Changed("method") {
+		merged.methods = args.methods
+	}
+	if cmd.Flags().Changed("path") {
+		merged.path = args.path
+	}
+	return buildEgressMatcher(merged)
+}
+
+func buildMergedEgressEffect(cmd *cobra.Command, args *egressRuleArgs, current *egressv1.EgressRuleEffect) (*egressv1.EgressRuleEffect, error) {
+	if current == nil {
+		return nil, fmt.Errorf("egress rule effect missing from response")
+	}
+	merged := &egressRuleArgs{headers: egressHeaderArgsFromProto(current.GetInject())}
+	if current.GetAction() != egressv1.EgressRuleAction_EGRESS_RULE_ACTION_UNSPECIFIED {
+		merged.action = egressActionString(current.GetAction())
+	}
+	if cmd.Flags().Changed("action") {
+		merged.action = args.action
+	}
+	if cmd.Flags().Changed("header") {
+		merged.headers = args.headers
+	}
+	return buildEgressEffect(merged)
+}
+
+func egressHeaderArgsFromProto(headers []*egressv1.EgressRuleHeader) []string {
+	values := make([]string, 0, len(headers))
+	for _, header := range headers {
+		credential := header.GetValue()
+		if header.GetSecretId() != "" {
+			prefix := "secret:"
+			switch header.GetScheme() {
+			case egressv1.HeaderAuthScheme_HEADER_AUTH_SCHEME_BEARER:
+				prefix = "bearer-secret:"
+			case egressv1.HeaderAuthScheme_HEADER_AUTH_SCHEME_BASIC:
+				prefix = "basic-secret:"
+			case egressv1.HeaderAuthScheme_HEADER_AUTH_SCHEME_UNSPECIFIED:
+			default:
+				panic("unsupported egress header scheme " + header.GetScheme().String())
+			}
+			credential = prefix + header.GetSecretId()
+		}
+		values = append(values, header.GetName()+"="+credential)
+	}
+	return values
 }
 
 func buildEgressMatcher(args *egressRuleArgs) (*egressv1.EgressRuleMatcher, error) {

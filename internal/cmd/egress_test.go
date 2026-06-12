@@ -1,11 +1,56 @@
 package cmd
 
 import (
+	"bytes"
+	"context"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
+	"connectrpc.com/connect"
 	egressv1 "github.com/agynio/agyn-cli/gen/agynio/api/egress/v1"
+	"github.com/agynio/agyn-cli/gen/agynio/api/gateway/v1/gatewayv1connect"
+	"github.com/agynio/agyn-cli/internal/gateway"
+	"github.com/agynio/agyn-cli/internal/output"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
+
+type recordingEgressRulesGateway struct {
+	gatewayv1connect.UnimplementedEgressRulesGatewayHandler
+	current       *egressv1.EgressRule
+	updateRequest *egressv1.UpdateEgressRuleRequest
+}
+
+func (s *recordingEgressRulesGateway) GetEgressRule(context.Context, *connect.Request[egressv1.GetEgressRuleRequest]) (*connect.Response[egressv1.GetEgressRuleResponse], error) {
+	return connect.NewResponse(&egressv1.GetEgressRuleResponse{EgressRule: s.current}), nil
+}
+
+func (s *recordingEgressRulesGateway) UpdateEgressRule(_ context.Context, req *connect.Request[egressv1.UpdateEgressRuleRequest]) (*connect.Response[egressv1.UpdateEgressRuleResponse], error) {
+	s.updateRequest = req.Msg
+	updated := &egressv1.EgressRule{
+		Meta:           s.current.GetMeta(),
+		OrganizationId: s.current.GetOrganizationId(),
+		Name:           s.current.GetName(),
+		Description:    s.current.GetDescription(),
+		Matcher:        s.current.GetMatcher(),
+		Effect:         s.current.GetEffect(),
+	}
+	if req.Msg.GetMatcher() != nil {
+		updated.Matcher = req.Msg.GetMatcher()
+	}
+	if req.Msg.GetEffect() != nil {
+		updated.Effect = req.Msg.GetEffect()
+	}
+	return connect.NewResponse(&egressv1.UpdateEgressRuleResponse{EgressRule: updated}), nil
+}
+
+func newEgressRulesGatewayTestServer(t *testing.T, service *recordingEgressRulesGateway) *httptest.Server {
+	t.Helper()
+	path, handler := gatewayv1connect.NewEgressRulesGatewayHandler(service)
+	mux := http.NewServeMux()
+	mux.Handle(path, handler)
+	return httptest.NewServer(mux)
+}
 
 func TestParseEgressAction(t *testing.T) {
 	action, err := parseEgressAction(" deny ")
@@ -76,6 +121,43 @@ func TestEgressRuleOutputFrom(t *testing.T) {
 	}
 	if out.Effect.Action != "allow" || len(out.Effect.Headers) != 1 || out.Effect.Headers[0].SecretID != "secret-id" || out.Effect.Headers[0].Scheme != "bearer" {
 		t.Fatalf("unexpected effect output %#v", out.Effect)
+	}
+}
+
+func TestEgressRuleUpdateMergesPartialMatcher(t *testing.T) {
+	service := &recordingEgressRulesGateway{current: &egressv1.EgressRule{
+		Meta:           &egressv1.EntityMeta{Id: "rule-id", CreatedAt: timestamppb.Now(), UpdatedAt: timestamppb.Now()},
+		OrganizationId: "org-id",
+		Name:           "rule-name",
+		Matcher:        &egressv1.EgressRuleMatcher{DomainPattern: "api.example.com", Ports: []int32{443}, Methods: []string{"GET"}, PathPattern: "/v1/*"},
+		Effect: &egressv1.EgressRuleEffect{
+			Action: egressv1.EgressRuleAction_EGRESS_RULE_ACTION_ALLOW.Enum(),
+			Inject: []*egressv1.EgressRuleHeader{{Name: "Authorization", Scheme: egressv1.HeaderAuthScheme_HEADER_AUTH_SCHEME_BEARER, Credential: &egressv1.EgressRuleHeader_SecretId{SecretId: "secret-id"}}},
+		},
+	}}
+	server := newEgressRulesGatewayTestServer(t, service)
+	defer server.Close()
+
+	cmd := newEgressRuleUpdateCmd()
+	cmd.SetOut(&bytes.Buffer{})
+	cmd.SetContext(withRunContext(context.Background(), &RunContext{Clients: gateway.NewClients(server.URL, "token-1"), OutputFormat: output.FormatTable}))
+	cmd.SetArgs([]string{"rule-id", "--port", "8443"})
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("execute update: %v", err)
+	}
+	matcher := service.updateRequest.GetMatcher()
+	if matcher.GetDomainPattern() != "api.example.com" || matcher.GetPathPattern() != "/v1/*" {
+		t.Fatalf("matcher did not preserve existing fields: %#v", matcher)
+	}
+	if len(matcher.GetPorts()) != 1 || matcher.GetPorts()[0] != 8443 {
+		t.Fatalf("matcher ports = %#v", matcher.GetPorts())
+	}
+	if len(matcher.GetMethods()) != 1 || matcher.GetMethods()[0] != "GET" {
+		t.Fatalf("matcher methods = %#v", matcher.GetMethods())
+	}
+	if len(service.updateRequest.GetEffect().GetInject()) != 0 {
+		t.Fatalf("effect should not be sent for matcher-only update")
 	}
 }
 
