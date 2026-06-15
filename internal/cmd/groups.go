@@ -37,7 +37,6 @@ type groupArgs struct {
 	name           string
 	description    string
 	source         string
-	externalID     string
 	pageSize       int32
 	pageToken      string
 }
@@ -47,7 +46,6 @@ type groupMemberArgs struct {
 	organizationID string
 	memberType     string
 	memberID       string
-	source         string
 	pageSize       int32
 	pageToken      string
 }
@@ -64,7 +62,7 @@ func newGroupCmd() *cobra.Command {
 }
 
 func newGroupCreateCmd() *cobra.Command {
-	args := &groupArgs{source: "platform"}
+	args := &groupArgs{}
 	cmd := &cobra.Command{
 		Use:   "create",
 		Short: "Create a group",
@@ -73,20 +71,12 @@ func newGroupCreateCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			source, err := parseGroupSource(args.source)
-			if err != nil {
-				return err
-			}
-			request := &groupsv1.CreateGroupRequest{
+			response, err := client.CreateGroup(cmd.Context(), connect.NewRequest(&groupsv1.CreateGroupRequest{
 				OrganizationId: args.organizationID,
 				Name:           args.name,
 				Description:    args.description,
-				Source:         source,
-			}
-			if strings.TrimSpace(args.externalID) != "" {
-				request.ExternalId = &args.externalID
-			}
-			response, err := client.CreateGroup(cmd.Context(), connect.NewRequest(request))
+				Source:         groupsv1.GroupSource_GROUP_SOURCE_PLATFORM,
+			}))
 			if err != nil {
 				return err
 			}
@@ -96,8 +86,6 @@ func newGroupCreateCmd() *cobra.Command {
 	cmd.Flags().StringVar(&args.organizationID, "organization-id", "", "Organization ID")
 	cmd.Flags().StringVar(&args.name, "name", "", "Group name")
 	cmd.Flags().StringVar(&args.description, "description", "", "Group description")
-	cmd.Flags().StringVar(&args.source, "source", args.source, "Group source: platform or scim")
-	cmd.Flags().StringVar(&args.externalID, "external-id", "", "External group ID")
 	_ = cmd.MarkFlagRequired("organization-id")
 	_ = cmd.MarkFlagRequired("name")
 	return cmd
@@ -233,7 +221,7 @@ func newGroupMemberCmd() *cobra.Command {
 }
 
 func newGroupMemberAddCmd() *cobra.Command {
-	args := &groupMemberArgs{source: "platform"}
+	args := &groupMemberArgs{}
 	cmd := &cobra.Command{
 		Use:   "add <group-id>",
 		Short: "Add a group member",
@@ -247,11 +235,7 @@ func newGroupMemberAddCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			source, err := parseGroupSource(args.source)
-			if err != nil {
-				return err
-			}
-			response, err := client.AddMember(cmd.Context(), connect.NewRequest(&groupsv1.AddMemberRequest{GroupId: input[0], MemberType: memberType, MemberId: args.memberID, Source: source}))
+			response, err := client.AddMember(cmd.Context(), connect.NewRequest(&groupsv1.AddMemberRequest{GroupId: input[0], MemberType: memberType, MemberId: args.memberID, Source: groupsv1.GroupSource_GROUP_SOURCE_PLATFORM}))
 			if err != nil {
 				return err
 			}
@@ -260,7 +244,6 @@ func newGroupMemberAddCmd() *cobra.Command {
 	}
 	cmd.Flags().StringVar(&args.memberType, "member-type", "", "Member type: user, agent, or app")
 	cmd.Flags().StringVar(&args.memberID, "member-id", "", "Member identity ID")
-	cmd.Flags().StringVar(&args.source, "source", args.source, "Membership source: platform or scim")
 	_ = cmd.MarkFlagRequired("member-type")
 	_ = cmd.MarkFlagRequired("member-id")
 	return cmd
