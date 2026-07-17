@@ -11,10 +11,20 @@ import (
 
 type Config struct {
 	Gateway GatewayConfig `yaml:"gateway"`
+	Local   LocalConfig   `yaml:"local"`
 }
 
 type GatewayConfig struct {
 	URL string `yaml:"url"`
+}
+
+// LocalConfig configures the local platform VM managed by `agyn local`.
+type LocalConfig struct {
+	Port    int    `yaml:"port,omitempty"`
+	APIPort int    `yaml:"apiPort,omitempty"`
+	Version string `yaml:"version,omitempty"`
+	CPUs    int    `yaml:"cpus,omitempty"`
+	Memory  string `yaml:"memory,omitempty"`
 }
 
 const (
@@ -24,7 +34,76 @@ const (
 	CredentialsFile   = "credentials"
 	GatewayURLEnv     = "AGYN_GATEWAY_URL"
 	GatewayAddressEnv = "GATEWAY_ADDRESS"
+
+	DefaultLocalPort    = 2496
+	DefaultLocalAPIPort = 6445
+	DefaultLocalVersion = "latest"
+	DefaultLocalCPUs    = 4
+	DefaultLocalMemory  = "8GiB"
 )
+
+// ApplyLocalDefaults fills unset local VM settings with defaults.
+func (c *Config) ApplyLocalDefaults() {
+	if c.Local.Port == 0 {
+		c.Local.Port = DefaultLocalPort
+	}
+	if c.Local.APIPort == 0 {
+		c.Local.APIPort = DefaultLocalAPIPort
+	}
+	if c.Local.Version == "" {
+		c.Local.Version = DefaultLocalVersion
+	}
+	if c.Local.CPUs == 0 {
+		c.Local.CPUs = DefaultLocalCPUs
+	}
+	if c.Local.Memory == "" {
+		c.Local.Memory = DefaultLocalMemory
+	}
+}
+
+// SaveLocal persists the local section without disturbing other config keys
+// (including ones this CLI version does not know about).
+func SaveLocal(local LocalConfig) error {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return fmt.Errorf("resolve home: %w", err)
+	}
+
+	dir := filepath.Join(home, ConfigDir)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return fmt.Errorf("create config dir: %w", err)
+	}
+
+	path := filepath.Join(dir, ConfigFile)
+	raw := map[string]any{}
+	if data, err := os.ReadFile(path); err == nil {
+		if err := yaml.Unmarshal(data, &raw); err != nil {
+			return fmt.Errorf("parse config: %w", err)
+		}
+	} else if !os.IsNotExist(err) {
+		return fmt.Errorf("read config: %w", err)
+	}
+
+	encoded, err := yaml.Marshal(local)
+	if err != nil {
+		return fmt.Errorf("encode local config: %w", err)
+	}
+	localMap := map[string]any{}
+	if err := yaml.Unmarshal(encoded, &localMap); err != nil {
+		return fmt.Errorf("re-parse local config: %w", err)
+	}
+	raw["local"] = localMap
+
+	data, err := yaml.Marshal(raw)
+	if err != nil {
+		return fmt.Errorf("encode config: %w", err)
+	}
+
+	if err := os.WriteFile(path, data, 0o600); err != nil {
+		return fmt.Errorf("write config: %w", err)
+	}
+	return nil
+}
 
 type GatewayTarget struct {
 	URL      string

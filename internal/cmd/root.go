@@ -101,6 +101,10 @@ func requiresAuth(cmd *cobra.Command, args []string) bool {
 	if cmd.Name() == "login" && cmd.Parent() != nil && cmd.Parent().Name() == "auth" {
 		return false
 	}
+	// `agyn local` manages the local VM and never talks to the gateway.
+	if strings.HasPrefix(cmd.CommandPath(), "agyn local") {
+		return false
+	}
 	return true
 }
 
