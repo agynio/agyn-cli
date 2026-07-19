@@ -40,6 +40,7 @@ func newLocalCmd() *cobra.Command {
 	cmd.AddCommand(newLocalConfigCmd())
 	cmd.AddCommand(newLocalCACmd())
 	cmd.AddCommand(newLocalKubeconfigCmd())
+	cmd.AddCommand(newLocalResetCmd())
 
 	return cmd
 }
