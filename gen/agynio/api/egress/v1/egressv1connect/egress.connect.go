@@ -60,6 +60,9 @@ const (
 	// EgressRulesServiceListEgressRulesByAgentProcedure is the fully-qualified name of the
 	// EgressRulesService's ListEgressRulesByAgent RPC.
 	EgressRulesServiceListEgressRulesByAgentProcedure = "/agynio.api.egress.v1.EgressRulesService/ListEgressRulesByAgent"
+	// EgressRulesServiceListEgressRulesByEnvironmentProcedure is the fully-qualified name of the
+	// EgressRulesService's ListEgressRulesByEnvironment RPC.
+	EgressRulesServiceListEgressRulesByEnvironmentProcedure = "/agynio.api.egress.v1.EgressRulesService/ListEgressRulesByEnvironment"
 	// EgressRulesServiceCountRulesReferencingSecretProcedure is the fully-qualified name of the
 	// EgressRulesService's CountRulesReferencingSecret RPC.
 	EgressRulesServiceCountRulesReferencingSecretProcedure = "/agynio.api.egress.v1.EgressRulesService/CountRulesReferencingSecret"
@@ -79,6 +82,7 @@ type EgressRulesServiceClient interface {
 	ListEgressRuleAttachments(context.Context, *connect.Request[v1.ListEgressRuleAttachmentsRequest]) (*connect.Response[v1.ListEgressRuleAttachmentsResponse], error)
 	// --- Internal ---
 	ListEgressRulesByAgent(context.Context, *connect.Request[v1.ListEgressRulesByAgentRequest]) (*connect.Response[v1.ListEgressRulesByAgentResponse], error)
+	ListEgressRulesByEnvironment(context.Context, *connect.Request[v1.ListEgressRulesByEnvironmentRequest]) (*connect.Response[v1.ListEgressRulesByEnvironmentResponse], error)
 	CountRulesReferencingSecret(context.Context, *connect.Request[v1.CountRulesReferencingSecretRequest]) (*connect.Response[v1.CountRulesReferencingSecretResponse], error)
 }
 
@@ -147,6 +151,12 @@ func NewEgressRulesServiceClient(httpClient connect.HTTPClient, baseURL string, 
 			connect.WithSchema(egressRulesServiceMethods.ByName("ListEgressRulesByAgent")),
 			connect.WithClientOptions(opts...),
 		),
+		listEgressRulesByEnvironment: connect.NewClient[v1.ListEgressRulesByEnvironmentRequest, v1.ListEgressRulesByEnvironmentResponse](
+			httpClient,
+			baseURL+EgressRulesServiceListEgressRulesByEnvironmentProcedure,
+			connect.WithSchema(egressRulesServiceMethods.ByName("ListEgressRulesByEnvironment")),
+			connect.WithClientOptions(opts...),
+		),
 		countRulesReferencingSecret: connect.NewClient[v1.CountRulesReferencingSecretRequest, v1.CountRulesReferencingSecretResponse](
 			httpClient,
 			baseURL+EgressRulesServiceCountRulesReferencingSecretProcedure,
@@ -158,16 +168,17 @@ func NewEgressRulesServiceClient(httpClient connect.HTTPClient, baseURL string, 
 
 // egressRulesServiceClient implements EgressRulesServiceClient.
 type egressRulesServiceClient struct {
-	createEgressRule            *connect.Client[v1.CreateEgressRuleRequest, v1.CreateEgressRuleResponse]
-	getEgressRule               *connect.Client[v1.GetEgressRuleRequest, v1.GetEgressRuleResponse]
-	listEgressRules             *connect.Client[v1.ListEgressRulesRequest, v1.ListEgressRulesResponse]
-	updateEgressRule            *connect.Client[v1.UpdateEgressRuleRequest, v1.UpdateEgressRuleResponse]
-	deleteEgressRule            *connect.Client[v1.DeleteEgressRuleRequest, v1.DeleteEgressRuleResponse]
-	createEgressRuleAttachment  *connect.Client[v1.CreateEgressRuleAttachmentRequest, v1.CreateEgressRuleAttachmentResponse]
-	deleteEgressRuleAttachment  *connect.Client[v1.DeleteEgressRuleAttachmentRequest, v1.DeleteEgressRuleAttachmentResponse]
-	listEgressRuleAttachments   *connect.Client[v1.ListEgressRuleAttachmentsRequest, v1.ListEgressRuleAttachmentsResponse]
-	listEgressRulesByAgent      *connect.Client[v1.ListEgressRulesByAgentRequest, v1.ListEgressRulesByAgentResponse]
-	countRulesReferencingSecret *connect.Client[v1.CountRulesReferencingSecretRequest, v1.CountRulesReferencingSecretResponse]
+	createEgressRule             *connect.Client[v1.CreateEgressRuleRequest, v1.CreateEgressRuleResponse]
+	getEgressRule                *connect.Client[v1.GetEgressRuleRequest, v1.GetEgressRuleResponse]
+	listEgressRules              *connect.Client[v1.ListEgressRulesRequest, v1.ListEgressRulesResponse]
+	updateEgressRule             *connect.Client[v1.UpdateEgressRuleRequest, v1.UpdateEgressRuleResponse]
+	deleteEgressRule             *connect.Client[v1.DeleteEgressRuleRequest, v1.DeleteEgressRuleResponse]
+	createEgressRuleAttachment   *connect.Client[v1.CreateEgressRuleAttachmentRequest, v1.CreateEgressRuleAttachmentResponse]
+	deleteEgressRuleAttachment   *connect.Client[v1.DeleteEgressRuleAttachmentRequest, v1.DeleteEgressRuleAttachmentResponse]
+	listEgressRuleAttachments    *connect.Client[v1.ListEgressRuleAttachmentsRequest, v1.ListEgressRuleAttachmentsResponse]
+	listEgressRulesByAgent       *connect.Client[v1.ListEgressRulesByAgentRequest, v1.ListEgressRulesByAgentResponse]
+	listEgressRulesByEnvironment *connect.Client[v1.ListEgressRulesByEnvironmentRequest, v1.ListEgressRulesByEnvironmentResponse]
+	countRulesReferencingSecret  *connect.Client[v1.CountRulesReferencingSecretRequest, v1.CountRulesReferencingSecretResponse]
 }
 
 // CreateEgressRule calls agynio.api.egress.v1.EgressRulesService.CreateEgressRule.
@@ -218,6 +229,12 @@ func (c *egressRulesServiceClient) ListEgressRulesByAgent(ctx context.Context, r
 	return c.listEgressRulesByAgent.CallUnary(ctx, req)
 }
 
+// ListEgressRulesByEnvironment calls
+// agynio.api.egress.v1.EgressRulesService.ListEgressRulesByEnvironment.
+func (c *egressRulesServiceClient) ListEgressRulesByEnvironment(ctx context.Context, req *connect.Request[v1.ListEgressRulesByEnvironmentRequest]) (*connect.Response[v1.ListEgressRulesByEnvironmentResponse], error) {
+	return c.listEgressRulesByEnvironment.CallUnary(ctx, req)
+}
+
 // CountRulesReferencingSecret calls
 // agynio.api.egress.v1.EgressRulesService.CountRulesReferencingSecret.
 func (c *egressRulesServiceClient) CountRulesReferencingSecret(ctx context.Context, req *connect.Request[v1.CountRulesReferencingSecretRequest]) (*connect.Response[v1.CountRulesReferencingSecretResponse], error) {
@@ -239,6 +256,7 @@ type EgressRulesServiceHandler interface {
 	ListEgressRuleAttachments(context.Context, *connect.Request[v1.ListEgressRuleAttachmentsRequest]) (*connect.Response[v1.ListEgressRuleAttachmentsResponse], error)
 	// --- Internal ---
 	ListEgressRulesByAgent(context.Context, *connect.Request[v1.ListEgressRulesByAgentRequest]) (*connect.Response[v1.ListEgressRulesByAgentResponse], error)
+	ListEgressRulesByEnvironment(context.Context, *connect.Request[v1.ListEgressRulesByEnvironmentRequest]) (*connect.Response[v1.ListEgressRulesByEnvironmentResponse], error)
 	CountRulesReferencingSecret(context.Context, *connect.Request[v1.CountRulesReferencingSecretRequest]) (*connect.Response[v1.CountRulesReferencingSecretResponse], error)
 }
 
@@ -303,6 +321,12 @@ func NewEgressRulesServiceHandler(svc EgressRulesServiceHandler, opts ...connect
 		connect.WithSchema(egressRulesServiceMethods.ByName("ListEgressRulesByAgent")),
 		connect.WithHandlerOptions(opts...),
 	)
+	egressRulesServiceListEgressRulesByEnvironmentHandler := connect.NewUnaryHandler(
+		EgressRulesServiceListEgressRulesByEnvironmentProcedure,
+		svc.ListEgressRulesByEnvironment,
+		connect.WithSchema(egressRulesServiceMethods.ByName("ListEgressRulesByEnvironment")),
+		connect.WithHandlerOptions(opts...),
+	)
 	egressRulesServiceCountRulesReferencingSecretHandler := connect.NewUnaryHandler(
 		EgressRulesServiceCountRulesReferencingSecretProcedure,
 		svc.CountRulesReferencingSecret,
@@ -329,6 +353,8 @@ func NewEgressRulesServiceHandler(svc EgressRulesServiceHandler, opts ...connect
 			egressRulesServiceListEgressRuleAttachmentsHandler.ServeHTTP(w, r)
 		case EgressRulesServiceListEgressRulesByAgentProcedure:
 			egressRulesServiceListEgressRulesByAgentHandler.ServeHTTP(w, r)
+		case EgressRulesServiceListEgressRulesByEnvironmentProcedure:
+			egressRulesServiceListEgressRulesByEnvironmentHandler.ServeHTTP(w, r)
 		case EgressRulesServiceCountRulesReferencingSecretProcedure:
 			egressRulesServiceCountRulesReferencingSecretHandler.ServeHTTP(w, r)
 		default:
@@ -374,6 +400,10 @@ func (UnimplementedEgressRulesServiceHandler) ListEgressRuleAttachments(context.
 
 func (UnimplementedEgressRulesServiceHandler) ListEgressRulesByAgent(context.Context, *connect.Request[v1.ListEgressRulesByAgentRequest]) (*connect.Response[v1.ListEgressRulesByAgentResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("agynio.api.egress.v1.EgressRulesService.ListEgressRulesByAgent is not implemented"))
+}
+
+func (UnimplementedEgressRulesServiceHandler) ListEgressRulesByEnvironment(context.Context, *connect.Request[v1.ListEgressRulesByEnvironmentRequest]) (*connect.Response[v1.ListEgressRulesByEnvironmentResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("agynio.api.egress.v1.EgressRulesService.ListEgressRulesByEnvironment is not implemented"))
 }
 
 func (UnimplementedEgressRulesServiceHandler) CountRulesReferencingSecret(context.Context, *connect.Request[v1.CountRulesReferencingSecretRequest]) (*connect.Response[v1.CountRulesReferencingSecretResponse], error) {
