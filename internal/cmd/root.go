@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -29,9 +30,12 @@ var (
 )
 
 var rootCmd = &cobra.Command{
-	Use:          "agyn",
-	Short:        "Agyn CLI",
-	SilenceUsage: true,
+	Use:   "agyn",
+	Short: "Agyn CLI",
+	// Errors are printed by Execute so a remote shell exit code can be
+	// propagated without an accompanying error line.
+	SilenceUsage:  true,
+	SilenceErrors: true,
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		cfg, err := config.Load()
 		if err != nil {
@@ -68,6 +72,13 @@ var rootCmd = &cobra.Command{
 
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
+		// A remote shell's exit code becomes ours, so `agyn sandbox connect`
+		// behaves like ssh in scripts.
+		var coded interface{ ExitCode() int }
+		if errors.As(err, &coded) {
+			os.Exit(coded.ExitCode())
+		}
+		fmt.Fprintln(os.Stderr, "Error:", err)
 		os.Exit(1)
 	}
 }
