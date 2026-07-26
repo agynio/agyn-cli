@@ -10,8 +10,17 @@ import (
 )
 
 type Config struct {
-	Gateway GatewayConfig `yaml:"gateway"`
-	Local   LocalConfig   `yaml:"local"`
+	// CurrentProfile is the profile commands run under when nothing overrides
+	// it. Empty means the default profile.
+	CurrentProfile string             `yaml:"currentProfile,omitempty"`
+	Profiles       map[string]Profile `yaml:"profiles,omitempty"`
+	// Gateway is the pre-profile global setting. Retained so configurations
+	// written before profiles keep working; profiles take precedence.
+	Gateway GatewayConfig `yaml:"gateway,omitempty"`
+	// Local configures the VM itself — image version, host ports, resources.
+	// It is not a profile: the `local` profile under Profiles configures how
+	// the CLI talks to that VM, and the two are independent.
+	Local LocalConfig `yaml:"local"`
 }
 
 type GatewayConfig struct {
@@ -64,13 +73,30 @@ func (c *Config) ApplyLocalDefaults() {
 // SaveLocal persists the local section without disturbing other config keys
 // (including ones this CLI version does not know about).
 func SaveLocal(local LocalConfig) error {
+	encoded, err := yaml.Marshal(local)
+	if err != nil {
+		return fmt.Errorf("encode local config: %w", err)
+	}
+	localMap := map[string]any{}
+	if err := yaml.Unmarshal(encoded, &localMap); err != nil {
+		return fmt.Errorf("re-parse local config: %w", err)
+	}
+	return mutateConfigFile(func(raw map[string]any) error {
+		raw["local"] = localMap
+		return nil
+	})
+}
+
+// mutateConfigFile applies a change to the config file as a raw map, so keys
+// this CLI version does not model survive the write.
+func mutateConfigFile(mutate func(map[string]any) error) error {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return fmt.Errorf("resolve home: %w", err)
 	}
 
 	dir := filepath.Join(home, ConfigDir)
-	if err := os.MkdirAll(dir, 0o755); err != nil {
+	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return fmt.Errorf("create config dir: %w", err)
 	}
 
@@ -84,21 +110,14 @@ func SaveLocal(local LocalConfig) error {
 		return fmt.Errorf("read config: %w", err)
 	}
 
-	encoded, err := yaml.Marshal(local)
-	if err != nil {
-		return fmt.Errorf("encode local config: %w", err)
+	if err := mutate(raw); err != nil {
+		return err
 	}
-	localMap := map[string]any{}
-	if err := yaml.Unmarshal(encoded, &localMap); err != nil {
-		return fmt.Errorf("re-parse local config: %w", err)
-	}
-	raw["local"] = localMap
 
 	data, err := yaml.Marshal(raw)
 	if err != nil {
 		return fmt.Errorf("encode config: %w", err)
 	}
-
 	if err := os.WriteFile(path, data, 0o600); err != nil {
 		return fmt.Errorf("write config: %w", err)
 	}
