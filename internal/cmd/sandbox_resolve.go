@@ -9,7 +9,6 @@ import (
 	"connectrpc.com/connect"
 	agentsv1 "github.com/agynio/agyn-cli/gen/agynio/api/agents/v1"
 	gatewayv1connect "github.com/agynio/agyn-cli/gen/agynio/api/gateway/v1/gatewayv1connect"
-	organizationsv1 "github.com/agynio/agyn-cli/gen/agynio/api/organizations/v1"
 	"github.com/spf13/cobra"
 )
 
@@ -40,32 +39,12 @@ func sandboxGatewayClients(cmd *cobra.Command) (*sandboxClients, error) {
 	}, nil
 }
 
-// resolveOrganizationID returns the explicit organization when provided, and
-// otherwise falls back to the caller's sole accessible organization. Sandbox
+// resolveOrganizationID uses the shared precedence — flag, environment, the
+// profile's selection, then the caller's sole accessible organization. Sandbox
 // commands are meant to be typed without ceremony, so requiring an explicit id
 // when there is nothing to disambiguate would be noise.
 func (c *sandboxClients) resolveOrganizationID(ctx context.Context, explicit string) (string, error) {
-	if trimmed := strings.TrimSpace(explicit); trimmed != "" {
-		return trimmed, nil
-	}
-	response, err := c.organizations.ListAccessibleOrganizations(ctx, connect.NewRequest(&organizationsv1.ListAccessibleOrganizationsRequest{}))
-	if err != nil {
-		return "", err
-	}
-	organizations := response.Msg.GetOrganizations()
-	switch len(organizations) {
-	case 0:
-		return "", fmt.Errorf("no accessible organizations; pass --organization-id")
-	case 1:
-		return organizations[0].GetId(), nil
-	default:
-		names := make([]string, 0, len(organizations))
-		for _, organization := range organizations {
-			names = append(names, fmt.Sprintf("  %s  %s", organization.GetId(), organization.GetName()))
-		}
-		sort.Strings(names)
-		return "", fmt.Errorf("multiple organizations available; pass --organization-id:\n%s", strings.Join(names, "\n"))
-	}
+	return resolveOrganizationID(ctx, c.runContext, c.organizations, explicit)
 }
 
 // resolveEnvironmentID maps --env onto an environment id. Without the flag it

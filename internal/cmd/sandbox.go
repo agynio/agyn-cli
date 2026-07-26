@@ -94,7 +94,7 @@ func newSandboxStartCmd() *cobra.Command {
 			return attachToSandbox(ctx, clients, sandbox)
 		},
 	}
-	cmd.Flags().StringVar(&args.organizationID, "organization-id", "", "Organization ID (defaults to your sole organization)")
+	cmd.Flags().StringVar(&args.organizationID, "organization-id", "", "Organization ID (defaults to the selected organization)")
 	cmd.Flags().StringVar(&args.environment, "env", "", "Environment name (defaults to the sole environment)")
 	cmd.Flags().StringVar(&args.name, "name", "", "Sandbox name (auto-generated when omitted)")
 	return cmd
@@ -136,7 +136,7 @@ func newSandboxConnectCmd() *cobra.Command {
 			return attachToSandbox(ctx, clients, ensured.Msg.GetSandbox())
 		},
 	}
-	cmd.Flags().StringVar(&args.organizationID, "organization-id", "", "Organization ID (defaults to your sole organization)")
+	cmd.Flags().StringVar(&args.organizationID, "organization-id", "", "Organization ID (defaults to the selected organization)")
 	return cmd
 }
 
@@ -169,7 +169,7 @@ func newSandboxListCmd() *cobra.Command {
 			return printSandboxes(clients.runContext.OutputFormat, sandboxes)
 		},
 	}
-	cmd.Flags().StringVar(&args.organizationID, "organization-id", "", "Organization ID (defaults to your sole organization)")
+	cmd.Flags().StringVar(&args.organizationID, "organization-id", "", "Organization ID (defaults to the selected organization)")
 	cmd.Flags().BoolVar(&args.all, "all", false, "List every sandbox in the organization (organization owners)")
 	cmd.Flags().BoolVar(&args.terminated, "terminated", false, "Include terminated sandboxes")
 	return cmd
@@ -191,7 +191,7 @@ func newSandboxStopCmd() *cobra.Command {
 			})
 		},
 	}
-	cmd.Flags().StringVar(&args.organizationID, "organization-id", "", "Organization ID (defaults to your sole organization)")
+	cmd.Flags().StringVar(&args.organizationID, "organization-id", "", "Organization ID (defaults to the selected organization)")
 	return cmd
 }
 
@@ -211,7 +211,7 @@ func newSandboxDeleteCmd() *cobra.Command {
 			})
 		},
 	}
-	cmd.Flags().StringVar(&args.organizationID, "organization-id", "", "Organization ID (defaults to your sole organization)")
+	cmd.Flags().StringVar(&args.organizationID, "organization-id", "", "Organization ID (defaults to the selected organization)")
 	return cmd
 }
 

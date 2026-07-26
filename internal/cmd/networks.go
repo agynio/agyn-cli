@@ -111,8 +111,12 @@ func newNetworkCreateCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
+			organizationID, err := organizationIDForCommand(cmd, args.organizationID)
+			if err != nil {
+				return err
+			}
 			response, err := client.CreateNetwork(cmd.Context(), connect.NewRequest(&networksv1.CreateNetworkRequest{
-				OrganizationId: args.organizationID,
+				OrganizationId: organizationID,
 				Name:           args.name,
 				Description:    args.description,
 			}))
@@ -122,10 +126,9 @@ func newNetworkCreateCmd() *cobra.Command {
 			return printNetwork(runContext.OutputFormat, response.Msg.GetNetwork())
 		},
 	}
-	cmd.Flags().StringVar(&args.organizationID, "organization-id", "", "Organization ID")
+	cmd.Flags().StringVar(&args.organizationID, "organization-id", "", "Organization ID (defaults to the selected organization)")
 	cmd.Flags().StringVar(&args.name, "name", "", "Network name")
 	cmd.Flags().StringVar(&args.description, "description", "", "Network description")
-	_ = cmd.MarkFlagRequired("organization-id")
 	_ = cmd.MarkFlagRequired("name")
 	return cmd
 }
@@ -143,7 +146,11 @@ func newNetworkListCmd() *cobra.Command {
 			if args.pageSize < 0 {
 				return fmt.Errorf("page-size must be non-negative")
 			}
-			response, err := client.ListNetworks(cmd.Context(), connect.NewRequest(&networksv1.ListNetworksRequest{OrganizationId: args.organizationID, PageSize: args.pageSize, PageToken: args.pageToken}))
+			organizationID, err := organizationIDForCommand(cmd, args.organizationID)
+			if err != nil {
+				return err
+			}
+			response, err := client.ListNetworks(cmd.Context(), connect.NewRequest(&networksv1.ListNetworksRequest{OrganizationId: organizationID, PageSize: args.pageSize, PageToken: args.pageToken}))
 			if err != nil {
 				return err
 			}
@@ -163,10 +170,9 @@ func newNetworkListCmd() *cobra.Command {
 			return output.Print(runContext.OutputFormat, outputs)
 		},
 	}
-	cmd.Flags().StringVar(&args.organizationID, "organization-id", "", "Organization ID")
+	cmd.Flags().StringVar(&args.organizationID, "organization-id", "", "Organization ID (defaults to the selected organization)")
 	cmd.Flags().Int32Var(&args.pageSize, "page-size", 0, "Page size")
 	cmd.Flags().StringVar(&args.pageToken, "page-token", "", "Page token")
-	_ = cmd.MarkFlagRequired("organization-id")
 	return cmd
 }
 
@@ -418,8 +424,11 @@ func newResourceListCmd() *cobra.Command {
 				return fmt.Errorf("page-size must be non-negative")
 			}
 			request := &networksv1.ListPrivateResourcesRequest{PageSize: args.pageSize, PageToken: args.pageToken}
-			if strings.TrimSpace(args.organizationID) != "" {
-				request.OrganizationId = &args.organizationID
+			// The organization is a filter here rather than a scope, so the
+			// profile's selection is applied when it has one and the listing
+			// stays cluster-wide when it does not.
+			if organizationID := runContext.OrganizationID(args.organizationID); organizationID != "" {
+				request.OrganizationId = &organizationID
 			}
 			if strings.TrimSpace(args.networkID) != "" {
 				request.NetworkId = &args.networkID
@@ -444,7 +453,7 @@ func newResourceListCmd() *cobra.Command {
 			return output.Print(runContext.OutputFormat, outputs)
 		},
 	}
-	cmd.Flags().StringVar(&args.organizationID, "organization-id", "", "Organization ID")
+	cmd.Flags().StringVar(&args.organizationID, "organization-id", "", "Organization ID (defaults to the selected organization)")
 	cmd.Flags().StringVar(&args.networkID, "network-id", "", "Network ID")
 	cmd.Flags().Int32Var(&args.pageSize, "page-size", 0, "Page size")
 	cmd.Flags().StringVar(&args.pageToken, "page-token", "", "Page token")
