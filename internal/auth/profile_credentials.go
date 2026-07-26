@@ -144,10 +144,12 @@ func credentialsPath() (string, error) {
 
 // legacyToken recognises the pre-profile format: a file holding nothing but a
 // token. A YAML mapping is the new format; anything else that is non-empty and
-// single-line is the old one.
+// single-line is the old one. The empty mapping "{}" is spelled out because it
+// is what removing the last profile's token leaves behind, and reading it as a
+// bare token would hand every profile a credential of "{}".
 func legacyToken(data []byte) (string, bool) {
 	text := strings.TrimSpace(string(data))
-	if text == "" || strings.Contains(text, ":") || strings.Contains(text, "\n") {
+	if text == "" || text == "{}" || strings.Contains(text, ":") || strings.Contains(text, "\n") {
 		return "", false
 	}
 	return text, true

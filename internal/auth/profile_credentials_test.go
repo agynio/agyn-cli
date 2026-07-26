@@ -114,3 +114,22 @@ func TestRemoveTokenLeavesOtherProfiles(t *testing.T) {
 		t.Fatal("expected the staging token to survive")
 	}
 }
+
+func TestRemoveLastTokenLeavesNoCredential(t *testing.T) {
+	withHome(t)
+	if err := SaveTokenFor("local", "token-local"); err != nil {
+		t.Fatalf("save: %v", err)
+	}
+	if err := RemoveTokenFor("local"); err != nil {
+		t.Fatalf("remove: %v", err)
+	}
+
+	// An emptied file is still the profile format, not a bare token — reading
+	// it as one would report a credential for every profile.
+	if HasTokenFor("local") || HasTokenFor("staging") {
+		t.Fatal("expected no profile to have a token")
+	}
+	if _, err := LoadTokenFor("local", TokenOptions{}); err == nil {
+		t.Fatal("expected an error for a profile with no token")
+	}
+}
