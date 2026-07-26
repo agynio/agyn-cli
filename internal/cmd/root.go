@@ -11,20 +11,32 @@ import (
 	"github.com/agynio/agyn-cli/internal/config"
 	"github.com/agynio/agyn-cli/internal/gateway"
 	"github.com/agynio/agyn-cli/internal/output"
+	"github.com/agynio/agyn-cli/internal/terminal"
 	"github.com/spf13/cobra"
 )
 
 type RunContext struct {
-	Config       *config.Config
-	Clients      *gateway.Clients
+	Config  *config.Config
+	Clients *gateway.Clients
+	// ProfileName is the profile this invocation runs under. Endpoint, token,
+	// CA and organization all resolve through it, so a command never has to
+	// know which cluster it is talking to.
+	ProfileName  string
 	OutputFormat output.Format
 	NoColor      bool
 }
 
 type contextKey struct{}
 
+// stdinIsTerminal decides whether a human is there to be prompted. It asks
+// whether stdin is a terminal rather than a character device, so `< /dev/null`
+// is correctly non-interactive. It is a variable so the non-interactive paths
+// can be exercised without a pty.
+var stdinIsTerminal = func() bool { return terminal.IsTerminal(os.Stdin) }
+
 var (
 	gatewayURLFlag string
+	profileFlag    string
 	outputFlag     string
 	noColorFlag    bool
 )
@@ -47,20 +59,23 @@ var rootCmd = &cobra.Command{
 			return err
 		}
 
-		target := cfg.ResolveGatewayTarget(gatewayURLFlag)
+		profileName, err := resolveProfileName(cfg, profileFlag)
+		if err != nil {
+			return err
+		}
+
 		var clients *gateway.Clients
 		if requiresAuth(cmd, args) {
-			allowMissing := target.UsesZiti || allowMissingToken(cmd)
-			token, err := auth.LoadToken(auth.TokenOptions{AllowMissing: allowMissing})
+			clients, err = newGatewayClients(cfg, profileName, allowMissingToken(cmd))
 			if err != nil {
 				return err
 			}
-			clients = gateway.NewClients(target.URL, token)
 		}
 
 		runContext := &RunContext{
 			Config:       cfg,
 			Clients:      clients,
+			ProfileName:  profileName,
 			OutputFormat: format,
 			NoColor:      noColorFlag,
 		}
@@ -96,6 +111,62 @@ func withRunContext(ctx context.Context, runContext *RunContext) context.Context
 	return context.WithValue(ctx, contextKey{}, runContext)
 }
 
+// OrganizationID resolves the organization a command acts in from local
+// settings alone: an explicit flag, then the environment, then the profile's
+// selection. An empty result means nothing local chose one — see
+// resolveOrganizationID, which then asks the Gateway.
+func (r *RunContext) OrganizationID(flag string) string {
+	if r == nil || r.Config == nil {
+		if id := strings.TrimSpace(flag); id != "" {
+			return id
+		}
+		return strings.TrimSpace(os.Getenv(config.OrganizationEnv))
+	}
+	return r.Config.ResolveOrganization(r.ProfileName, flag)
+}
+
+// resolveProfileName picks the profile for this invocation and rejects a name
+// that was asked for but never configured. A typo would otherwise resolve to
+// built-in defaults and quietly run against the wrong cluster.
+func resolveProfileName(cfg *config.Config, flag string) (string, error) {
+	name := cfg.ResolveProfileName(flag)
+	namedExplicitly := strings.TrimSpace(flag) != "" || strings.TrimSpace(os.Getenv(config.ProfileEnv)) != ""
+	if !namedExplicitly {
+		return name, nil
+	}
+	if _, configured := cfg.Profiles[name]; configured {
+		return name, nil
+	}
+	if configured := cfg.ProfileNames(); len(configured) > 0 {
+		return "", fmt.Errorf("profile %q is not configured; available profiles: %s", name, strings.Join(configured, ", "))
+	}
+	return "", fmt.Errorf("profile %q is not configured; create it with 'agyn profile set %s --gateway-url URL'", name, name)
+}
+
+// newGatewayClients builds the one client every command shares, with the
+// endpoint, credential and trust anchors the active profile resolves to.
+func newGatewayClients(cfg *config.Config, profileName string, allowMissing bool) (*gateway.Clients, error) {
+	target := cfg.ResolveGatewayTargetFor(profileName, gatewayURLFlag)
+
+	// AGYN_TOKEN overrides the stored credential so CI can supply one without
+	// writing a file; a Ziti endpoint needs none at all, since the sidecar
+	// identity authenticates it.
+	token := strings.TrimSpace(os.Getenv(config.TokenEnv))
+	if token == "" {
+		stored, err := auth.LoadTokenFor(profileName, auth.TokenOptions{AllowMissing: target.UsesZiti || allowMissing})
+		if err != nil {
+			return nil, err
+		}
+		token = stored
+	}
+
+	caFile, err := cfg.ResolveCAFile(profileName)
+	if err != nil {
+		return nil, err
+	}
+	return gateway.NewClients(target.URL, token, gateway.Options{CAFile: caFile})
+}
+
 func requiresAuth(cmd *cobra.Command, args []string) bool {
 	if cmd.Name() == "help" {
 		return false
@@ -109,11 +180,19 @@ func requiresAuth(cmd *cobra.Command, args []string) bool {
 	if cmd.Name() == "auth" {
 		return false
 	}
-	if cmd.Name() == "login" && cmd.Parent() != nil && cmd.Parent().Name() == "auth" {
-		return false
+	if cmd.Parent() != nil && cmd.Parent().Name() == "auth" {
+		// `login` is not implemented, and `set-token` is how a profile gets its
+		// first credential — neither can require one.
+		if cmd.Name() == "login" || cmd.Name() == "set-token" {
+			return false
+		}
 	}
 	// `agyn local` manages the local VM and never talks to the gateway.
 	if strings.HasPrefix(cmd.CommandPath(), "agyn local") {
+		return false
+	}
+	// `agyn profile` only reads and writes local configuration.
+	if strings.HasPrefix(cmd.CommandPath(), "agyn profile") {
 		return false
 	}
 	return true
@@ -137,6 +216,7 @@ func allowMissingToken(cmd *cobra.Command) bool {
 
 func init() {
 	rootCmd.PersistentFlags().StringVar(&gatewayURLFlag, "gateway-url", "", "Gateway base URL")
+	rootCmd.PersistentFlags().StringVar(&profileFlag, "profile", "", "Profile to run under (default: currentProfile, then \"default\")")
 	rootCmd.PersistentFlags().StringVarP(&outputFlag, "output", "o", string(output.FormatTable), "Output format: table, json, or yaml")
 	rootCmd.PersistentFlags().BoolVar(&noColorFlag, "no-color", false, "Disable color output")
 }

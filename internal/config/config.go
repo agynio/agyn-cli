@@ -43,6 +43,11 @@ const (
 	CredentialsFile   = "credentials"
 	GatewayURLEnv     = "AGYN_GATEWAY_URL"
 	GatewayAddressEnv = "GATEWAY_ADDRESS"
+	// TokenEnv supplies a token without writing one to disk, for CI.
+	TokenEnv = "AGYN_TOKEN"
+	// OrganizationEnv scopes commands for a shell session without changing the
+	// profile's recorded selection.
+	OrganizationEnv = "AGYN_ORGANIZATION"
 
 	DefaultLocalPort    = 2496
 	DefaultLocalAPIPort = 6445
@@ -176,6 +181,25 @@ func (c *Config) ResolveGatewayTarget(flagURL string) GatewayTarget {
 		return GatewayTarget{URL: url, UsesZiti: isZitiURL(url)}
 	}
 	url := normalizeGatewayURL(c.Gateway.URL)
+	return GatewayTarget{URL: url, UsesZiti: isZitiURL(url)}
+}
+
+// ResolveGatewayTargetFor is ResolveGatewayTarget with a profile consulted
+// between the environment and the pre-profile global setting. It is what
+// commands use; the profile-less form remains for callers that have no profile
+// to hand.
+func (c *Config) ResolveGatewayTargetFor(profileName, flagURL string) GatewayTarget {
+	if flagURL != "" {
+		url := normalizeGatewayURL(flagURL)
+		return GatewayTarget{URL: url, UsesZiti: isZitiURL(url)}
+	}
+	// Inside an agent pod GATEWAY_ADDRESS names the in-cluster Ziti route and
+	// the sidecar identity authenticates; profiles describe a developer
+	// machine's endpoints and have nothing to say there.
+	if envAddress := os.Getenv(GatewayAddressEnv); envAddress != "" {
+		return GatewayTarget{URL: normalizeGatewayURL(envAddress), UsesZiti: true}
+	}
+	url := normalizeGatewayURL(c.ResolveGatewayURLFor(profileName, ""))
 	return GatewayTarget{URL: url, UsesZiti: isZitiURL(url)}
 }
 

@@ -107,9 +107,14 @@ func (c *Config) ResolveGatewayURLFor(profileName, flag string) string {
 }
 
 // ResolveOrganization returns the organization a command should act in: an
-// explicit flag, otherwise whatever the profile has selected.
+// explicit flag, then the environment, otherwise whatever the profile has
+// selected. An empty result means nothing has chosen one and the caller should
+// fall back to their sole accessible organization.
 func (c *Config) ResolveOrganization(profileName, flag string) string {
 	if org := strings.TrimSpace(flag); org != "" {
+		return org
+	}
+	if org := strings.TrimSpace(os.Getenv(OrganizationEnv)); org != "" {
 		return org
 	}
 	return strings.TrimSpace(c.Profile(profileName).Organization)
@@ -138,6 +143,26 @@ func ExpandPath(path string) (string, error) {
 		return filepath.Join(home, path[2:]), nil
 	}
 	return path, nil
+}
+
+// RemoveProfile deletes a profile from the config file, clearing the current
+// selection when it named the removed profile. Leaving currentProfile pointing
+// at something that no longer exists would make every later command resolve
+// against a profile the user can no longer inspect.
+func RemoveProfile(name string) error {
+	return mutateConfigFile(func(raw map[string]any) error {
+		profiles, _ := raw["profiles"].(map[string]any)
+		delete(profiles, name)
+		if len(profiles) == 0 {
+			delete(raw, "profiles")
+		} else {
+			raw["profiles"] = profiles
+		}
+		if current, _ := raw["currentProfile"].(string); current == name {
+			delete(raw, "currentProfile")
+		}
+		return nil
+	})
 }
 
 // SaveProfiles persists the profile section and current selection without
