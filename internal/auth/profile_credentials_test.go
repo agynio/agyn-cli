@@ -1,8 +1,6 @@
 package auth
 
 import (
-	"os"
-	"path/filepath"
 	"testing"
 )
 
@@ -32,48 +30,6 @@ func TestSaveAndLoadTokenPerProfile(t *testing.T) {
 		if got != want {
 			t.Fatalf("profile %s: expected %q, got %q", profile, want, got)
 		}
-	}
-}
-
-func TestLoadTokenReadsPreProfileFile(t *testing.T) {
-	home := withHome(t)
-	dir := filepath.Join(home, ".agyn")
-	if err := os.MkdirAll(dir, 0o700); err != nil {
-		t.Fatalf("mkdir: %v", err)
-	}
-	if err := os.WriteFile(filepath.Join(dir, "credentials"), []byte("bare-token\n"), 0o600); err != nil {
-		t.Fatalf("write legacy: %v", err)
-	}
-
-	// A file written before profiles existed still authenticates.
-	got, err := LoadTokenFor("local", TokenOptions{})
-	if err != nil {
-		t.Fatalf("load legacy: %v", err)
-	}
-	if got != "bare-token" {
-		t.Fatalf("expected the legacy token, got %q", got)
-	}
-}
-
-func TestSaveTokenMigratesPreProfileFile(t *testing.T) {
-	home := withHome(t)
-	dir := filepath.Join(home, ".agyn")
-	if err := os.MkdirAll(dir, 0o700); err != nil {
-		t.Fatalf("mkdir: %v", err)
-	}
-	if err := os.WriteFile(filepath.Join(dir, "credentials"), []byte("bare-token\n"), 0o600); err != nil {
-		t.Fatalf("write legacy: %v", err)
-	}
-
-	if err := SaveTokenFor("staging", "token-staging"); err != nil {
-		t.Fatalf("save: %v", err)
-	}
-
-	// The legacy token is carried onto the profile being written, so the
-	// machine does not silently lose its only credential.
-	local, err := LoadTokenFor("staging", TokenOptions{})
-	if err != nil || local != "token-staging" {
-		t.Fatalf("expected the new token, got %q (%v)", local, err)
 	}
 }
 

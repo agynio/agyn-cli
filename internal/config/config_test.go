@@ -2,57 +2,60 @@ package config
 
 import "testing"
 
-func TestResolveGatewayURLUsesFlag(t *testing.T) {
-	cfg := &Config{Gateway: GatewayConfig{URL: DefaultGatewayURL}}
+func TestResolveGatewayTargetForUsesFlag(t *testing.T) {
+	cfg := &Config{}
 	t.Setenv(GatewayURLEnv, "https://env.example")
 	t.Setenv(GatewayAddressEnv, "https://gateway.ziti")
 
-	got := cfg.ResolveGatewayURL("https://flag.example")
+	got := cfg.ResolveGatewayTargetFor(DefaultProfileName, "https://flag.example").URL
 	if got != "https://flag.example" {
 		t.Fatalf("expected flag URL, got %q", got)
 	}
 }
 
-func TestResolveGatewayURLPrefersGatewayAddress(t *testing.T) {
-	cfg := &Config{Gateway: GatewayConfig{URL: DefaultGatewayURL}}
+func TestResolveGatewayTargetForPrefersGatewayAddress(t *testing.T) {
+	// GATEWAY_ADDRESS is injected in agent pods for in-cluster Ziti routing and
+	// outranks anything a developer machine configured.
+	cfg := &Config{}
 	t.Setenv(GatewayURLEnv, "https://env.example")
 	t.Setenv(GatewayAddressEnv, "https://gateway.ziti")
 
-	got := cfg.ResolveGatewayURL("")
+	got := cfg.ResolveGatewayTargetFor(DefaultProfileName, "").URL
 	if got != "https://gateway.ziti" {
 		t.Fatalf("expected GATEWAY_ADDRESS, got %q", got)
 	}
 }
 
-func TestResolveGatewayURLUsesGatewayAddress(t *testing.T) {
-	cfg := &Config{Gateway: GatewayConfig{URL: DefaultGatewayURL}}
-	t.Setenv(GatewayAddressEnv, "https://gateway.ziti")
-
-	got := cfg.ResolveGatewayURL("")
-	if got != "https://gateway.ziti" {
-		t.Fatalf("expected GATEWAY_ADDRESS, got %q", got)
-	}
-}
-
-func TestResolveGatewayURLNormalizesGatewayEnv(t *testing.T) {
-	cfg := &Config{Gateway: GatewayConfig{URL: DefaultGatewayURL}}
+func TestResolveGatewayTargetForNormalizesGatewayEnv(t *testing.T) {
+	cfg := &Config{}
 	t.Setenv(GatewayURLEnv, "gateway.ziti")
 	t.Setenv(GatewayAddressEnv, "")
 
-	got := cfg.ResolveGatewayURL("")
+	got := cfg.ResolveGatewayTargetFor(DefaultProfileName, "").URL
 	if got != "http://gateway.ziti" {
 		t.Fatalf("expected normalized AGYN_GATEWAY_URL, got %q", got)
 	}
 }
 
-func TestResolveGatewayURLNormalizesGatewayAddress(t *testing.T) {
-	cfg := &Config{Gateway: GatewayConfig{URL: DefaultGatewayURL}}
+func TestResolveGatewayTargetForNormalizesGatewayAddress(t *testing.T) {
+	cfg := &Config{}
 	t.Setenv(GatewayURLEnv, "")
 	t.Setenv(GatewayAddressEnv, "gateway.ziti")
 
-	got := cfg.ResolveGatewayURL("")
+	got := cfg.ResolveGatewayTargetFor(DefaultProfileName, "").URL
 	if got != "http://gateway.ziti" {
 		t.Fatalf("expected normalized GATEWAY_ADDRESS, got %q", got)
+	}
+}
+
+func TestResolveGatewayTargetForFallsBackToDefault(t *testing.T) {
+	cfg := &Config{}
+	t.Setenv(GatewayURLEnv, "")
+	t.Setenv(GatewayAddressEnv, "")
+
+	got := cfg.ResolveGatewayTargetFor("never-configured", "").URL
+	if got != DefaultGatewayURL {
+		t.Fatalf("expected the default URL, got %q", got)
 	}
 }
 
@@ -60,7 +63,6 @@ func TestResolveGatewayTargetForUsesTheProfile(t *testing.T) {
 	t.Setenv(GatewayURLEnv, "")
 	t.Setenv(GatewayAddressEnv, "")
 	cfg := &Config{
-		Gateway:  GatewayConfig{URL: "https://legacy.example"},
 		Profiles: map[string]Profile{"local": {GatewayURL: "gateway.agyn.dev:2496"}},
 	}
 
@@ -71,8 +73,8 @@ func TestResolveGatewayTargetForUsesTheProfile(t *testing.T) {
 	if target.UsesZiti {
 		t.Fatal("expected a plain endpoint not to be treated as Ziti")
 	}
-	if got := cfg.ResolveGatewayTargetFor("other", "").URL; got != "https://legacy.example" {
-		t.Fatalf("expected the pre-profile setting for an unconfigured profile, got %q", got)
+	if got := cfg.ResolveGatewayTargetFor("other", "").URL; got != DefaultGatewayURL {
+		t.Fatalf("expected the default URL for an unconfigured profile, got %q", got)
 	}
 }
 

@@ -21,11 +21,6 @@ type profileCredential struct {
 type credentialsFile map[string]profileCredential
 
 // LoadTokenFor returns the token stored for a profile.
-//
-// Files written before profiles existed hold a single bare token with no
-// profile name. Those are still read, and treated as belonging to whichever
-// profile is asking: on such a machine there was only ever one endpoint, so
-// there is no ambiguity to resolve.
 func LoadTokenFor(profileName string, opts TokenOptions) (string, error) {
 	path, err := credentialsPath()
 	if err != nil {
@@ -40,10 +35,6 @@ func LoadTokenFor(profileName string, opts TokenOptions) (string, error) {
 			return "", credentialsNotFoundError{path: path}
 		}
 		return "", fmt.Errorf("read credentials: %w", err)
-	}
-
-	if legacy, ok := legacyToken(data); ok {
-		return legacy, nil
 	}
 
 	var file credentialsFile
@@ -73,11 +64,7 @@ func SaveTokenFor(profileName, token string) error {
 
 	file := credentialsFile{}
 	if data, err := os.ReadFile(path); err == nil {
-		// A legacy bare token carries no profile name. It is migrated onto the
-		// profile being written, which is the only profile it could have meant.
-		if legacy, ok := legacyToken(data); ok {
-			file[profileName] = profileCredential{Token: legacy}
-		} else if err := yaml.Unmarshal(data, &file); err != nil {
+		if err := yaml.Unmarshal(data, &file); err != nil {
 			return fmt.Errorf("parse credentials %s: %w", path, err)
 		}
 	} else if !os.IsNotExist(err) {
@@ -101,12 +88,6 @@ func RemoveTokenFor(profileName string) error {
 			return nil
 		}
 		return fmt.Errorf("read credentials: %w", err)
-	}
-	if _, ok := legacyToken(data); ok {
-		// Nothing names a profile, so there is no single profile's token to
-		// remove; clearing the file would discard a credential the caller did
-		// not ask about.
-		return nil
 	}
 	var file credentialsFile
 	if err := yaml.Unmarshal(data, &file); err != nil {
@@ -140,19 +121,6 @@ func credentialsPath() (string, error) {
 		return "", fmt.Errorf("home dir: %w", err)
 	}
 	return filepath.Join(home, config.ConfigDir, config.CredentialsFile), nil
-}
-
-// legacyToken recognises the pre-profile format: a file holding nothing but a
-// token. A YAML mapping is the new format; anything else that is non-empty and
-// single-line is the old one. The empty mapping "{}" is spelled out because it
-// is what removing the last profile's token leaves behind, and reading it as a
-// bare token would hand every profile a credential of "{}".
-func legacyToken(data []byte) (string, bool) {
-	text := strings.TrimSpace(string(data))
-	if text == "" || text == "{}" || strings.Contains(text, ":") || strings.Contains(text, "\n") {
-		return "", false
-	}
-	return text, true
 }
 
 type noProfileTokenError struct {

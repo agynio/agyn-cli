@@ -83,10 +83,8 @@ func (c *Config) SetProfile(name string, update Profile) {
 	c.Profiles[name] = existing
 }
 
-// ResolveGatewayURLFor resolves the endpoint for a profile. A flag wins, then
-// the environment, then the profile, then the legacy global setting, then the
-// default — the legacy step keeps configurations written before profiles
-// working without migration.
+// ResolveGatewayURLFor resolves the endpoint for a profile: a flag wins, then
+// the environment, then the profile, then the default.
 func (c *Config) ResolveGatewayURLFor(profileName, flag string) string {
 	if url := strings.TrimSpace(flag); url != "" {
 		return url
@@ -98,9 +96,6 @@ func (c *Config) ResolveGatewayURLFor(profileName, flag string) string {
 		return url
 	}
 	if url := strings.TrimSpace(c.Profile(profileName).GatewayURL); url != "" {
-		return url
-	}
-	if url := strings.TrimSpace(c.Gateway.URL); url != "" {
 		return url
 	}
 	return DefaultGatewayURL

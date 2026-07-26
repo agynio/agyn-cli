@@ -29,19 +29,16 @@ func TestResolveProfileNamePrecedence(t *testing.T) {
 	}
 }
 
-func TestResolveGatewayURLFallsBackThroughProfileAndLegacy(t *testing.T) {
+func TestResolveGatewayURLFallsBackThroughProfile(t *testing.T) {
 	cfg := &Config{
-		Gateway:  GatewayConfig{URL: "https://legacy.example"},
 		Profiles: map[string]Profile{"local": {GatewayURL: "https://local.example"}},
 	}
 
 	if got := cfg.ResolveGatewayURLFor("local", ""); got != "https://local.example" {
 		t.Fatalf("expected the profile URL, got %q", got)
 	}
-	// A profile with no URL of its own falls back to the pre-profile setting,
-	// so existing configurations keep working.
-	if got := cfg.ResolveGatewayURLFor("other", ""); got != "https://legacy.example" {
-		t.Fatalf("expected the legacy URL, got %q", got)
+	if got := cfg.ResolveGatewayURLFor("other", ""); got != DefaultGatewayURL {
+		t.Fatalf("expected the default URL for an unconfigured profile, got %q", got)
 	}
 	if got := (&Config{}).ResolveGatewayURLFor("any", ""); got != DefaultGatewayURL {
 		t.Fatalf("expected the default URL, got %q", got)

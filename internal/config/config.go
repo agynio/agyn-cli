@@ -14,17 +14,10 @@ type Config struct {
 	// it. Empty means the default profile.
 	CurrentProfile string             `yaml:"currentProfile,omitempty"`
 	Profiles       map[string]Profile `yaml:"profiles,omitempty"`
-	// Gateway is the pre-profile global setting. Retained so configurations
-	// written before profiles keep working; profiles take precedence.
-	Gateway GatewayConfig `yaml:"gateway,omitempty"`
 	// Local configures the VM itself — image version, host ports, resources.
 	// It is not a profile: the `local` profile under Profiles configures how
 	// the CLI talks to that VM, and the two are independent.
 	Local LocalConfig `yaml:"local"`
-}
-
-type GatewayConfig struct {
-	URL string `yaml:"url"`
 }
 
 // LocalConfig configures the local platform VM managed by `agyn local`.
@@ -135,7 +128,7 @@ type GatewayTarget struct {
 }
 
 func Load() (*Config, error) {
-	cfg := &Config{Gateway: GatewayConfig{URL: DefaultGatewayURL}}
+	cfg := &Config{}
 
 	home, err := os.UserHomeDir()
 	if err != nil {
@@ -155,39 +148,10 @@ func Load() (*Config, error) {
 		return nil, fmt.Errorf("parse config: %w", err)
 	}
 
-	if cfg.Gateway.URL == "" {
-		cfg.Gateway.URL = DefaultGatewayURL
-	}
-
 	return cfg, nil
 }
 
-func (c *Config) ResolveGatewayURL(flagURL string) string {
-	return c.ResolveGatewayTarget(flagURL).URL
-}
-
-func (c *Config) ResolveGatewayTarget(flagURL string) GatewayTarget {
-	if flagURL != "" {
-		url := normalizeGatewayURL(flagURL)
-		return GatewayTarget{URL: url, UsesZiti: isZitiURL(url)}
-	}
-	// GATEWAY_ADDRESS is injected in agent pods for in-cluster Ziti routing and
-	// should override any user-configured gateway URL when present.
-	if envAddress := os.Getenv(GatewayAddressEnv); envAddress != "" {
-		return GatewayTarget{URL: normalizeGatewayURL(envAddress), UsesZiti: true}
-	}
-	if envURL := os.Getenv(GatewayURLEnv); envURL != "" {
-		url := normalizeGatewayURL(envURL)
-		return GatewayTarget{URL: url, UsesZiti: isZitiURL(url)}
-	}
-	url := normalizeGatewayURL(c.Gateway.URL)
-	return GatewayTarget{URL: url, UsesZiti: isZitiURL(url)}
-}
-
-// ResolveGatewayTargetFor is ResolveGatewayTarget with a profile consulted
-// between the environment and the pre-profile global setting. It is what
-// commands use; the profile-less form remains for callers that have no profile
-// to hand.
+// ResolveGatewayTargetFor resolves the endpoint for a profile.
 func (c *Config) ResolveGatewayTargetFor(profileName, flagURL string) GatewayTarget {
 	if flagURL != "" {
 		url := normalizeGatewayURL(flagURL)
