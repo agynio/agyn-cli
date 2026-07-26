@@ -235,13 +235,17 @@ func captureStdout(t *testing.T, run func()) string {
 	return string(data)
 }
 
-func withTempHome(t *testing.T) {
+// withTempHome isolates a test from the developer's own configuration and
+// returns the home directory it substituted.
+func withTempHome(t *testing.T) string {
 	t.Helper()
-	t.Setenv("HOME", t.TempDir())
+	home := t.TempDir()
+	t.Setenv("HOME", home)
 	t.Setenv(config.ProfileEnv, "")
 	t.Setenv(config.OrganizationEnv, "")
 	t.Setenv(config.GatewayURLEnv, "")
 	t.Setenv(config.GatewayAddressEnv, "")
+	return home
 }
 
 func reload(t *testing.T) *config.Config {

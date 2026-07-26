@@ -39,6 +39,7 @@ func newLocalCmd() *cobra.Command {
 	cmd.AddCommand(newLocalDoctorCmd())
 	cmd.AddCommand(newLocalConfigCmd())
 	cmd.AddCommand(newLocalCACmd())
+	cmd.AddCommand(newLocalCredentialsCmd())
 	cmd.AddCommand(newLocalKubeconfigCmd())
 	cmd.AddCommand(newLocalResetCmd())
 
@@ -54,6 +55,7 @@ type localStartFlags struct {
 	noCA         bool
 	downloadOnly bool
 	yes          bool
+	profiles     localProfileFlags
 }
 
 func newLocalStartCmd() *cobra.Command {
@@ -62,6 +64,9 @@ func newLocalStartCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "start",
 		Short: "Download the platform VM image if needed and boot it",
+		Long: "Boots the platform VM and leaves the machine able to run every other `agyn`\n" +
+			"command against it: the Gateway is given a bootstrap token generated for this\n" +
+			"install, and the endpoint, organization and CA are recorded as a profile.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runLocalStart(cmd, flags)
 		},
@@ -75,6 +80,7 @@ func newLocalStartCmd() *cobra.Command {
 	cmd.Flags().BoolVar(&flags.noCA, "no-ca", false, "Skip certificate handling entirely")
 	cmd.Flags().BoolVar(&flags.downloadOnly, "download-only", false, "Download and verify the image without starting the VM")
 	cmd.Flags().BoolVarP(&flags.yes, "yes", "y", false, "Non-interactive: accept defaults, never prompt")
+	addLocalProfileFlags(cmd, &flags.profiles)
 
 	return cmd
 }
@@ -125,7 +131,7 @@ func runLocalStart(cmd *cobra.Command, flags localStartFlags) error {
 	if instance.Exists {
 		if instance.Status == "Running" {
 			fmt.Fprintln(stdout, "VM is already running.")
-			waitAndPrintEndpoints(cmd, settings.Port)
+			finishLocalStart(cmd, flags, settings.Port)
 			return nil
 		}
 		fmt.Fprintln(stdout, "Starting VM (~30s)...")
@@ -139,7 +145,7 @@ func runLocalStart(cmd *cobra.Command, flags localStartFlags) error {
 			return err
 		}
 		fmt.Fprintln(stdout, "VM started.")
-		waitAndPrintEndpoints(cmd, settings.Port)
+		finishLocalStart(cmd, flags, settings.Port)
 		return nil
 	}
 
@@ -204,21 +210,45 @@ func runLocalStart(cmd *cobra.Command, flags localStartFlags) error {
 		}
 	}
 
-	waitAndPrintEndpoints(cmd, settings.Port)
+	finishLocalStart(cmd, flags, settings.Port)
 	return nil
 }
 
-// waitAndPrintEndpoints blocks until the in-VM ingress actually serves the
-// platform (the guest reports "started" well before Istio and the apps are
-// ready), then prints the endpoint list.
+// finishLocalStart waits for the platform, provisions the credentials that make
+// the VM usable from the host, and prints the endpoint list.
+//
+// Provisioning failures are reported rather than returned: the VM is up and the
+// endpoints are worth printing, and `agyn local credentials` finishes the job.
+func finishLocalStart(cmd *cobra.Command, flags localStartFlags, port int) {
+	ready := waitForPlatform(cmd, port)
+	if !flags.profiles.noProfile {
+		if !ready {
+			fmt.Fprintln(cmd.ErrOrStderr(), "skipping credential setup while the platform is still starting")
+			fmt.Fprintln(cmd.ErrOrStderr(), "run it once the platform is up with: agyn local credentials")
+		} else if err := provisionLocalProfile(cmd, flags.profiles, port, !flags.noCA); err != nil {
+			fmt.Fprintf(cmd.ErrOrStderr(), "credential setup incomplete: %v\n", err)
+			fmt.Fprintln(cmd.ErrOrStderr(), "you can finish it later with: agyn local credentials")
+		}
+	}
+	printLocalEndpoints(cmd.OutOrStdout(), port)
+}
+
+// waitAndPrintEndpoints waits for the platform, then prints the endpoint list.
 func waitAndPrintEndpoints(cmd *cobra.Command, port int) {
+	waitForPlatform(cmd, port)
+	printLocalEndpoints(cmd.OutOrStdout(), port)
+}
+
+// waitForPlatform blocks until the in-VM ingress actually serves the platform:
+// the guest reports "started" well before Istio and the apps are ready.
+func waitForPlatform(cmd *cobra.Command, port int) bool {
 	fmt.Fprint(cmd.OutOrStdout(), "Waiting for the platform to become ready...")
 	if local.WaitForPlatform(port, 3*time.Minute) {
 		fmt.Fprintln(cmd.OutOrStdout(), " ready.")
-	} else {
-		fmt.Fprintln(cmd.OutOrStdout(), " not ready yet; check `agyn local status` in a minute.")
+		return true
 	}
-	printLocalEndpoints(cmd.OutOrStdout(), port)
+	fmt.Fprintln(cmd.OutOrStdout(), " not ready yet; check `agyn local status` in a minute.")
+	return false
 }
 
 func handleCAAfterStart(cmd *cobra.Command, flags localStartFlags, interactive bool) error {
@@ -431,12 +461,15 @@ func newLocalDeleteCmd() *cobra.Command {
 					return fmt.Errorf("purge %s: %w", dir, err)
 				}
 				fmt.Fprintf(cmd.OutOrStdout(), "Removed %s\n", dir)
+				if err := forgetLocalProfile(cmd); err != nil {
+					return err
+				}
 			}
 			return nil
 		},
 	}
 
-	cmd.Flags().BoolVar(&purge, "purge", false, "Also remove downloaded images and certificates")
+	cmd.Flags().BoolVar(&purge, "purge", false, "Also remove downloaded images, certificates, and the local profile")
 	cmd.Flags().BoolVarP(&yes, "yes", "y", false, "Do not ask for confirmation")
 
 	return cmd
