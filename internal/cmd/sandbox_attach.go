@@ -15,7 +15,9 @@ import (
 
 // sandboxMainContainer is the container a shell attaches to. A sandbox is the
 // environment's main container plus platform sidecars; sidecars are not
-// attachable.
+// attachable. "main" is the Terminal Proxy's alias for whichever container has
+// the main role — the orchestrator names a sandbox's container after the
+// sandbox id, so there is no literal name for the CLI to send.
 const sandboxMainContainer = "main"
 
 // exitCodeError carries a remote shell's exit code so the CLI can exit with it
@@ -67,7 +69,7 @@ func streamTerminal(ctx context.Context, clients *sandboxClients, ticket, websoc
 	size, err := tty.Size()
 	if err != nil {
 		// A missing size is not fatal; the shell can still run at the default.
-		size = terminal.Size{Cols: 80, Rows: 24}
+		size = terminal.DefaultSize()
 	}
 
 	result, err := terminal.Attach(ctx, terminal.Options{

@@ -55,13 +55,35 @@ func (t *TTY) Restore() {
 	}
 }
 
-// Size returns the current window size.
+// defaultCols and defaultRows stand in when the terminal reports no size.
+const (
+	defaultCols = 80
+	defaultRows = 24
+)
+
+// DefaultSize is the window size to fall back on when the local terminal
+// cannot be measured at all.
+func DefaultSize() Size {
+	return Size{Cols: defaultCols, Rows: defaultRows}
+}
+
+// Size returns the current window size. A terminal whose window size was never
+// set reports zero without erroring, and the proxy rejects a handshake or
+// resize carrying a zero dimension, so a zero is treated as unknown and
+// answered with the default rather than passed on and refused.
 func (t *TTY) Size() (Size, error) {
 	width, height, err := term.GetSize(t.fd)
 	if err != nil {
 		return Size{}, fmt.Errorf("get terminal size: %w", err)
 	}
-	return Size{Cols: uint16(width), Rows: uint16(height)}, nil
+	size := Size{Cols: uint16(width), Rows: uint16(height)}
+	if size.Cols == 0 {
+		size.Cols = defaultCols
+	}
+	if size.Rows == 0 {
+		size.Rows = defaultRows
+	}
+	return size, nil
 }
 
 // Resize is the channel of window-size changes to forward to the remote PTY.
