@@ -114,9 +114,17 @@ func provisionLocalProfile(cmd *cobra.Command, flags localProfileFlags, port int
 	}
 
 	// Last of the VM work, and the only part that changes the VM: the reads
-	// above fail fast, while this restarts the Gateway when the token differs.
+	// above fail fast, while these restart workloads when a value differs.
 	fmt.Fprintln(stdout, "Installing the Gateway bootstrap token (restarts the gateway if it changed)...")
 	if _, err := local.SetBootstrapToken(token); err != nil {
+		return err
+	}
+
+	// The image bakes a default port into the URLs it hands a browser — the
+	// OIDC redirects and the media proxy origin. Whenever this host forwards
+	// something else, signing in would bounce back to a dead port.
+	fmt.Fprintln(stdout, "Pointing browser-facing URLs at the forwarded port...")
+	if _, err := local.SetIngressPort(port); err != nil {
 		return err
 	}
 

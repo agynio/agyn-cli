@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"fmt"
+	"strconv"
 	"strings"
 )
 
@@ -18,9 +19,14 @@ const (
 	bootstrapTokenBytes = 32
 
 	// bootstrapTokenScript ships in the image. It installs a host-supplied
-	// token into the Gateway's secret and restarts the deployment, and is
+	// token into the Gateway's environment and restarts the deployment, and is
 	// idempotent: handing it the token already in place changes nothing.
 	bootstrapTokenScript = "/opt/agyn/set-bootstrap-token.sh"
+
+	// ingressPortScript ships in the image. It points the browser-facing URLs
+	// (the OIDC redirects, the media proxy origin, its CORS allowlist) at the
+	// port this host forwards, and like the token script is idempotent.
+	ingressPortScript = "/opt/agyn/set-ingress-port.sh"
 
 	// platformNamespace holds the platform workloads inside the VM.
 	platformNamespace = "platform"
@@ -63,6 +69,24 @@ func SetBootstrapToken(token string) (string, error) {
 	out, err := Shell("sudo", bootstrapTokenScript, token)
 	if err != nil {
 		return "", fmt.Errorf("install the bootstrap token in the VM: %w", err)
+	}
+	return strings.TrimSpace(out), nil
+}
+
+// SetIngressPort tells the VM which port this host forwards, so the URLs it
+// hands a browser are reachable.
+//
+// The image bakes a default, but the port belongs to the host: the default may
+// already be taken. Only browser-facing URLs are affected — everything inside
+// the cluster, the OpenZiti advertised addresses included, uses an internal
+// port that never changes.
+func SetIngressPort(port int) (string, error) {
+	if port <= 0 || port > 65535 {
+		return "", fmt.Errorf("ingress port %d is out of range", port)
+	}
+	out, err := Shell("sudo", ingressPortScript, strconv.Itoa(port))
+	if err != nil {
+		return "", fmt.Errorf("set the ingress port in the VM: %w", err)
 	}
 	return strings.TrimSpace(out), nil
 }
