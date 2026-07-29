@@ -71,8 +71,12 @@ func newGroupCreateCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
+			organizationID, err := organizationIDForCommand(cmd, args.organizationID)
+			if err != nil {
+				return err
+			}
 			response, err := client.CreateGroup(cmd.Context(), connect.NewRequest(&groupsv1.CreateGroupRequest{
-				OrganizationId: args.organizationID,
+				OrganizationId: organizationID,
 				Name:           args.name,
 				Description:    args.description,
 				Source:         groupsv1.GroupSource_GROUP_SOURCE_PLATFORM,
@@ -83,10 +87,9 @@ func newGroupCreateCmd() *cobra.Command {
 			return printGroup(runContext.OutputFormat, response.Msg.GetGroup())
 		},
 	}
-	cmd.Flags().StringVar(&args.organizationID, "organization-id", "", "Organization ID")
+	cmd.Flags().StringVar(&args.organizationID, "organization-id", "", "Organization ID (defaults to the selected organization)")
 	cmd.Flags().StringVar(&args.name, "name", "", "Group name")
 	cmd.Flags().StringVar(&args.description, "description", "", "Group description")
-	_ = cmd.MarkFlagRequired("organization-id")
 	_ = cmd.MarkFlagRequired("name")
 	return cmd
 }
@@ -104,7 +107,11 @@ func newGroupListCmd() *cobra.Command {
 			if args.pageSize < 0 {
 				return fmt.Errorf("page-size must be non-negative")
 			}
-			request := &groupsv1.ListGroupsRequest{OrganizationId: args.organizationID, PageSize: args.pageSize, PageToken: args.pageToken}
+			organizationID, err := organizationIDForCommand(cmd, args.organizationID)
+			if err != nil {
+				return err
+			}
+			request := &groupsv1.ListGroupsRequest{OrganizationId: organizationID, PageSize: args.pageSize, PageToken: args.pageToken}
 			if strings.TrimSpace(args.source) != "" {
 				source, err := parseGroupSource(args.source)
 				if err != nil {
@@ -132,11 +139,10 @@ func newGroupListCmd() *cobra.Command {
 			return output.Print(runContext.OutputFormat, outputs)
 		},
 	}
-	cmd.Flags().StringVar(&args.organizationID, "organization-id", "", "Organization ID")
+	cmd.Flags().StringVar(&args.organizationID, "organization-id", "", "Organization ID (defaults to the selected organization)")
 	cmd.Flags().StringVar(&args.source, "source", "", "Group source: platform or scim")
 	cmd.Flags().Int32Var(&args.pageSize, "page-size", 0, "Page size")
 	cmd.Flags().StringVar(&args.pageToken, "page-token", "", "Page token")
-	_ = cmd.MarkFlagRequired("organization-id")
 	return cmd
 }
 
@@ -322,7 +328,11 @@ func newGroupMemberGroupsCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			response, err := client.ListMemberGroups(cmd.Context(), connect.NewRequest(&groupsv1.ListMemberGroupsRequest{MemberType: memberType, MemberId: args.memberID, OrganizationId: args.organizationID, PageSize: args.pageSize, PageToken: args.pageToken}))
+			organizationID, err := organizationIDForCommand(cmd, args.organizationID)
+			if err != nil {
+				return err
+			}
+			response, err := client.ListMemberGroups(cmd.Context(), connect.NewRequest(&groupsv1.ListMemberGroupsRequest{MemberType: memberType, MemberId: args.memberID, OrganizationId: organizationID, PageSize: args.pageSize, PageToken: args.pageToken}))
 			if err != nil {
 				return err
 			}
@@ -342,12 +352,11 @@ func newGroupMemberGroupsCmd() *cobra.Command {
 			return output.Print(runContext.OutputFormat, outputs)
 		},
 	}
-	cmd.Flags().StringVar(&args.organizationID, "organization-id", "", "Organization ID")
+	cmd.Flags().StringVar(&args.organizationID, "organization-id", "", "Organization ID (defaults to the selected organization)")
 	cmd.Flags().StringVar(&args.memberType, "member-type", "", "Member type: user, agent, or app")
 	cmd.Flags().StringVar(&args.memberID, "member-id", "", "Member identity ID")
 	cmd.Flags().Int32Var(&args.pageSize, "page-size", 0, "Page size")
 	cmd.Flags().StringVar(&args.pageToken, "page-token", "", "Page token")
-	_ = cmd.MarkFlagRequired("organization-id")
 	_ = cmd.MarkFlagRequired("member-type")
 	_ = cmd.MarkFlagRequired("member-id")
 	return cmd

@@ -14,7 +14,6 @@ import (
 	"github.com/agynio/agyn-cli/gen/agynio/api/gateway/v1/gatewayv1connect"
 	notificationsv1 "github.com/agynio/agyn-cli/gen/agynio/api/notifications/v1"
 	threadsv1 "github.com/agynio/agyn-cli/gen/agynio/api/threads/v1"
-	"github.com/agynio/agyn-cli/internal/gateway"
 	"github.com/agynio/agyn-cli/internal/output"
 	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -150,7 +149,7 @@ func TestThreadsSendPreservesMessageBody(t *testing.T) {
 	cmd := newThreadsSendCmd()
 	cmd.SetOut(&bytes.Buffer{})
 	cmd.SetContext(withRunContext(context.Background(), &RunContext{
-		Clients:      gateway.NewClients(server.URL, "token-1"),
+		Clients:      newTestClients(t, server.URL),
 		OutputFormat: output.FormatTable,
 	}))
 	cmd.SetArgs([]string{"--thread", "thread-1", "--message", body})
@@ -181,7 +180,7 @@ func TestThreadsCreateSendPreservesMessageBodyWithIdentityID(t *testing.T) {
 	cmd := newThreadsCreateCmd()
 	cmd.SetOut(&bytes.Buffer{})
 	cmd.SetContext(withRunContext(context.Background(), &RunContext{
-		Clients:      gateway.NewClients(server.URL, "token-1"),
+		Clients:      newTestClients(t, server.URL),
 		OutputFormat: output.FormatTable,
 	}))
 	cmd.SetArgs([]string{"--send", body})

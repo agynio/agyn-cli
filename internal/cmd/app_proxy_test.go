@@ -6,8 +6,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
-
-	"github.com/agynio/agyn-cli/internal/gateway"
 )
 
 func TestParseAppProxyArgs(t *testing.T) {
@@ -51,7 +49,7 @@ func TestAppProxyCommandDoesNotSendOrganizationHeader(t *testing.T) {
 
 	cmd := newAppProxyCmd()
 	runContext := &RunContext{
-		Clients:      gateway.NewClients(server.URL, "token-1"),
+		Clients:      newTestClients(t, server.URL),
 		OutputFormat: "json",
 	}
 	cmd.SetContext(withRunContext(context.Background(), runContext))

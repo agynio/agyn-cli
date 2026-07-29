@@ -116,7 +116,7 @@ func newThreadsCreateCmd() *cobra.Command {
 	}
 	cmd.Flags().StringVar(&args.ref, "ref", "", "Local ref alias to store")
 	cmd.Flags().StringArrayVar(&args.add, "add", nil, "Participant identity (@nickname or ID)")
-	cmd.Flags().StringVar(&args.organizationID, "organization-id", "", "Organization ID")
+	cmd.Flags().StringVar(&args.organizationID, "organization-id", "", "Organization ID (defaults to the selected organization)")
 	cmd.Flags().StringVar(&args.send, "send", "", "Message to send after creating the thread; quote shell-special characters such as backticks")
 	cmd.Flags().IntVar(&args.wait, "wait", 0, "Seconds to wait for a response")
 	return cmd
@@ -206,8 +206,9 @@ func runThreadsCreate(cmd *cobra.Command, args *threadsCreateArgs) error {
 
 	threadsClient := gatewayv1connect.NewThreadsGatewayClient(runContext.Clients.HTTPClient, runContext.Clients.BaseURL, runContext.Clients.ConnectOpts()...)
 	createRequest := &threadsv1.CreateThreadRequest{Participants: participants}
-	organizationID := strings.TrimSpace(args.organizationID)
-	if organizationID != "" {
+	// Left unset the Gateway infers the organization from the caller, which is
+	// what agents inside a pod rely on; a profile selection makes it explicit.
+	if organizationID := runContext.OrganizationID(args.organizationID); organizationID != "" {
 		createRequest.OrganizationId = &organizationID
 	}
 	createResp, err := threadsClient.CreateThread(cmd.Context(), connect.NewRequest(createRequest))

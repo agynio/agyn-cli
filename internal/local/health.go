@@ -14,6 +14,12 @@ type Endpoint struct {
 	Healthy bool   `json:"healthy" yaml:"healthy"`
 }
 
+// GatewayURL returns the API endpoint the CLI talks to. It shares the ingress
+// port with the browser endpoints; only the hostname differs.
+func GatewayURL(port int) string {
+	return fmt.Sprintf("https://gateway.%s:%d", BaseDomain, port)
+}
+
 // Endpoints returns the primary platform endpoints for the configured port.
 func Endpoints(port int) []Endpoint {
 	names := []string{"console", "chat", "tracing"}

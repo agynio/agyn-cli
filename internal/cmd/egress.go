@@ -92,6 +92,10 @@ func newEgressRuleCreateCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
+			organizationID, err := organizationIDForCommand(cmd, args.organizationID)
+			if err != nil {
+				return err
+			}
 			matcher, err := buildEgressMatcher(args)
 			if err != nil {
 				return err
@@ -101,7 +105,7 @@ func newEgressRuleCreateCmd() *cobra.Command {
 				return err
 			}
 			response, err := client.CreateEgressRule(cmd.Context(), connect.NewRequest(&egressv1.CreateEgressRuleRequest{
-				OrganizationId: args.organizationID,
+				OrganizationId: organizationID,
 				Name:           args.name,
 				Description:    args.description,
 				Matcher:        matcher,
@@ -114,7 +118,6 @@ func newEgressRuleCreateCmd() *cobra.Command {
 		},
 	}
 	bindEgressRuleInputFlags(cmd, args)
-	_ = cmd.MarkFlagRequired("organization-id")
 	_ = cmd.MarkFlagRequired("name")
 	_ = cmd.MarkFlagRequired("domain")
 	return cmd
@@ -133,8 +136,12 @@ func newEgressRuleListCmd() *cobra.Command {
 			if args.pageSize < 0 {
 				return fmt.Errorf("page-size must be non-negative")
 			}
+			organizationID, err := organizationIDForCommand(cmd, args.organizationID)
+			if err != nil {
+				return err
+			}
 			response, err := client.ListEgressRules(cmd.Context(), connect.NewRequest(&egressv1.ListEgressRulesRequest{
-				OrganizationId: args.organizationID,
+				OrganizationId: organizationID,
 				PageSize:       args.pageSize,
 				PageToken:      args.pageToken,
 			}))
@@ -158,10 +165,9 @@ func newEgressRuleListCmd() *cobra.Command {
 			return output.Print(runContext.OutputFormat, outputs)
 		},
 	}
-	cmd.Flags().StringVar(&args.organizationID, "organization-id", "", "Organization ID")
+	cmd.Flags().StringVar(&args.organizationID, "organization-id", "", "Organization ID (defaults to the selected organization)")
 	cmd.Flags().Int32Var(&args.pageSize, "page-size", 0, "Page size")
 	cmd.Flags().StringVar(&args.pageToken, "page-token", "", "Page token")
-	_ = cmd.MarkFlagRequired("organization-id")
 	return cmd
 }
 
@@ -299,7 +305,7 @@ func newEgressRuleDetachCmd() *cobra.Command {
 }
 
 func bindEgressRuleInputFlags(cmd *cobra.Command, args *egressRuleArgs) {
-	cmd.Flags().StringVar(&args.organizationID, "organization-id", "", "Organization ID")
+	cmd.Flags().StringVar(&args.organizationID, "organization-id", "", "Organization ID (defaults to the selected organization)")
 	cmd.Flags().StringVar(&args.name, "name", "", "Rule name")
 	cmd.Flags().StringVar(&args.description, "description", "", "Rule description")
 	cmd.Flags().StringVar(&args.domain, "domain", "", "Destination domain pattern")

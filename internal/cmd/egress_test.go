@@ -10,7 +10,6 @@ import (
 	"connectrpc.com/connect"
 	egressv1 "github.com/agynio/agyn-cli/gen/agynio/api/egress/v1"
 	"github.com/agynio/agyn-cli/gen/agynio/api/gateway/v1/gatewayv1connect"
-	"github.com/agynio/agyn-cli/internal/gateway"
 	"github.com/agynio/agyn-cli/internal/output"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -140,7 +139,7 @@ func TestEgressRuleUpdateMergesPartialMatcher(t *testing.T) {
 
 	cmd := newEgressRuleUpdateCmd()
 	cmd.SetOut(&bytes.Buffer{})
-	cmd.SetContext(withRunContext(context.Background(), &RunContext{Clients: gateway.NewClients(server.URL, "token-1"), OutputFormat: output.FormatTable}))
+	cmd.SetContext(withRunContext(context.Background(), &RunContext{Clients: newTestClients(t, server.URL), OutputFormat: output.FormatTable}))
 	cmd.SetArgs([]string{"rule-id", "--port", "8443"})
 
 	if err := cmd.Execute(); err != nil {

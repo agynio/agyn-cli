@@ -10,12 +10,14 @@ import (
 )
 
 type Config struct {
-	Gateway GatewayConfig `yaml:"gateway"`
-	Local   LocalConfig   `yaml:"local"`
-}
-
-type GatewayConfig struct {
-	URL string `yaml:"url"`
+	// CurrentProfile is the profile commands run under when nothing overrides
+	// it. Empty means the default profile.
+	CurrentProfile string             `yaml:"currentProfile,omitempty"`
+	Profiles       map[string]Profile `yaml:"profiles,omitempty"`
+	// Local configures the VM itself — image version, host ports, resources.
+	// It is not a profile: the `local` profile under Profiles configures how
+	// the CLI talks to that VM, and the two are independent.
+	Local LocalConfig `yaml:"local"`
 }
 
 // LocalConfig configures the local platform VM managed by `agyn local`.
@@ -34,6 +36,11 @@ const (
 	CredentialsFile   = "credentials"
 	GatewayURLEnv     = "AGYN_GATEWAY_URL"
 	GatewayAddressEnv = "GATEWAY_ADDRESS"
+	// TokenEnv supplies a token without writing one to disk, for CI.
+	TokenEnv = "AGYN_TOKEN"
+	// OrganizationEnv scopes commands for a shell session without changing the
+	// profile's recorded selection.
+	OrganizationEnv = "AGYN_ORGANIZATION"
 
 	DefaultLocalPort    = 2496
 	DefaultLocalAPIPort = 6445
@@ -64,13 +71,30 @@ func (c *Config) ApplyLocalDefaults() {
 // SaveLocal persists the local section without disturbing other config keys
 // (including ones this CLI version does not know about).
 func SaveLocal(local LocalConfig) error {
+	encoded, err := yaml.Marshal(local)
+	if err != nil {
+		return fmt.Errorf("encode local config: %w", err)
+	}
+	localMap := map[string]any{}
+	if err := yaml.Unmarshal(encoded, &localMap); err != nil {
+		return fmt.Errorf("re-parse local config: %w", err)
+	}
+	return mutateConfigFile(func(raw map[string]any) error {
+		raw["local"] = localMap
+		return nil
+	})
+}
+
+// mutateConfigFile applies a change to the config file as a raw map, so keys
+// this CLI version does not model survive the write.
+func mutateConfigFile(mutate func(map[string]any) error) error {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return fmt.Errorf("resolve home: %w", err)
 	}
 
 	dir := filepath.Join(home, ConfigDir)
-	if err := os.MkdirAll(dir, 0o755); err != nil {
+	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return fmt.Errorf("create config dir: %w", err)
 	}
 
@@ -84,21 +108,14 @@ func SaveLocal(local LocalConfig) error {
 		return fmt.Errorf("read config: %w", err)
 	}
 
-	encoded, err := yaml.Marshal(local)
-	if err != nil {
-		return fmt.Errorf("encode local config: %w", err)
+	if err := mutate(raw); err != nil {
+		return err
 	}
-	localMap := map[string]any{}
-	if err := yaml.Unmarshal(encoded, &localMap); err != nil {
-		return fmt.Errorf("re-parse local config: %w", err)
-	}
-	raw["local"] = localMap
 
 	data, err := yaml.Marshal(raw)
 	if err != nil {
 		return fmt.Errorf("encode config: %w", err)
 	}
-
 	if err := os.WriteFile(path, data, 0o600); err != nil {
 		return fmt.Errorf("write config: %w", err)
 	}
@@ -111,7 +128,7 @@ type GatewayTarget struct {
 }
 
 func Load() (*Config, error) {
-	cfg := &Config{Gateway: GatewayConfig{URL: DefaultGatewayURL}}
+	cfg := &Config{}
 
 	home, err := os.UserHomeDir()
 	if err != nil {
@@ -131,32 +148,22 @@ func Load() (*Config, error) {
 		return nil, fmt.Errorf("parse config: %w", err)
 	}
 
-	if cfg.Gateway.URL == "" {
-		cfg.Gateway.URL = DefaultGatewayURL
-	}
-
 	return cfg, nil
 }
 
-func (c *Config) ResolveGatewayURL(flagURL string) string {
-	return c.ResolveGatewayTarget(flagURL).URL
-}
-
-func (c *Config) ResolveGatewayTarget(flagURL string) GatewayTarget {
+// ResolveGatewayTargetFor resolves the endpoint for a profile.
+func (c *Config) ResolveGatewayTargetFor(profileName, flagURL string) GatewayTarget {
 	if flagURL != "" {
 		url := normalizeGatewayURL(flagURL)
 		return GatewayTarget{URL: url, UsesZiti: isZitiURL(url)}
 	}
-	// GATEWAY_ADDRESS is injected in agent pods for in-cluster Ziti routing and
-	// should override any user-configured gateway URL when present.
+	// Inside an agent pod GATEWAY_ADDRESS names the in-cluster Ziti route and
+	// the sidecar identity authenticates; profiles describe a developer
+	// machine's endpoints and have nothing to say there.
 	if envAddress := os.Getenv(GatewayAddressEnv); envAddress != "" {
 		return GatewayTarget{URL: normalizeGatewayURL(envAddress), UsesZiti: true}
 	}
-	if envURL := os.Getenv(GatewayURLEnv); envURL != "" {
-		url := normalizeGatewayURL(envURL)
-		return GatewayTarget{URL: url, UsesZiti: isZitiURL(url)}
-	}
-	url := normalizeGatewayURL(c.Gateway.URL)
+	url := normalizeGatewayURL(c.ResolveGatewayURLFor(profileName, ""))
 	return GatewayTarget{URL: url, UsesZiti: isZitiURL(url)}
 }
 

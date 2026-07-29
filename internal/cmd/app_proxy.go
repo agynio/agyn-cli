@@ -47,10 +47,10 @@ func newAppProxyCmd() *cobra.Command {
 				baseURL = runContext.Clients.BaseURL
 				client = runContext.Clients.HTTPClient
 			} else if runContext.Config != nil {
-				target := runContext.Config.ResolveGatewayTarget("")
+				target := runContext.Config.ResolveGatewayTargetFor(runContext.ProfileName, "")
 				baseURL = target.URL
 				allowMissing := target.UsesZiti
-				token, err := auth.LoadToken(auth.TokenOptions{AllowMissing: allowMissing})
+				token, err := auth.LoadTokenFor(runContext.ProfileName, auth.TokenOptions{AllowMissing: allowMissing})
 				if err != nil {
 					return err
 				}
