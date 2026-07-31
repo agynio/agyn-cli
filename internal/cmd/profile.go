@@ -1,12 +1,15 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/agynio/agyn-cli/internal/auth"
 	"github.com/agynio/agyn-cli/internal/config"
 	"github.com/agynio/agyn-cli/internal/output"
+	"github.com/agynio/agyn-cli/internal/terminal"
 	"github.com/spf13/cobra"
 )
 
@@ -33,6 +36,7 @@ func newProfileCmd() *cobra.Command {
 	}
 	cmd.AddCommand(newProfileListCmd())
 	cmd.AddCommand(newProfileShowCmd())
+	cmd.AddCommand(newProfileSelectCmd())
 	cmd.AddCommand(newProfileUseCmd())
 	cmd.AddCommand(newProfileSetCmd())
 	cmd.AddCommand(newProfileRemoveCmd())
@@ -136,6 +140,56 @@ func newProfileUseCmd() *cobra.Command {
 			if err := requireProfile(runContext.Config, name); err != nil {
 				return err
 			}
+			if err := config.SaveProfiles(name, runContext.Config.Profiles); err != nil {
+				return err
+			}
+			_, err = fmt.Fprintf(cmd.OutOrStdout(), "Now using profile %s\n", name)
+			return err
+		},
+	}
+}
+
+func newProfileSelectCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "select",
+		Short: "Interactively choose the profile subsequent commands run under",
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			// Checked first so a script is pointed at `use` rather than left
+			// waiting on a prompt nobody will answer.
+			if !stdinIsTerminal() {
+				return fmt.Errorf("no terminal attached; choose a profile without prompting with 'agyn profile use NAME'")
+			}
+			runContext, err := RunContextFrom(cmd)
+			if err != nil {
+				return err
+			}
+			names := runContext.Config.ProfileNames()
+			if len(names) == 0 {
+				return fmt.Errorf("no profiles configured; create one with 'agyn profile set NAME --gateway-url URL'")
+			}
+
+			current := runContext.Config.ResolveProfileName("")
+			items := make([]terminal.PickItem, 0, len(names))
+			for _, name := range names {
+				profile := runContext.Config.Profiles[name]
+				detail := profile.GatewayURL
+				if name == current {
+					detail += "  (current)"
+				}
+				items = append(items, terminal.PickItem{Label: name, Detail: detail, Current: name == current})
+			}
+
+			choice, err := terminal.Pick(os.Stdin, cmd.OutOrStdout(), "Select a profile:", items)
+			if errors.Is(err, terminal.ErrPickCancelled) {
+				fmt.Fprintln(cmd.OutOrStdout(), "Unchanged.")
+				return nil
+			}
+			if err != nil {
+				return err
+			}
+
+			name := names[choice]
 			if err := config.SaveProfiles(name, runContext.Config.Profiles); err != nil {
 				return err
 			}

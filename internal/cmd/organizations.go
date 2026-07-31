@@ -1,11 +1,11 @@
 package cmd
 
 import (
-	"bufio"
 	"context"
+	"errors"
 	"fmt"
+	"os"
 	"sort"
-	"strconv"
 	"strings"
 
 	"connectrpc.com/connect"
@@ -13,6 +13,7 @@ import (
 	organizationsv1 "github.com/agynio/agyn-cli/gen/agynio/api/organizations/v1"
 	"github.com/agynio/agyn-cli/internal/config"
 	"github.com/agynio/agyn-cli/internal/output"
+	"github.com/agynio/agyn-cli/internal/terminal"
 	"github.com/spf13/cobra"
 )
 
@@ -99,14 +100,24 @@ func newOrganizationsSelectCmd() *cobra.Command {
 				return fmt.Errorf("no accessible organizations")
 			}
 
-			stdout := cmd.OutOrStdout()
 			selected := runContext.OrganizationID("")
-			for index, organization := range organizations {
-				fmt.Fprintf(stdout, "  %d) %-40s %s%s\n", index+1, organization.GetName(), organization.GetId(),
-					selectedSuffix(organization.GetId() == selected))
+			items := make([]terminal.PickItem, 0, len(organizations))
+			for _, organization := range organizations {
+				current := organization.GetId() == selected
+				detail := organization.GetId()
+				if current {
+					detail += "  (current)"
+				}
+				items = append(items, terminal.PickItem{
+					Label: organization.GetName(), Detail: detail, Current: current,
+				})
 			}
 
-			choice, err := promptChoice(cmd, len(organizations))
+			choice, err := terminal.Pick(os.Stdin, cmd.OutOrStdout(), "Select an organization:", items)
+			if errors.Is(err, terminal.ErrPickCancelled) {
+				fmt.Fprintln(cmd.OutOrStdout(), "Unchanged.")
+				return nil
+			}
 			if err != nil {
 				return err
 			}
@@ -178,23 +189,6 @@ func storeOrganization(cmd *cobra.Command, runContext *RunContext, organization 
 	_, err := fmt.Fprintf(cmd.OutOrStdout(), "Selected organization %s (%s) for profile %s\n",
 		organization.GetName(), organization.GetId(), runContext.ProfileName)
 	return err
-}
-
-func promptChoice(cmd *cobra.Command, count int) (int, error) {
-	reader := bufio.NewReader(cmd.InOrStdin())
-	for {
-		fmt.Fprintf(cmd.OutOrStdout(), "Select organization [1-%d]: ", count)
-		line, err := reader.ReadString('\n')
-		if err != nil {
-			return 0, fmt.Errorf("read selection: %w", err)
-		}
-		choice, err := strconv.Atoi(strings.TrimSpace(line))
-		if err != nil || choice < 1 || choice > count {
-			fmt.Fprintf(cmd.ErrOrStderr(), "enter a number between 1 and %d\n", count)
-			continue
-		}
-		return choice - 1, nil
-	}
 }
 
 func organizationsGatewayClient(cmd *cobra.Command) (gatewayv1connect.OrganizationsGatewayClient, *RunContext, error) {

@@ -1,14 +1,16 @@
 package cmd
 
 import (
-	"bufio"
+	"errors"
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 
 	"github.com/agynio/agyn-cli/internal/config"
 	"github.com/agynio/agyn-cli/internal/local"
 	"github.com/agynio/agyn-cli/internal/output"
+	"github.com/agynio/agyn-cli/internal/terminal"
 	"github.com/spf13/cobra"
 )
 
@@ -88,16 +90,20 @@ func newLocalSelectCmd() *cobra.Command {
 				return fmt.Errorf("no local VMs; create one with 'agyn local start'")
 			}
 
-			stdout := cmd.OutOrStdout()
-			for index, s := range summaries {
-				suffix := ""
+			items := make([]terminal.PickItem, 0, len(summaries))
+			for _, s := range summaries {
+				detail := fmt.Sprintf("%s, port %d", s.Status, s.Port)
 				if s.Selected {
-					suffix = " (current)"
+					detail += ", current"
 				}
-				fmt.Fprintf(stdout, "  %d) %-16s %-10s port %d%s\n", index+1, s.Name, s.Status, s.Port, suffix)
+				items = append(items, terminal.PickItem{Label: s.Name, Detail: detail, Current: s.Selected})
 			}
 
-			choice, err := promptInstanceChoice(cmd, len(summaries))
+			choice, err := terminal.Pick(os.Stdin, cmd.OutOrStdout(), "Select a VM:", items)
+			if errors.Is(err, terminal.ErrPickCancelled) {
+				fmt.Fprintln(cmd.OutOrStdout(), "Unchanged.")
+				return nil
+			}
 			if err != nil {
 				return err
 			}
@@ -173,21 +179,4 @@ func instanceSummaries() ([]InstanceSummary, error) {
 	// a later call in the same invocation acts on.
 	local.Use(current)
 	return summaries, nil
-}
-
-func promptInstanceChoice(cmd *cobra.Command, count int) (int, error) {
-	reader := bufio.NewReader(cmd.InOrStdin())
-	for {
-		fmt.Fprintf(cmd.OutOrStdout(), "Select VM [1-%d]: ", count)
-		line, err := reader.ReadString('\n')
-		if err != nil {
-			return 0, fmt.Errorf("read selection: %w", err)
-		}
-		choice, err := strconv.Atoi(strings.TrimSpace(line))
-		if err != nil || choice < 1 || choice > count {
-			fmt.Fprintf(cmd.ErrOrStderr(), "enter a number between 1 and %d\n", count)
-			continue
-		}
-		return choice - 1, nil
-	}
 }
