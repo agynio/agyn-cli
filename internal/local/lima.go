@@ -95,9 +95,47 @@ func CreateAndStart(imageDir string, opts VMOptions, stdout, stderr io.Writer) e
 	return nil
 }
 
-// Start boots an existing instance.
-func Start(stdout, stderr io.Writer) error {
+// Start boots an existing instance, first applying any size the user has
+// changed since it was created. Lima reads cpus and memory from the instance's
+// own config, which only creation writes, so without this an edited setting is
+// stored and silently never takes effect.
+func Start(stdout, stderr io.Writer, opts VMOptions) error {
+	if err := applyInstanceSize(opts); err != nil {
+		return err
+	}
 	return limactl(stdout, stderr, "start", InstanceName())
+}
+
+func applyInstanceSize(opts VMOptions) error {
+	if opts.CPUs == 0 && opts.Memory == "" {
+		return nil
+	}
+	limaHome, err := LimaHome()
+	if err != nil {
+		return err
+	}
+	path := filepath.Join(limaHome, InstanceName(), "lima.yaml")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return fmt.Errorf("read instance config: %w", err)
+	}
+	content := string(data)
+	if opts.CPUs != 0 {
+		content = regexp.MustCompile(`(?m)^cpus: .*$`).ReplaceAllString(content, fmt.Sprintf("cpus: %d", opts.CPUs))
+	}
+	if opts.Memory != "" {
+		content = regexp.MustCompile(`(?m)^memory: .*$`).ReplaceAllString(content, fmt.Sprintf("memory: %s", opts.Memory))
+	}
+	if content == string(data) {
+		return nil
+	}
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		return fmt.Errorf("write instance config: %w", err)
+	}
+	return nil
 }
 
 // Stop shuts the instance down.
