@@ -476,73 +476,21 @@ func newLocalDeleteCmd() *cobra.Command {
 }
 
 func newLocalUpgradeCmd() *cobra.Command {
-	var version string
-	var yes bool
-
-	cmd := &cobra.Command{
+	return &cobra.Command{
 		Use:   "upgrade",
-		Short: "Recreate the VM from a newer image version",
-		Long: "Downloads the requested image version and recreates the VM from it.\n" +
-			"The VM's current state (databases, workloads) is replaced by the new image.",
+		Short: "Upgrade the platform in the running VM to the latest charts",
+		Long: "Upgrades the agyn-platform and agyn-apps Helm releases inside the VM to\n" +
+			"the newest published charts, keeping the VM and everything in it.\n\n" +
+			"This does not replace the disk image, so k3s, Istio, cert-manager and\n" +
+			"OpenZiti stay as they were baked. To move those — or to get a clean\n" +
+			"machine — recreate the VM with 'agyn local delete' and 'agyn local start'.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, err := config.Load()
-			if err != nil {
-				return err
-			}
-			cfg.ApplyLocalDefaults()
-
-			target := version
-			if target == "" {
-				target = "latest"
-			}
-			resolved, err := local.ResolveVersion(target)
-			if err != nil {
-				return err
-			}
-
-			if !yes && isTerminal() {
-				if !promptYesNo(cmd, fmt.Sprintf("Upgrade replaces the VM and its state with image %s. Continue?", resolved), false) {
-					return fmt.Errorf("aborted")
-				}
-			} else if !yes {
-				return fmt.Errorf("upgrade replaces the VM state; re-run with --yes to confirm")
-			}
-
-			instance, err := local.GetInstance()
-			if err != nil {
-				return err
-			}
-			if instance.Exists {
-				limaIO, err := openLimaIO(cmd)
-				if err != nil {
-					return err
-				}
-				defer limaIO.close()
-				if err := local.Delete(limaIO.stdout, limaIO.stderr); err != nil {
-					limaIO.reportFailure(cmd)
-					return err
-				}
-			}
-
-			// Persist the user's version *spec*, not the resolved value:
-			// pinning e.g. "0.1.0" when the config said "latest" would silently
-			// freeze every future upgrade on today's release.
-			settings := cfg.Local
-			if version != "" {
-				settings.Version = version
-			}
-			if err := config.SaveLocal(settings); err != nil {
-				return err
-			}
-
-			return runLocalStart(cmd, localStartFlags{version: resolved, yes: yes})
+			// Streamed to the terminal, not the lima log: an upgrade that waits
+			// on rollouts takes minutes, and the chart versions it reports are
+			// the whole answer the user asked for.
+			return local.UpgradePlatform(cmd.OutOrStdout(), cmd.ErrOrStderr(), "", "")
 		},
 	}
-
-	cmd.Flags().StringVar(&version, "version", "", "Target image version (default: latest)")
-	cmd.Flags().BoolVarP(&yes, "yes", "y", false, "Do not ask for confirmation")
-
-	return cmd
 }
 
 func newLocalDoctorCmd() *cobra.Command {
