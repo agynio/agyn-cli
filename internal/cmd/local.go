@@ -17,20 +17,47 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var localDebug bool
+var (
+	localDebug    bool
+	localInstance string
+)
 
 func newLocalCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "local",
-		Short: "Manage the local Agyn platform VM",
+		Short: "Manage local Agyn platform VMs",
 		Long: "Download the prebuilt Agyn platform VM image and manage its lifecycle.\n" +
-			"The platform runs in a single Lima VM named \"" + local.InstanceName + "\" and serves\n" +
-			"https://*." + local.BaseDomain + " on the configured port.",
+			"The platform runs in a Lima VM serving https://*." + local.BaseDomain + " on the\n" +
+			"configured port.\n\n" +
+			"One VM is the ordinary case and needs no naming. Run more than one — to move\n" +
+			"data between versions an upgrade cannot bridge, or to keep separate clusters\n" +
+			"side by side — with --instance, or choose one for good with 'agyn local select'.",
+		// Every `agyn local` command acts on exactly one VM. Resolving it here,
+		// before any command body runs, is what lets the rest of the code read
+		// the choice instead of passing it down through every call.
+		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+			if parent := cmd.Root().PersistentPreRunE; parent != nil {
+				if err := parent(cmd, args); err != nil {
+					return err
+				}
+			}
+			cfg, err := config.Load()
+			if err != nil {
+				return err
+			}
+			local.Use(cfg.ResolveInstanceName(localInstance))
+			return nil
+		},
 	}
 
 	cmd.PersistentFlags().BoolVar(&localDebug, "debug", false, "Show raw VM manager output")
+	cmd.PersistentFlags().StringVar(&localInstance, "instance", "",
+		"VM to act on (default: the selected one, then \""+config.DefaultInstanceName+"\")")
 
 	cmd.AddCommand(newLocalStartCmd())
+	cmd.AddCommand(newLocalListCmd())
+	cmd.AddCommand(newLocalSelectCmd())
+	cmd.AddCommand(newLocalUseCmd())
 	cmd.AddCommand(newLocalStopCmd())
 	cmd.AddCommand(newLocalRestartCmd())
 	cmd.AddCommand(newLocalStatusCmd())
@@ -94,8 +121,9 @@ func runLocalStart(cmd *cobra.Command, flags localStartFlags) error {
 	if err != nil {
 		return err
 	}
-	firstRun := cfg.Local == (config.LocalConfig{})
-	cfg.ApplyLocalDefaults()
+	instanceName := local.InstanceName()
+	_, configured := cfg.Local.Instances[instanceName]
+	firstRun := !configured
 
 	deps := local.CheckDependencies()
 	if missing := local.MissingRequired(deps); len(missing) > 0 {
@@ -106,7 +134,7 @@ func runLocalStart(cmd *cobra.Command, flags localStartFlags) error {
 	}
 
 	// Resolve settings: flags > config > defaults, with a first-run wizard.
-	settings := cfg.Local
+	settings := resolveInstancePorts(cfg, instanceName, cfg.InstanceSettings(instanceName))
 	// The version *spec* that gets persisted: a --version flag is ephemeral
 	// for this run only, so "latest" in the config stays "latest".
 	configVersion := settings.Version
@@ -177,7 +205,7 @@ func runLocalStart(cmd *cobra.Command, flags localStartFlags) error {
 
 	persisted := settings
 	persisted.Version = configVersion
-	if err := config.SaveLocal(persisted); err != nil {
+	if err := config.SaveInstance(instanceName, persisted); err != nil {
 		return err
 	}
 
@@ -314,7 +342,8 @@ func newLocalRestartCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			cfg.ApplyLocalDefaults()
+			settings := resolveInstancePorts(cfg, local.InstanceName(), cfg.InstanceSettings(local.InstanceName()))
+			_ = settings
 			instance, err := local.GetInstance()
 			if err != nil {
 				return err
@@ -340,7 +369,7 @@ func newLocalRestartCmd() *cobra.Command {
 				return err
 			}
 			fmt.Fprintln(cmd.OutOrStdout(), "VM started.")
-			waitAndPrintEndpoints(cmd, cfg.Local.Port)
+			waitAndPrintEndpoints(cmd, settings.Port)
 			return nil
 		},
 	}
@@ -349,6 +378,7 @@ func newLocalRestartCmd() *cobra.Command {
 type localStatusOutput struct {
 	Instance  local.Instance   `json:"instance" yaml:"instance"`
 	Port      int              `json:"port" yaml:"port"`
+	Name      string           `json:"name" yaml:"name"`
 	Version   string           `json:"version" yaml:"version"`
 	Endpoints []local.Endpoint `json:"endpoints,omitempty" yaml:"endpoints,omitempty"`
 	CATrusted bool             `json:"ca_trusted" yaml:"ca_trusted"`
@@ -368,7 +398,7 @@ func newLocalStatusCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			cfg.ApplyLocalDefaults()
+			settings := resolveInstancePorts(cfg, local.InstanceName(), cfg.InstanceSettings(local.InstanceName()))
 
 			instance, err := local.GetInstance()
 			if err != nil {
@@ -377,11 +407,12 @@ func newLocalStatusCmd() *cobra.Command {
 
 			status := localStatusOutput{
 				Instance: instance,
-				Port:     cfg.Local.Port,
-				Version:  cfg.Local.Version,
+				Name:     local.InstanceName(),
+				Port:     settings.Port,
+				Version:  settings.Version,
 			}
 			if instance.Status == "Running" {
-				status.Endpoints = local.CheckEndpoints(local.Endpoints(cfg.Local.Port))
+				status.Endpoints = local.CheckEndpoints(local.Endpoints(settings.Port))
 			}
 			if info, err := local.InspectCA(); err == nil {
 				status.CATrusted = info.Trusted
@@ -590,6 +621,54 @@ func printLocalEndpoints(w interface{ Write([]byte) (int, error) }, port int) {
 	for _, endpoint := range local.Endpoints(port) {
 		fmt.Fprintf(w, "  %-8s %s\n", endpoint.Name+":", endpoint.URL)
 	}
+}
+
+// resolveInstancePorts fills in ports a VM has not been given.
+//
+// The default VM keeps the well-known 2496/6445, which is what every doc and
+// every URL assumes. A second VM cannot have those, and making the user work
+// out which pair is free turns "run another cluster" into arithmetic — so its
+// ports are found here, skipping anything already listening or already claimed
+// by another configured VM.
+func resolveInstancePorts(cfg *config.Config, name string, settings config.LocalInstance) config.LocalInstance {
+	if name == config.DefaultInstanceName {
+		if settings.Port == 0 {
+			settings.Port = config.DefaultLocalPort
+		}
+		if settings.APIPort == 0 {
+			settings.APIPort = config.DefaultLocalAPIPort
+		}
+		return settings
+	}
+
+	taken := map[int]bool{}
+	for other, otherSettings := range cfg.Local.Instances {
+		if other == name {
+			continue
+		}
+		taken[otherSettings.Port] = true
+		taken[otherSettings.APIPort] = true
+	}
+	if settings.Port == 0 {
+		settings.Port = nextFreePort(config.DefaultLocalPort+1, taken)
+	}
+	if settings.APIPort == 0 {
+		settings.APIPort = nextFreePort(config.DefaultLocalAPIPort+1, taken)
+	}
+	return settings
+}
+
+func nextFreePort(start int, taken map[int]bool) int {
+	for port := start; port < start+200; port++ {
+		if taken[port] {
+			continue
+		}
+		if checkPortAvailable(port) == nil {
+			taken[port] = true
+			return port
+		}
+	}
+	return start
 }
 
 func checkPortAvailable(port int) error {

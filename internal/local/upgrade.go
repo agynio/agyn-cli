@@ -32,7 +32,7 @@ func UpgradePlatform(stdout, stderr io.Writer, platformVersion, appsVersion stri
 		return fmt.Errorf("the local VM is not running (%s); start it with 'agyn local start'", instance.Status)
 	}
 
-	args := []string{"shell", InstanceName, "--", "sudo", upgradeScript}
+	args := []string{"shell", InstanceName(), "--", "sudo", upgradeScript}
 	// Positional and order-dependent, so an apps version needs a platform slot
 	// ahead of it; empty means "latest".
 	if platformVersion != "" || appsVersion != "" {

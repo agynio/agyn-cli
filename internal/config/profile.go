@@ -23,7 +23,8 @@ const (
 	ProfileEnv = "AGYN_PROFILE"
 	// DefaultProfileName is used when nothing has ever selected one.
 	DefaultProfileName = "default"
-	// LocalProfileName is the profile `agyn local start` provisions.
+	// LocalProfileName is the profile `agyn local start` provisions for the
+	// default VM.
 	LocalProfileName = "local"
 )
 
@@ -189,4 +190,14 @@ func SaveProfiles(currentProfile string, profiles map[string]Profile) error {
 		}
 		return nil
 	})
+}
+
+// LocalProfileFor names the profile that talks to one local VM. The default VM
+// keeps the bare "local" name, so a machine with one VM sees exactly what it
+// saw before instances existed.
+func LocalProfileFor(instance string) string {
+	if instance == "" || instance == DefaultInstanceName {
+		return LocalProfileName
+	}
+	return LocalProfileName + "-" + instance
 }

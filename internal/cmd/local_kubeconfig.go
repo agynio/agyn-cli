@@ -17,16 +17,16 @@ func newLocalKubeconfigCmd() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "kubeconfig",
-		Short: "Add the VM's cluster to your kubeconfig (context \"" + local.KubeContextName + "\")",
+		Short: "Add the VM's cluster to your kubeconfig as its own context",
 		Long: "Extracts the k3s kubeconfig from the running VM, points it at the forwarded\n" +
-			"API port, and merges it into ~/.kube/config as context \"" + local.KubeContextName + "\"\n" +
-			"for use with kubectl, helm, and devspace.",
+			"API port, and merges it into ~/.kube/config for use with kubectl, helm and\n" +
+			"devspace. Each VM gets its own context, since each is a separate cluster.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, err := config.Load()
 			if err != nil {
 				return err
 			}
-			cfg.ApplyLocalDefaults()
+			settings := resolveInstancePorts(cfg, local.InstanceName(), cfg.InstanceSettings(local.InstanceName()))
 
 			instance, err := local.GetInstance()
 			if err != nil {
@@ -36,11 +36,11 @@ func newLocalKubeconfigCmd() *cobra.Command {
 				return fmt.Errorf("the VM is not running; start it with `agyn local start`")
 			}
 
-			if err := local.CheckAPIPort(cfg.Local.APIPort); err != nil {
+			if err := local.CheckAPIPort(settings.APIPort); err != nil {
 				return fmt.Errorf("%w\n\nThe VM was likely created before API forwarding existed. Recreate it:\n  agyn local delete && agyn local start", err)
 			}
 
-			kubeconfig, err := local.FetchKubeconfig(cfg.Local.APIPort)
+			kubeconfig, err := local.FetchKubeconfig(settings.APIPort)
 			if err != nil {
 				return err
 			}
@@ -74,8 +74,8 @@ func newLocalKubeconfigCmd() *cobra.Command {
 			if err := local.MergeKubeconfig(target, kubeconfig); err != nil {
 				return err
 			}
-			fmt.Fprintf(cmd.OutOrStdout(), "Merged context %q into %s\n", local.KubeContextName, target)
-			fmt.Fprintf(cmd.OutOrStdout(), "Use it with:\n  kubectl config use-context %s\n", local.KubeContextName)
+			fmt.Fprintf(cmd.OutOrStdout(), "Merged context %q into %s\n", local.KubeContextName(), target)
+			fmt.Fprintf(cmd.OutOrStdout(), "Use it with:\n  kubectl config use-context %s\n", local.KubeContextName())
 			return nil
 		},
 	}

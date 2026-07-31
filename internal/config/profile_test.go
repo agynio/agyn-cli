@@ -118,7 +118,7 @@ func TestRemoveProfileClearsADanglingSelection(t *testing.T) {
 
 func TestRemoveProfileKeepsUnrelatedSelectionAndKeys(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
-	if err := SaveLocal(LocalConfig{Port: 3000}); err != nil {
+	if err := SaveInstance(DefaultInstanceName, LocalInstance{Port: 3000}); err != nil {
 		t.Fatalf("seed local config: %v", err)
 	}
 	if err := SaveProfiles("local", map[string]Profile{
@@ -138,7 +138,7 @@ func TestRemoveProfileKeepsUnrelatedSelectionAndKeys(t *testing.T) {
 	if cfg.CurrentProfile != "local" {
 		t.Fatalf("expected the selection to survive, got %q", cfg.CurrentProfile)
 	}
-	if cfg.Local.Port != 3000 {
+	if cfg.Local.Instances[DefaultInstanceName].Port != 3000 {
 		t.Fatalf("expected unrelated config keys to survive, got %#v", cfg.Local)
 	}
 }

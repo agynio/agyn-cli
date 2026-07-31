@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"gopkg.in/yaml.v3"
@@ -20,13 +21,128 @@ type Config struct {
 	Local LocalConfig `yaml:"local"`
 }
 
-// LocalConfig configures the local platform VM managed by `agyn local`.
+// LocalConfig configures the local platform VMs managed by `agyn local`.
+//
+// One VM is the ordinary case and stays unnamed in everyday use. The map exists
+// for the cases a single VM cannot serve: moving data between versions an
+// upgrade cannot bridge, or running separate clusters side by side.
 type LocalConfig struct {
+	// The flat fields are the shape from when only one VM existed. Load moves
+	// them into Instances under the default name and clears them, so a config
+	// written before this change keeps working and is never written back in
+	// the old shape.
 	Port    int    `yaml:"port,omitempty"`
 	APIPort int    `yaml:"apiPort,omitempty"`
 	Version string `yaml:"version,omitempty"`
 	CPUs    int    `yaml:"cpus,omitempty"`
 	Memory  string `yaml:"memory,omitempty"`
+
+	// Current is the VM `agyn local` acts on when --instance is not given, set
+	// by `agyn local select`. Empty means the default instance, so a machine
+	// with one VM never sees this key.
+	Current   string                   `yaml:"current,omitempty"`
+	Instances map[string]LocalInstance `yaml:"instances,omitempty"`
+}
+
+// LocalInstance configures one VM.
+type LocalInstance struct {
+	Port    int    `yaml:"port,omitempty"`
+	APIPort int    `yaml:"apiPort,omitempty"`
+	Version string `yaml:"version,omitempty"`
+	CPUs    int    `yaml:"cpus,omitempty"`
+	Memory  string `yaml:"memory,omitempty"`
+}
+
+// migrateLocal folds a pre-multi-instance `local:` block into the instance map.
+// Called on load, so nothing else in the CLI has to know the old shape existed.
+func (c *Config) migrateLocal() {
+	flat := LocalInstance{
+		Port:    c.Local.Port,
+		APIPort: c.Local.APIPort,
+		Version: c.Local.Version,
+		CPUs:    c.Local.CPUs,
+		Memory:  c.Local.Memory,
+	}
+	c.Local.Port, c.Local.APIPort, c.Local.Version = 0, 0, ""
+	c.Local.CPUs, c.Local.Memory = 0, ""
+
+	if flat == (LocalInstance{}) {
+		return
+	}
+	if c.Local.Instances == nil {
+		c.Local.Instances = map[string]LocalInstance{}
+	}
+	// An explicit entry wins: if both shapes name the default instance, the
+	// newer one is the one the user last wrote through the CLI.
+	if _, ok := c.Local.Instances[DefaultInstanceName]; !ok {
+		c.Local.Instances[DefaultInstanceName] = flat
+	}
+}
+
+// InstanceSettings returns the stored settings for one VM with the
+// version/resource defaults applied.
+//
+// Ports are left as stored: zero means "not chosen yet", and only the caller
+// knows whether that should become the well-known default or a free port found
+// for a second VM.
+func (c *Config) InstanceSettings(name string) LocalInstance {
+	settings := c.Local.Instances[name]
+	if settings.Version == "" {
+		settings.Version = DefaultLocalVersion
+	}
+	if settings.CPUs == 0 {
+		settings.CPUs = DefaultLocalCPUs
+	}
+	if settings.Memory == "" {
+		settings.Memory = DefaultLocalMemory
+	}
+	return settings
+}
+
+// ResolveInstanceName picks the VM a command acts on: an explicit --instance
+// first, then the one `agyn local select` stored, then the default. A machine
+// with one VM therefore never has to name it.
+func (c *Config) ResolveInstanceName(flag string) string {
+	if name := strings.TrimSpace(flag); name != "" {
+		return name
+	}
+	if name := strings.TrimSpace(c.Local.Current); name != "" {
+		return name
+	}
+	return DefaultInstanceName
+}
+
+// SaveCurrentInstance records the VM `agyn local` acts on by default.
+func SaveCurrentInstance(name string) error {
+	return mutateConfigFile(func(raw map[string]any) error {
+		local, _ := raw["local"].(map[string]any)
+		if local == nil {
+			local = map[string]any{}
+		}
+		if name == "" || name == DefaultInstanceName {
+			delete(local, "current")
+		} else {
+			local["current"] = name
+		}
+		raw["local"] = local
+		return nil
+	})
+}
+
+// InstanceNames lists the configured VMs, default first and the rest sorted, so
+// output is stable between runs.
+func (c *Config) InstanceNames() []string {
+	names := make([]string, 0, len(c.Local.Instances))
+	for name := range c.Local.Instances {
+		if name != DefaultInstanceName {
+			names = append(names, name)
+		}
+	}
+	sort.Strings(names)
+	if _, ok := c.Local.Instances[DefaultInstanceName]; ok {
+		names = append([]string{DefaultInstanceName}, names...)
+	}
+	return names
 }
 
 const (
@@ -42,6 +158,10 @@ const (
 	// profile's recorded selection.
 	OrganizationEnv = "AGYN_ORGANIZATION"
 
+	// DefaultInstanceName is the VM used when none is named — the ordinary
+	// case, where the user has exactly one and never thinks about it.
+	DefaultInstanceName = "agyn"
+
 	DefaultLocalPort    = 2496
 	DefaultLocalAPIPort = 6445
 	DefaultLocalVersion = "latest"
@@ -49,38 +169,60 @@ const (
 	DefaultLocalMemory  = "8GiB"
 )
 
-// ApplyLocalDefaults fills unset local VM settings with defaults.
-func (c *Config) ApplyLocalDefaults() {
-	if c.Local.Port == 0 {
-		c.Local.Port = DefaultLocalPort
-	}
-	if c.Local.APIPort == 0 {
-		c.Local.APIPort = DefaultLocalAPIPort
-	}
-	if c.Local.Version == "" {
-		c.Local.Version = DefaultLocalVersion
-	}
-	if c.Local.CPUs == 0 {
-		c.Local.CPUs = DefaultLocalCPUs
-	}
-	if c.Local.Memory == "" {
-		c.Local.Memory = DefaultLocalMemory
-	}
-}
-
-// SaveLocal persists the local section without disturbing other config keys
-// (including ones this CLI version does not know about).
-func SaveLocal(local LocalConfig) error {
-	encoded, err := yaml.Marshal(local)
+// SaveInstance persists one VM's settings without disturbing other config keys
+// (including ones this CLI version does not know about), and without rewriting
+// the other instances.
+func SaveInstance(name string, settings LocalInstance) error {
+	encoded, err := yaml.Marshal(settings)
 	if err != nil {
 		return fmt.Errorf("encode local config: %w", err)
 	}
-	localMap := map[string]any{}
-	if err := yaml.Unmarshal(encoded, &localMap); err != nil {
+	settingsMap := map[string]any{}
+	if err := yaml.Unmarshal(encoded, &settingsMap); err != nil {
 		return fmt.Errorf("re-parse local config: %w", err)
 	}
+
 	return mutateConfigFile(func(raw map[string]any) error {
-		raw["local"] = localMap
+		local, _ := raw["local"].(map[string]any)
+		if local == nil {
+			local = map[string]any{}
+		}
+		instances, _ := local["instances"].(map[string]any)
+		if instances == nil {
+			instances = map[string]any{}
+		}
+		instances[name] = settingsMap
+
+		// Fold a pre-multi-instance block into the map on the way past, so the
+		// file ends up in one shape rather than carrying both.
+		if name == DefaultInstanceName {
+			for _, key := range []string{"port", "apiPort", "version", "cpus", "memory"} {
+				delete(local, key)
+			}
+		}
+		local["instances"] = instances
+		raw["local"] = local
+		return nil
+	})
+}
+
+// RemoveInstance drops a VM's settings from the config.
+func RemoveInstance(name string) error {
+	return mutateConfigFile(func(raw map[string]any) error {
+		local, _ := raw["local"].(map[string]any)
+		if local == nil {
+			return nil
+		}
+		if instances, ok := local["instances"].(map[string]any); ok {
+			delete(instances, name)
+			local["instances"] = instances
+		}
+		if name == DefaultInstanceName {
+			for _, key := range []string{"port", "apiPort", "version", "cpus", "memory"} {
+				delete(local, key)
+			}
+		}
+		raw["local"] = local
 		return nil
 	})
 }
@@ -147,6 +289,7 @@ func Load() (*Config, error) {
 	if err := yaml.Unmarshal(data, cfg); err != nil {
 		return nil, fmt.Errorf("parse config: %w", err)
 	}
+	cfg.migrateLocal()
 
 	return cfg, nil
 }

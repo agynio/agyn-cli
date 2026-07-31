@@ -71,7 +71,7 @@ func GetInstance() (Instance, error) {
 			}
 			return Instance{}, fmt.Errorf("parse limactl list output: %w", err)
 		}
-		if entry.Name == InstanceName {
+		if entry.Name == InstanceName() {
 			return Instance{Exists: true, Status: entry.Status, Dir: entry.Dir}, nil
 		}
 	}
@@ -86,10 +86,10 @@ func CreateAndStart(imageDir string, opts VMOptions, stdout, stderr io.Writer) e
 	if err != nil {
 		return err
 	}
-	if err := limactl(stdout, stderr, "start", "--name", InstanceName, rendered); err != nil {
+	if err := limactl(stdout, stderr, "start", "--name", InstanceName(), rendered); err != nil {
 		// A failed creation leaves a half-registered instance behind that
 		// would shadow the next attempt; remove it so retries start clean.
-		_ = limactl(io.Discard, io.Discard, "delete", "--force", InstanceName)
+		_ = limactl(io.Discard, io.Discard, "delete", "--force", InstanceName())
 		return err
 	}
 	return nil
@@ -97,17 +97,17 @@ func CreateAndStart(imageDir string, opts VMOptions, stdout, stderr io.Writer) e
 
 // Start boots an existing instance.
 func Start(stdout, stderr io.Writer) error {
-	return limactl(stdout, stderr, "start", InstanceName)
+	return limactl(stdout, stderr, "start", InstanceName())
 }
 
 // Stop shuts the instance down.
 func Stop(stdout, stderr io.Writer) error {
-	return limactl(stdout, stderr, "stop", InstanceName)
+	return limactl(stdout, stderr, "stop", InstanceName())
 }
 
 // Delete removes the instance and its disk state.
 func Delete(stdout, stderr io.Writer) error {
-	return limactl(stdout, stderr, "delete", "--force", InstanceName)
+	return limactl(stdout, stderr, "delete", "--force", InstanceName())
 }
 
 // Shell runs a command inside the guest and returns its stdout.
@@ -116,7 +116,7 @@ func Shell(args ...string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	cmd := exec.Command("limactl", append([]string{"shell", InstanceName, "--"}, args...)...)
+	cmd := exec.Command("limactl", append([]string{"shell", InstanceName(), "--"}, args...)...)
 	cmd.Env = env
 	var out, errBuf bytes.Buffer
 	cmd.Stdout = &out

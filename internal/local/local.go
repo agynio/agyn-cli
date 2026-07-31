@@ -10,8 +10,8 @@ import (
 )
 
 const (
-	// InstanceName is the single Lima instance managed by `agyn local`.
-	InstanceName = "agyn"
+	// DefaultInstanceName is the VM `agyn local` acts on when none is named.
+	DefaultInstanceName = "agyn"
 
 	// DefaultBaseURL serves the published platform VM images.
 	DefaultBaseURL = "https://downloads.agyn.cloud/bundle-vm"
@@ -48,6 +48,24 @@ func Arch() (string, error) {
 	}
 }
 
+// selected is the VM this process acts on.
+//
+// One invocation of the CLI acts on exactly one VM, resolved once from
+// --instance or the stored selection before any command body runs. Holding it
+// here rather than threading a name through every call keeps the ordinary
+// single-VM case free of an argument that would always be the same value.
+var selected = DefaultInstanceName
+
+// Use fixes the VM this process acts on. Called once, from the command layer.
+func Use(name string) {
+	if name != "" {
+		selected = name
+	}
+}
+
+// InstanceName is the Lima instance this process acts on.
+func InstanceName() string { return selected }
+
 // Dir returns ~/.agyn/local, the root for everything `agyn local` stores.
 func Dir() (string, error) {
 	home, err := os.UserHomeDir()
@@ -66,13 +84,18 @@ func ImageDir(version, arch string) (string, error) {
 	return filepath.Join(dir, "images", version, arch), nil
 }
 
-// CertsDir returns the directory for the extracted local CA.
+// CertsDir returns the directory holding this VM's extracted CA. Each VM signs
+// with its own CA, so they cannot share a file. The default VM keeps the
+// original path, leaving existing installs where they are.
 func CertsDir() (string, error) {
 	dir, err := Dir()
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(dir, "certs"), nil
+	if selected == DefaultInstanceName {
+		return filepath.Join(dir, "certs"), nil
+	}
+	return filepath.Join(dir, "certs", selected), nil
 }
 
 // LimaHome returns the LIMA_HOME used for the managed instance so all VM

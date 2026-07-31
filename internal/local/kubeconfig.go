@@ -11,8 +11,15 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// KubeContextName is the kubeconfig context/cluster/user name for the VM.
-const KubeContextName = "agyn-local"
+// KubeContextName() is the kubeconfig context/cluster/user name for this VM.
+// Each VM is a separate cluster, so they cannot share a context name; the
+// default VM keeps "agyn-local" so existing kubeconfigs keep working.
+func KubeContextName() string {
+	if InstanceName() == DefaultInstanceName {
+		return "agyn-local"
+	}
+	return "agyn-local-" + InstanceName()
+}
 
 // FetchKubeconfig reads the k3s kubeconfig from the running VM and rewrites it
 // to be usable from the host: server URL pointing at the forwarded API port
@@ -38,12 +45,12 @@ func FetchKubeconfig(apiPort int) (map[string]any, error) {
 		if !ok {
 			return fmt.Errorf("unexpected %s format", key)
 		}
-		entry["name"] = KubeContextName
+		entry["name"] = KubeContextName()
 		if nested != "" {
 			if inner, ok := entry[nested].(map[string]any); ok {
 				if key == "contexts" {
-					inner["cluster"] = KubeContextName
-					inner["user"] = KubeContextName
+					inner["cluster"] = KubeContextName()
+					inner["user"] = KubeContextName()
 				}
 				if key == "clusters" {
 					inner["server"] = fmt.Sprintf("https://127.0.0.1:%d", apiPort)
@@ -62,7 +69,7 @@ func FetchKubeconfig(apiPort int) (map[string]any, error) {
 	if err := rename("users", "user"); err != nil {
 		return nil, err
 	}
-	kubeconfig["current-context"] = KubeContextName
+	kubeconfig["current-context"] = KubeContextName()
 
 	return kubeconfig, nil
 }
@@ -102,7 +109,7 @@ func MergeKubeconfig(path string, fetched map[string]any) error {
 		existing, _ := target[key].([]any)
 		kept := make([]any, 0, len(existing)+1)
 		for _, entry := range existing {
-			if m, ok := entry.(map[string]any); ok && m["name"] == KubeContextName {
+			if m, ok := entry.(map[string]any); ok && m["name"] == KubeContextName() {
 				continue
 			}
 			kept = append(kept, entry)
@@ -113,7 +120,7 @@ func MergeKubeconfig(path string, fetched map[string]any) error {
 	}
 
 	if target["current-context"] == nil || target["current-context"] == "" {
-		target["current-context"] = KubeContextName
+		target["current-context"] = KubeContextName()
 	}
 
 	data, err := yaml.Marshal(target)

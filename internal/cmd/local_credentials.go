@@ -26,16 +26,19 @@ type localProfileFlags struct {
 // commands it names the profile being written.
 func addLocalProfileFlags(cmd *cobra.Command, flags *localProfileFlags) {
 	cmd.Flags().StringVar(&flags.profile, "profile", "",
-		"Profile to configure (default: \""+config.LocalProfileName+"\")")
+		"Profile to configure (default: the VM's own, e.g. \""+config.LocalProfileName+"\")")
 	cmd.Flags().BoolVar(&flags.noProfile, "no-profile", false,
 		"Do not configure a profile or store credentials")
 }
 
+// targetProfile names the profile being written. Each VM gets its own, so a
+// second VM does not overwrite the first one's endpoint and token; the default
+// VM keeps the bare "local" name it always had.
 func (f localProfileFlags) targetProfile() string {
 	if name := strings.TrimSpace(f.profile); name != "" {
 		return name
 	}
-	return config.LocalProfileName
+	return config.LocalProfileFor(local.InstanceName())
 }
 
 func newLocalCredentialsCmd() *cobra.Command {
@@ -59,7 +62,7 @@ func newLocalCredentialsCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			cfg.ApplyLocalDefaults()
+			settings := resolveInstancePorts(cfg, local.InstanceName(), cfg.InstanceSettings(local.InstanceName()))
 
 			instance, err := local.GetInstance()
 			if err != nil {
@@ -69,7 +72,7 @@ func newLocalCredentialsCmd() *cobra.Command {
 				return fmt.Errorf("the VM is not running; start it with `agyn local start`")
 			}
 
-			return provisionLocalProfile(cmd, flags, cfg.Local.Port, true)
+			return provisionLocalProfile(cmd, flags, settings.Port, true)
 		},
 	}
 
@@ -192,17 +195,18 @@ func forgetLocalProfile(cmd *cobra.Command) error {
 	if err != nil {
 		return err
 	}
-	_, configured := cfg.Profiles[config.LocalProfileName]
-	if !configured && !auth.HasTokenFor(config.LocalProfileName) {
+	name := config.LocalProfileFor(local.InstanceName())
+	_, configured := cfg.Profiles[name]
+	if !configured && !auth.HasTokenFor(name) {
 		return nil
 	}
-	if err := config.RemoveProfile(config.LocalProfileName); err != nil {
+	if err := config.RemoveProfile(name); err != nil {
 		return err
 	}
-	if err := auth.RemoveTokenFor(config.LocalProfileName); err != nil {
+	if err := auth.RemoveTokenFor(name); err != nil {
 		return err
 	}
-	fmt.Fprintf(cmd.OutOrStdout(), "Removed the %s profile and its stored token.\n", config.LocalProfileName)
+	fmt.Fprintf(cmd.OutOrStdout(), "Removed the %s profile and its stored token.\n", name)
 	return nil
 }
 

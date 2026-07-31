@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	"github.com/agynio/agyn-cli/internal/config"
+	"github.com/agynio/agyn-cli/internal/local"
 	"github.com/agynio/agyn-cli/internal/output"
 	"github.com/spf13/cobra"
 )
@@ -36,18 +37,18 @@ func newLocalConfigListCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			cfg.ApplyLocalDefaults()
+			settings := resolveInstancePorts(cfg, local.InstanceName(), cfg.InstanceSettings(local.InstanceName()))
 
 			if runContext.OutputFormat != output.FormatTable {
-				return output.Print(runContext.OutputFormat, cfg.Local)
+				return output.Print(runContext.OutputFormat, settings)
 			}
 
 			rows := [][]string{
-				{"port", strconv.Itoa(cfg.Local.Port)},
-				{"api-port", strconv.Itoa(cfg.Local.APIPort)},
-				{"version", cfg.Local.Version},
-				{"cpus", strconv.Itoa(cfg.Local.CPUs)},
-				{"memory", cfg.Local.Memory},
+				{"port", strconv.Itoa(settings.Port)},
+				{"api-port", strconv.Itoa(settings.APIPort)},
+				{"version", settings.Version},
+				{"cpus", strconv.Itoa(settings.CPUs)},
+				{"memory", settings.Memory},
 			}
 			return output.Table{Headers: []string{"KEY", "VALUE"}, Rows: rows}.Render(cmd.OutOrStdout())
 		},
@@ -64,9 +65,9 @@ func newLocalConfigGetCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			cfg.ApplyLocalDefaults()
+			settings := resolveInstancePorts(cfg, local.InstanceName(), cfg.InstanceSettings(local.InstanceName()))
 
-			value, err := localConfigValue(cfg.Local, args[0])
+			value, err := localConfigValue(settings, args[0])
 			if err != nil {
 				return err
 			}
@@ -86,9 +87,7 @@ func newLocalConfigSetCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			cfg.ApplyLocalDefaults()
-
-			settings := cfg.Local
+			settings := resolveInstancePorts(cfg, local.InstanceName(), cfg.InstanceSettings(local.InstanceName()))
 			key, value := args[0], args[1]
 			switch key {
 			case "port":
@@ -117,7 +116,7 @@ func newLocalConfigSetCmd() *cobra.Command {
 				return fmt.Errorf("unknown key %q (valid: port, api-port, version, cpus, memory)", key)
 			}
 
-			if err := config.SaveLocal(settings); err != nil {
+			if err := config.SaveInstance(local.InstanceName(), settings); err != nil {
 				return err
 			}
 			fmt.Fprintf(cmd.OutOrStdout(), "%s = %s (applies on next `agyn local start`; restart if the VM is running)\n", key, value)
@@ -126,18 +125,18 @@ func newLocalConfigSetCmd() *cobra.Command {
 	}
 }
 
-func localConfigValue(local config.LocalConfig, key string) (string, error) {
+func localConfigValue(settings config.LocalInstance, key string) (string, error) {
 	switch key {
 	case "port":
-		return strconv.Itoa(local.Port), nil
+		return strconv.Itoa(settings.Port), nil
 	case "api-port":
-		return strconv.Itoa(local.APIPort), nil
+		return strconv.Itoa(settings.APIPort), nil
 	case "version":
-		return local.Version, nil
+		return settings.Version, nil
 	case "cpus":
-		return strconv.Itoa(local.CPUs), nil
+		return strconv.Itoa(settings.CPUs), nil
 	case "memory":
-		return local.Memory, nil
+		return settings.Memory, nil
 	default:
 		return "", fmt.Errorf("unknown key %q (valid: port, api-port, version, cpus, memory)", key)
 	}
