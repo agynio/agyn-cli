@@ -42,8 +42,9 @@ var (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "agyn",
-	Short: "Agyn CLI",
+	Use:     "agyn",
+	Short:   "Agyn CLI",
+	Version: versionString(),
 	// Errors are printed by Execute so a remote shell exit code can be
 	// propagated without an accompanying error line.
 	SilenceUsage:  true,
