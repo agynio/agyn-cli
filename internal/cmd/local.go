@@ -2,10 +2,12 @@ package cmd
 
 import (
 	"bufio"
+	"bytes"
 	"fmt"
 	"io"
 	"net"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -64,6 +66,7 @@ func newLocalCmd() *cobra.Command {
 	cmd.AddCommand(newLocalStatusCmd())
 	cmd.AddCommand(newLocalDeleteCmd())
 	cmd.AddCommand(newLocalUpgradeCmd())
+	cmd.AddCommand(newLocalLoadImageCmd())
 	cmd.AddCommand(newLocalDoctorCmd())
 	cmd.AddCommand(newLocalConfigCmd())
 	cmd.AddCommand(newLocalCACmd())
@@ -546,6 +549,67 @@ func reinstallBootstrapToken(cmd *cobra.Command) error {
 	fmt.Fprintln(cmd.OutOrStdout(), "Reinstalling the Gateway bootstrap token the upgrade replaced...")
 	_, err = local.SetBootstrapToken(stored)
 	return err
+}
+
+func newLocalLoadImageCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "load-image IMAGE [IMAGE...]",
+		Short: "Load host-built container images into the VM's cluster",
+		Long: "Streams images from the host's docker daemon into the VM's k3s image\n" +
+			"store, so a workload can run an image that was never pushed anywhere.\n\n" +
+			"This is the k3s counterpart of `k3d image import`: the images become\n" +
+			"available to the cluster under the same reference they have on the host.",
+		Args: cobra.MinimumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return loadImages(cmd, args)
+		},
+	}
+}
+
+// loadImages pipes `docker save` straight into the guest's importer.
+//
+// Streamed rather than staged: these archives run to several gigabytes, and
+// writing one to the host and again to the guest asks for room neither is
+// guaranteed to have.
+func loadImages(cmd *cobra.Command, images []string) error {
+	instance, err := local.GetInstance()
+	if err != nil {
+		return err
+	}
+	if !instance.Exists || !strings.EqualFold(instance.Status, "Running") {
+		return fmt.Errorf("the VM is not running; start it with: agyn local start")
+	}
+
+	save := exec.Command("docker", append([]string{"save"}, images...)...)
+	var saveErr bytes.Buffer
+	save.Stderr = &saveErr
+	stdout, err := save.StdoutPipe()
+	if err != nil {
+		return fmt.Errorf("read the image archive: %w", err)
+	}
+	if err := save.Start(); err != nil {
+		return fmt.Errorf("run docker save: %w", err)
+	}
+
+	fmt.Fprintf(cmd.OutOrStdout(), "Loading %d image(s) into the VM...\n", len(images))
+	out, importErr := local.ShellStdin(stdout, "sudo", "k3s", "ctr", "images", "import", "-")
+
+	// Wait regardless: an importer that failed leaves docker save writing into
+	// a closed pipe, and its own error is the more useful of the two.
+	waitErr := save.Wait()
+	if waitErr != nil {
+		return fmt.Errorf("docker save: %w: %s", waitErr, strings.TrimSpace(saveErr.String()))
+	}
+	if importErr != nil {
+		return fmt.Errorf("import images into the VM: %w", importErr)
+	}
+	if trimmed := strings.TrimSpace(out); trimmed != "" {
+		fmt.Fprintln(cmd.OutOrStdout(), trimmed)
+	}
+	for _, image := range images {
+		fmt.Fprintf(cmd.OutOrStdout(), "  %s\n", image)
+	}
+	return nil
 }
 
 func newLocalDoctorCmd() *cobra.Command {

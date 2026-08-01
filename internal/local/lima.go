@@ -196,6 +196,28 @@ func Shell(args ...string) (string, error) {
 	return out.String(), nil
 }
 
+// ShellStdin runs a command inside the guest with stdin piped from the host.
+//
+// Used to stream an image archive straight into the guest's container store
+// rather than staging a multi-gigabyte file on a disk that may not have room
+// for it.
+func ShellStdin(stdin io.Reader, args ...string) (string, error) {
+	env, err := limaEnv()
+	if err != nil {
+		return "", err
+	}
+	cmd := exec.Command("limactl", append([]string{"shell", InstanceName(), "--"}, args...)...)
+	cmd.Env = env
+	cmd.Stdin = stdin
+	var out, errBuf bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &errBuf
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("limactl shell: %w: %s", err, strings.TrimSpace(errBuf.String()))
+	}
+	return out.String(), nil
+}
+
 // renderLimaConfig copies the published lima.yaml next to the disk, applying
 // the configured port/cpu/memory. The published template references the disk
 // by relative path, so the rendered copy lives in the image directory.
