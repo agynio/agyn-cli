@@ -154,6 +154,90 @@ func TestProfileListMarksCurrentAndNeverPrintsTheToken(t *testing.T) {
 	}
 }
 
+func TestProfileTokenPrintsTheTokenAlone(t *testing.T) {
+	withTempHome(t)
+	if err := auth.SaveTokenFor("local", "agyn_local_secret"); err != nil {
+		t.Fatalf("seed token: %v", err)
+	}
+	cfg := &config.Config{Profiles: map[string]config.Profile{
+		"local": {GatewayURL: "https://gateway.agyn.dev:2496", Organization: "org-local"},
+	}}
+
+	stdout, err := runProfileTokenCmd(t, cfg, "local")
+	if err != nil {
+		t.Fatalf("profile token: %v", err)
+	}
+	// Callers substitute this straight into a variable, so anything else on
+	// stdout — a label, the gateway URL, a blank line — corrupts the value.
+	if stdout != "agyn_local_secret\n" {
+		t.Fatalf("expected the bare token, got %q", stdout)
+	}
+}
+
+func TestProfileTokenReadsANamedProfileAndRejectsUnknownOnes(t *testing.T) {
+	withTempHome(t)
+	if err := auth.SaveTokenFor("staging", "agyn_staging_secret"); err != nil {
+		t.Fatalf("seed token: %v", err)
+	}
+	cfg := &config.Config{Profiles: map[string]config.Profile{
+		"local":   {GatewayURL: "https://gateway.agyn.dev:2496"},
+		"staging": {GatewayURL: "https://gateway.staging.example"},
+	}}
+
+	stdout, err := runProfileTokenCmd(t, cfg, "local", "staging")
+	if err != nil {
+		t.Fatalf("profile token staging: %v", err)
+	}
+	if stdout != "agyn_staging_secret\n" {
+		t.Fatalf("expected staging's token, got %q", stdout)
+	}
+
+	if _, err := runProfileTokenCmd(t, cfg, "local", "nope"); err == nil {
+		t.Fatal("expected an unknown profile to be rejected")
+	}
+}
+
+func TestProfileTokenFailsWhenNoTokenIsStored(t *testing.T) {
+	withTempHome(t)
+	cfg := &config.Config{Profiles: map[string]config.Profile{
+		"local": {GatewayURL: "https://gateway.agyn.dev:2496"},
+	}}
+
+	// Succeeding with empty output would put an empty AGYN_API_TOKEN into the
+	// environment, which fails later as an unauthenticated request instead of
+	// here as a missing credential.
+	stdout, err := runProfileTokenCmd(t, cfg, "local")
+	if err == nil {
+		t.Fatalf("expected a missing token to fail, got output %q", stdout)
+	}
+	if strings.TrimSpace(stdout) != "" {
+		t.Fatalf("expected nothing on stdout, got %q", stdout)
+	}
+}
+
+// runProfileTokenCmd runs the token command and returns what it wrote to its own
+// writer, which is where it prints — unlike the commands that go through the
+// output package and land on os.Stdout.
+func runProfileTokenCmd(t *testing.T, cfg *config.Config, profileName string, args ...string) (string, error) {
+	t.Helper()
+	var stdout bytes.Buffer
+	command := newProfileTokenCmd()
+	// Mirror the root command, which silences both: usage text on a failed run
+	// would otherwise land on the same writer the token does.
+	command.SilenceUsage = true
+	command.SilenceErrors = true
+	command.SetOut(&stdout)
+	command.SetErr(&bytes.Buffer{})
+	command.SetArgs(args)
+	command.SetContext(withRunContext(context.Background(), &RunContext{
+		Config:       cfg,
+		ProfileName:  profileName,
+		OutputFormat: output.FormatTable,
+	}))
+	err := command.Execute()
+	return stdout.String(), err
+}
+
 func TestProfileShowDefaultsToTheActiveProfile(t *testing.T) {
 	withTempHome(t)
 	cfg := &config.Config{Profiles: map[string]config.Profile{

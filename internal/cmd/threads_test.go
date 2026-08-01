@@ -56,19 +56,13 @@ func TestResolveThreadTargets(t *testing.T) {
 		t.Fatalf("unexpected target: %#v", targets[0])
 	}
 
+	// Nothing in the environment resolves a thread. A stale value in a
+	// long-lived container silently misroutes messages; an instance that wants
+	// its default names no thread at all and lets the server resolve it.
 	t.Setenv(threadIDEnv, "env-ref")
 	refs = map[string]string{"env-ref": "thread-env"}
-	targets, err = resolveThreadTargets(nil, refs)
-	if err != nil {
-		t.Fatalf("resolve env target: %v", err)
-	}
-	if len(targets) != 1 || targets[0].ID != "thread-env" || targets[0].Ref != "env-ref" {
-		t.Fatalf("unexpected env target: %#v", targets)
-	}
-
-	t.Setenv(threadIDEnv, "")
 	if _, err := resolveThreadTargets(nil, refs); err == nil {
-		t.Fatalf("expected error when thread is missing")
+		t.Fatalf("expected THREAD_ID not to resolve a thread")
 	}
 	if _, err := resolveThreadTargets([]string{" "}, refs); err == nil {
 		t.Fatalf("expected error for empty thread ref")

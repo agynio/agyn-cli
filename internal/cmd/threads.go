@@ -131,7 +131,7 @@ func newThreadsSendCmd() *cobra.Command {
 			return runThreadsSend(cmd, args)
 		},
 	}
-	cmd.Flags().StringVar(&args.thread, "thread", "", "Thread ref or ID")
+	cmd.Flags().StringVar(&args.thread, "thread", "", "Thread ref or ID; omit inside an agent workload to use the instance's default thread")
 	cmd.Flags().StringVar(&args.message, "message", "", "Message body; quote shell-special characters such as backticks")
 	cmd.Flags().StringArrayVar(&args.files, "file", nil, "File ID to include (repeatable)")
 	cmd.Flags().IntVar(&args.wait, "wait", 0, "Seconds to wait for a response")
@@ -275,15 +275,17 @@ func runThreadsSend(cmd *cobra.Command, args *threadsSendArgs) error {
 	if err != nil {
 		return err
 	}
-	threadInputs := []string{}
+	// No --thread leaves thread_id off the wire. Only an agent instance can be
+	// served that way: Threads resolves its default thread from the caller
+	// identity. Everyone else is refused there, with the reason.
+	threadID := ""
 	if strings.TrimSpace(args.thread) != "" {
-		threadInputs = []string{args.thread}
+		threadTargets, err := resolveThreadTargets([]string{args.thread}, refs)
+		if err != nil {
+			return err
+		}
+		threadID = threadTargets[0].ID
 	}
-	threadTargets, err := resolveThreadTargets(threadInputs, refs)
-	if err != nil {
-		return err
-	}
-	threadID := threadTargets[0].ID
 
 	message, err := requiredMessageBody(args.message, len(args.files) > 0)
 	if err != nil {
@@ -309,7 +311,14 @@ func runThreadsSend(cmd *cobra.Command, args *threadsSendArgs) error {
 	messageID := sendResp.Msg.GetMessage().GetId()
 
 	if args.wait > 0 {
-		return waitOutputAndAck(cmd.Context(), cmd, runContext, threadsClient, threadTargets, senderID, refs, time.Duration(args.wait)*time.Second, false)
+		// The thread comes from the response rather than the request: when the
+		// caller named none, this is where the resolved one is first known.
+		sentThreadID := sendResp.Msg.GetMessage().GetThreadId()
+		if sentThreadID == "" {
+			return fmt.Errorf("send message: response missing thread id")
+		}
+		targets := []threadTarget{{ID: sentThreadID, Ref: refFor(refs, sentThreadID)}}
+		return waitOutputAndAck(cmd.Context(), cmd, runContext, threadsClient, targets, senderID, refs, time.Duration(args.wait)*time.Second, false)
 	}
 
 	if runContext.OutputFormat == output.FormatTable {
@@ -448,13 +457,22 @@ func runThreadsList(cmd *cobra.Command, _ []string) error {
 	return output.Print(runContext.OutputFormat, entries)
 }
 
-func resolveThreadTargets(inputs []string, refs map[string]string) ([]threadTarget, error) {
-	if len(inputs) == 0 {
-		if envThread := strings.TrimSpace(os.Getenv(threadIDEnv)); envThread != "" {
-			inputs = []string{envThread}
-		} else {
-			return nil, fmt.Errorf("thread is required")
+// refFor is the local alias for a thread, when one was stored.
+func refFor(refs map[string]string, threadID string) string {
+	for ref, id := range refs {
+		if id == threadID {
+			return ref
 		}
+	}
+	return ""
+}
+
+func resolveThreadTargets(inputs []string, refs map[string]string) ([]threadTarget, error) {
+	// The environment does not resolve a thread. A stale value in a long-lived
+	// container silently misroutes messages, which is why THREAD_ID went away;
+	// resolution is server-side from the caller identity now.
+	if len(inputs) == 0 {
+		return nil, fmt.Errorf("thread is required")
 	}
 	reverseRefs := map[string]string{}
 	for ref, id := range refs {
