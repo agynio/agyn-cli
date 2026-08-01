@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/agynio/agyn-cli/internal/auth"
 	"github.com/agynio/agyn-cli/internal/config"
 	"github.com/agynio/agyn-cli/internal/local"
 	"github.com/agynio/agyn-cli/internal/output"
@@ -514,9 +515,37 @@ func newLocalUpgradeCmd() *cobra.Command {
 			// Streamed to the terminal, not the lima log: an upgrade that waits
 			// on rollouts takes minutes, and the chart versions it reports are
 			// the whole answer the user asked for.
-			return local.UpgradePlatform(cmd.OutOrStdout(), cmd.ErrOrStderr(), "", "")
+			if err := local.UpgradePlatform(cmd.OutOrStdout(), cmd.ErrOrStderr(), "", ""); err != nil {
+				return err
+			}
+			return reinstallBootstrapToken(cmd)
 		},
 	}
+}
+
+// reinstallBootstrapToken puts back the token the upgrade just overwrote.
+//
+// The Gateway chart renders CLUSTER_ADMIN_TOKEN from a literal helm value, so
+// the per-install token lives in the Deployment spec -- and a helm upgrade
+// re-renders that spec from the chart, restoring the placeholder baked into the
+// image. Every `agyn` command then authenticates with a token the Gateway no
+// longer knows.
+//
+// Nothing to put back is not an error: a VM this CLI did not provision has no
+// stored token, and the image placeholder is what it is meant to be running.
+func reinstallBootstrapToken(cmd *cobra.Command) error {
+	name := config.LocalProfileFor(local.InstanceName())
+	stored, err := auth.LoadTokenFor(name, auth.TokenOptions{AllowMissing: true})
+	if err != nil {
+		return err
+	}
+	stored = strings.TrimSpace(stored)
+	if !local.IsBootstrapToken(stored) {
+		return nil
+	}
+	fmt.Fprintln(cmd.OutOrStdout(), "Reinstalling the Gateway bootstrap token the upgrade replaced...")
+	_, err = local.SetBootstrapToken(stored)
+	return err
 }
 
 func newLocalDoctorCmd() *cobra.Command {
