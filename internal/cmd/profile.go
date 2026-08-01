@@ -36,6 +36,7 @@ func newProfileCmd() *cobra.Command {
 	}
 	cmd.AddCommand(newProfileListCmd())
 	cmd.AddCommand(newProfileShowCmd())
+	cmd.AddCommand(newProfileTokenCmd())
 	cmd.AddCommand(newProfileSelectCmd())
 	cmd.AddCommand(newProfileUseCmd())
 	cmd.AddCommand(newProfileSetCmd())
@@ -122,6 +123,51 @@ func newProfileShowCmd() *cobra.Command {
 				})
 			}
 			return output.Print(runContext.OutputFormat, out)
+		},
+	}
+}
+
+// newProfileTokenCmd is the one command that prints a stored token. `show` and
+// `list` deliberately report only that one exists, because they are what people
+// paste into issues — but something has to be able to read the value, or every
+// caller that needs it parses the credentials file and turns its layout into an
+// accidental API. That is what the e2e runner did: it needs AGYN_API_TOKEN in
+// the environment, the local VM generates that token per install, and the only
+// way to reach it was an awk script over ~/.agyn/credentials.
+//
+// The token is printed bare and alone so it composes:
+//
+//	AGYN_API_TOKEN="$(agyn profile token)"
+func newProfileTokenCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "token [NAME]",
+		Short: "Print the token stored for a profile",
+		Long: "Writes the token and nothing else to stdout, for use in a command\n" +
+			"substitution. Nothing else prints a token: treat the output as the\n" +
+			"secret it is, and mask it in CI logs.",
+		Args: cobra.MaximumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			runContext, err := RunContextFrom(cmd)
+			if err != nil {
+				return err
+			}
+			name := runContext.ProfileName
+			if len(args) == 1 {
+				name = strings.TrimSpace(args[0])
+				if err := requireProfile(runContext.Config, name); err != nil {
+					return err
+				}
+			}
+
+			// AllowMissing stays false: a caller substituting this into a
+			// variable wants a failure, not an empty string that fails later as
+			// an unauthenticated request.
+			token, err := auth.LoadTokenFor(name, auth.TokenOptions{})
+			if err != nil {
+				return err
+			}
+			_, err = fmt.Fprintln(cmd.OutOrStdout(), token)
+			return err
 		},
 	}
 }
