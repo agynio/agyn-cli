@@ -102,15 +102,17 @@ func instantiateAgent(cmd *cobra.Command, handle, label, defaultThread, organiza
 	if trimmed := strings.TrimSpace(label); trimmed != "" {
 		request.Label = &trimmed
 	}
-	// The default thread is named up front so the instance is usable the moment
-	// it exists: its class policy only fills one in when a thread created it,
-	// and nothing did here.
+	// default_thread_id, not context.thread_id. The context field reports the
+	// thread that happened to create the instance and is only consulted through
+	// the class policy -- an agent whose policy is NONE would ignore it. Naming
+	// the thread on the command line is a deliberate choice, which is what
+	// default_thread_id means and why it wins over the policy.
 	if trimmed := strings.TrimSpace(defaultThread); trimmed != "" {
 		threadID, err := resolveThreadReference(trimmed)
 		if err != nil {
 			return err
 		}
-		request.Context = &agentsv1.CreateInstanceContext{ThreadId: &threadID}
+		request.DefaultThreadId = &threadID
 	}
 
 	resp, err := client.CreateInstance(cmd.Context(), connect.NewRequest(request))
