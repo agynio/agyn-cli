@@ -168,7 +168,7 @@ func runLocalStart(cmd *cobra.Command, flags localStartFlags) error {
 			return err
 		}
 		defer limaIO.close()
-		if err := local.Start(limaIO.stdout, limaIO.stderr); err != nil {
+		if err := local.Start(limaIO.stdout, limaIO.stderr, vmOptions(settings)); err != nil {
 			limaIO.reportFailure(cmd)
 			return err
 		}
@@ -220,12 +220,7 @@ func runLocalStart(cmd *cobra.Command, flags localStartFlags) error {
 		return err
 	}
 	defer limaIO.close()
-	if err := local.CreateAndStart(imageDir, local.VMOptions{
-		Port:    settings.Port,
-		APIPort: settings.APIPort,
-		CPUs:    settings.CPUs,
-		Memory:  settings.Memory,
-	}, limaIO.stdout, limaIO.stderr); err != nil {
+	if err := local.CreateAndStart(imageDir, vmOptions(settings), limaIO.stdout, limaIO.stderr); err != nil {
 		limaIO.reportFailure(cmd)
 		return err
 	}
@@ -364,7 +359,7 @@ func newLocalRestartCmd() *cobra.Command {
 				}
 			}
 			fmt.Fprintln(cmd.OutOrStdout(), "Starting VM (~30s)...")
-			if err := local.Start(limaIO.stdout, limaIO.stderr); err != nil {
+			if err := local.Start(limaIO.stdout, limaIO.stderr, vmOptions(settings)); err != nil {
 				limaIO.reportFailure(cmd)
 				return err
 			}
@@ -630,6 +625,17 @@ func printLocalEndpoints(w interface{ Write([]byte) (int, error) }, port int) {
 // out which pair is free turns "run another cluster" into arithmetic — so its
 // ports are found here, skipping anything already listening or already claimed
 // by another configured VM.
+// vmOptions is the VM shape the user has configured. Creation and start both
+// need it: start applies it too, so a size changed after creation takes effect.
+func vmOptions(settings config.LocalInstance) local.VMOptions {
+	return local.VMOptions{
+		Port:    settings.Port,
+		APIPort: settings.APIPort,
+		CPUs:    settings.CPUs,
+		Memory:  settings.Memory,
+	}
+}
+
 func resolveInstancePorts(cfg *config.Config, name string, settings config.LocalInstance) config.LocalInstance {
 	if name == config.DefaultInstanceName {
 		if settings.Port == 0 {
