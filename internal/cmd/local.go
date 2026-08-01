@@ -609,34 +609,37 @@ func (l *limaIO) reportFailure(cmd *cobra.Command) {
 	}
 	fmt.Fprintf(cmd.ErrOrStderr(), "\nVM manager output (last lines; full log: %s):\n%s\n",
 		l.path, strings.Join(lines, "\n"))
-	reportHostAgentFailure(cmd)
+	reportBootLogs(cmd)
 }
 
-// reportHostAgentFailure prints the tail of the host agent's stderr.
+// reportBootLogs prints the tail of the logs a failed boot leaves behind.
 //
-// A boot that dies early reports only "exiting, status={Running:false ...
-// Errors:[]}" and points at ha.stderr.log for the reason -- which is no use on
-// a CI runner that is destroyed with the job. Whatever actually refused to
-// start, qemu included, says so there and nowhere else.
-func reportHostAgentFailure(cmd *cobra.Command) {
-	limaHome, err := local.LimaHome()
+// A VM that dies early reports only "exiting, status={Running:false …
+// Errors:[]}" and points at ha.stderr.log for the reason. That file lives in
+// the instance directory, which the failure path deletes, so local.CreateAndStart
+// copies these up beside lima.log first -- read them from there.
+func reportBootLogs(cmd *cobra.Command) {
+	dir, err := local.Dir()
 	if err != nil {
 		return
 	}
-	path := filepath.Join(limaHome, local.InstanceName(), "ha.stderr.log")
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return
+	for _, name := range local.BootLogNames {
+		path := filepath.Join(dir, name)
+		data, err := os.ReadFile(path)
+		if err != nil {
+			continue
+		}
+		text := strings.TrimSpace(string(data))
+		if text == "" {
+			continue
+		}
+		lines := strings.Split(text, "\n")
+		if len(lines) > 30 {
+			lines = lines[len(lines)-30:]
+		}
+		fmt.Fprintf(cmd.ErrOrStderr(), "\n%s (last lines; full log: %s):\n%s\n",
+			name, path, strings.Join(lines, "\n"))
 	}
-	lines := strings.Split(strings.TrimSpace(string(data)), "\n")
-	if len(lines) == 0 || (len(lines) == 1 && lines[0] == "") {
-		return
-	}
-	if len(lines) > 30 {
-		lines = lines[len(lines)-30:]
-	}
-	fmt.Fprintf(cmd.ErrOrStderr(), "\nHost agent stderr (last lines; full log: %s):\n%s\n",
-		path, strings.Join(lines, "\n"))
 }
 
 func printLocalEndpoints(w interface{ Write([]byte) (int, error) }, port int) {
