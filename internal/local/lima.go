@@ -87,12 +87,43 @@ func CreateAndStart(imageDir string, opts VMOptions, stdout, stderr io.Writer) e
 		return err
 	}
 	if err := limactl(stdout, stderr, "start", "--name", InstanceName(), rendered); err != nil {
+		// The delete below takes the instance directory with it, and that is
+		// where the only account of what went wrong lives -- lima's own error
+		// says "Errors:[]" and refers the reader to a file it is about to
+		// destroy. Copy those out first.
+		preserveBootLogs()
 		// A failed creation leaves a half-registered instance behind that
 		// would shadow the next attempt; remove it so retries start clean.
 		_ = limactl(io.Discard, io.Discard, "delete", "--force", InstanceName())
 		return err
 	}
 	return nil
+}
+
+// BootLogNames are the instance logs preserved when a boot fails, in the order
+// they are worth reading: why the VM would not start, then how far the guest
+// got if it did.
+var BootLogNames = []string{"ha.stderr.log", "serial.log"}
+
+// preserveBootLogs copies the instance's boot logs up into the local directory,
+// beside lima.log, so they outlive the instance. Best effort throughout: this
+// runs on a path that has already failed and must not fail again.
+func preserveBootLogs() {
+	limaHome, err := LimaHome()
+	if err != nil {
+		return
+	}
+	dir, err := Dir()
+	if err != nil {
+		return
+	}
+	for _, name := range BootLogNames {
+		data, err := os.ReadFile(filepath.Join(limaHome, InstanceName(), name))
+		if err != nil {
+			continue
+		}
+		_ = os.WriteFile(filepath.Join(dir, name), data, 0o644)
+	}
 }
 
 // Start boots an existing instance, first applying any size the user has
