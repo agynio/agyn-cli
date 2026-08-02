@@ -260,12 +260,6 @@ func finishLocalStart(cmd *cobra.Command, flags localStartFlags, port int) {
 	printLocalEndpoints(cmd.OutOrStdout(), port)
 }
 
-// waitAndPrintEndpoints waits for the platform, then prints the endpoint list.
-func waitAndPrintEndpoints(cmd *cobra.Command, port int) {
-	waitForPlatform(cmd, port)
-	printLocalEndpoints(cmd.OutOrStdout(), port)
-}
-
 // waitForPlatform blocks until the in-VM ingress actually serves the platform:
 // the guest reports "started" well before Istio and the apps are ready.
 func waitForPlatform(cmd *cobra.Command, port int) bool {
@@ -342,7 +336,6 @@ func newLocalRestartCmd() *cobra.Command {
 				return err
 			}
 			settings := resolveInstancePorts(cfg, local.InstanceName(), cfg.InstanceSettings(local.InstanceName()))
-			_ = settings
 			instance, err := local.GetInstance()
 			if err != nil {
 				return err
@@ -368,7 +361,12 @@ func newLocalRestartCmd() *cobra.Command {
 				return err
 			}
 			fmt.Fprintln(cmd.OutOrStdout(), "VM started.")
-			waitAndPrintEndpoints(cmd, settings.Port)
+			// The same finishing work as a start, because a restart is how an
+			// edited port takes effect: the forward is only half of it, and
+			// without repointing the in-VM URLs and the profile the new port
+			// would answer while sign-in bounced to the old one. Idempotent
+			// when nothing changed.
+			finishLocalStart(cmd, localStartFlags{}, settings.Port)
 			return nil
 		},
 	}

@@ -127,18 +127,18 @@ func preserveBootLogs() {
 }
 
 // Start boots an existing instance, first applying any size the user has
-// changed since it was created. Lima reads cpus and memory from the instance's
-// own config, which only creation writes, so without this an edited setting is
-// stored and silently never takes effect.
+// changed since it was created. Lima reads the port forwards, cpus and memory
+// from the instance's own config, which only creation writes, so without this
+// an edited setting is stored and silently never takes effect.
 func Start(stdout, stderr io.Writer, opts VMOptions) error {
-	if err := applyInstanceSize(opts); err != nil {
+	if err := applyInstanceSettings(opts); err != nil {
 		return err
 	}
 	return limactl(stdout, stderr, "start", InstanceName())
 }
 
-func applyInstanceSize(opts VMOptions) error {
-	if opts.CPUs == 0 && opts.Memory == "" {
+func applyInstanceSettings(opts VMOptions) error {
+	if opts.CPUs == 0 && opts.Memory == "" && opts.Port == 0 && opts.APIPort == 0 {
 		return nil
 	}
 	limaHome, err := LimaHome()
@@ -159,6 +159,15 @@ func applyInstanceSize(opts VMOptions) error {
 	}
 	if opts.Memory != "" {
 		content = regexp.MustCompile(`(?m)^memory: .*$`).ReplaceAllString(content, fmt.Sprintf("memory: %s", opts.Memory))
+	}
+	// The ingress and API forwards are matched by guest port, because the host
+	// port is the thing being changed and the two entries are otherwise
+	// identical in shape.
+	if opts.Port != 0 {
+		content = replaceHostPort(content, ingressNodePort, opts.Port)
+	}
+	if opts.APIPort != 0 {
+		content = replaceHostPort(content, kubeAPIPort, opts.APIPort)
 	}
 	if content == string(data) {
 		return nil
@@ -221,6 +230,18 @@ func ShellStdin(stdin io.Reader, args ...string) (string, error) {
 // renderLimaConfig copies the published lima.yaml next to the disk, applying
 // the configured port/cpu/memory. The published template references the disk
 // by relative path, so the rendered copy lives in the image directory.
+const (
+	ingressNodePort = 32443
+	kubeAPIPort     = 6443
+)
+
+// replaceHostPort rewrites the hostPort of the forward whose guestPort matches,
+// leaving every other forward alone.
+func replaceHostPort(content string, guestPort, hostPort int) string {
+	pattern := regexp.MustCompile(fmt.Sprintf(`(?m)(guestPort: %d\n(?:[ \t]+\S.*\n)*?[ \t]+hostPort: )\d+`, guestPort))
+	return pattern.ReplaceAllString(content, fmt.Sprintf("${1}%d", hostPort))
+}
+
 func renderLimaConfig(imageDir string, opts VMOptions) (string, error) {
 	source := filepath.Join(imageDir, "lima.yaml")
 	data, err := os.ReadFile(source)
