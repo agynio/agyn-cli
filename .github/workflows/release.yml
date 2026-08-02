@@ -240,12 +240,15 @@ jobs:
           TAG: ${{ github.ref_name }}
         run: |
           set -euo pipefail
-          if git diff --quiet -- Formula/agyn.rb; then
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # Staged before the comparison, because an untracked file has no diff
+          # against the index: checking first reported "already at ${TAG}" for a
+          # formula that had never been committed at all, on every release.
+          git add Formula/agyn.rb
+          if git diff --cached --quiet -- Formula/agyn.rb; then
             echo "Formula already at ${TAG}"
             exit 0
           fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add Formula/agyn.rb
           git commit -m "agyn ${TAG}"
           git push
