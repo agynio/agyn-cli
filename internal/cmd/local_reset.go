@@ -49,6 +49,17 @@ func newLocalResetCmd() *cobra.Command {
 				}
 				fmt.Fprintln(cmd.OutOrStdout(), "Done.")
 			}
+
+			// Restoring the Gateway from the release restores the token baked
+			// into the image with it, and the profile still holds the one this
+			// install minted -- so every `agyn` command against the VM would
+			// answer 401 until it is put back. Same reason `agyn local upgrade`
+			// does this; a reset of only one other service leaves it alone.
+			if service == "" || service == "gateway" {
+				if err := reinstallBootstrapToken(cmd); err != nil {
+					return err
+				}
+			}
 			return nil
 		},
 	}
