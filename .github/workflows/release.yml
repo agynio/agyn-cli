@@ -11,6 +11,7 @@ permissions:
 
 env:
   IMAGE_NAME: ghcr.io/agynio/agyn-cli
+  INIT_IMAGE_NAME: ghcr.io/agynio/agyn-cli-init
 
 jobs:
   tag-check:
@@ -147,6 +148,50 @@ jobs:
             exit 1
           fi
           echo "Manifest $IMAGE_NAME:$TAG includes linux/amd64 and linux/arm64"
+
+      # The init-container form, injected into every workload. Same binary,
+      # same version - only the delivery differs, so it releases here rather
+      # than from a repository of its own.
+      - name: Extract Docker metadata for the init image
+        id: meta-init
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.INIT_IMAGE_NAME }}
+          tags: |
+            type=sha,format=short,prefix=sha-
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=raw,value=latest,enable=${{ !contains(github.ref_name, '-') }}
+
+      - name: Build and push the init image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile.init
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta-init.outputs.tags }}
+          labels: ${{ steps.meta-init.outputs.labels }}
+          cache-from: type=gha,scope=agyn-cli-init
+          cache-to: type=gha,scope=agyn-cli-init,mode=max
+
+      - name: Verify multi-arch manifest for the init image
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          INSPECT="$(docker buildx imagetools inspect "$INIT_IMAGE_NAME:$TAG" --raw)"
+          FOUND="$(echo "$INSPECT" | jq -r '[.manifests[].platform.architecture] | sort | join(",")')"
+          MISSING=()
+          for ARCH in amd64 arm64; do
+            if ! echo "$FOUND" | grep -q "$ARCH"; then
+              MISSING+=("linux/$ARCH")
+            fi
+          done
+          if [ ${#MISSING[@]} -gt 0 ]; then
+            echo "::error::Missing architectures in $INIT_IMAGE_NAME:$TAG: ${MISSING[*]}"
+            exit 1
+          fi
+          echo "Manifest $INIT_IMAGE_NAME:$TAG includes linux/amd64 and linux/arm64"
 
   homebrew:
     name: Update the Homebrew formula

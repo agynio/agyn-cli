@@ -1,0 +1,43 @@
+# syntax=docker/dockerfile:1.8
+#
+# The init-container form of the agyn CLI. Its entire job is to copy the binary
+# into the shared /agyn-bin volume every workload mounts, which is what the
+# -init suffix records: an image from this repository that ran as something
+# other than an init container would take a different suffix rather than
+# overload this one.
+#
+# It lands in /agyn-bin/cli rather than /agyn-bin so the three init images write
+# disjoint paths and compose without coordinating. agynd prepends both to PATH
+# when it spawns the agent, so `agyn` is available by name.
+ARG BUF_VERSION=1.66.1
+
+FROM golang:1.24-alpine AS generate
+ARG BUF_VERSION
+WORKDIR /src
+RUN apk add --no-cache curl
+RUN curl -sSL \
+      "https://github.com/bufbuild/buf/releases/download/v${BUF_VERSION}/buf-$(uname -s)-$(uname -m)" \
+      -o /usr/local/bin/buf && \
+    chmod +x /usr/local/bin/buf
+COPY go.mod go.sum ./
+RUN go mod download
+COPY . .
+RUN buf generate
+
+FROM golang:1.24-alpine AS build
+WORKDIR /src
+COPY --from=generate /src .
+ARG TARGETOS TARGETARCH
+# Statically linked, so it runs on any Linux base image the workspace uses.
+ENV CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH
+RUN go build -trimpath -ldflags "-s -w" -o /out/agyn ./cmd/agyn
+
+FROM busybox:1.37-musl AS runtime
+
+COPY --from=build /out/agyn /opt/agyn/agyn
+
+# The Orchestrator sets no command: the image describes how it delivers itself.
+# It runs as root because the emptyDir it writes into is root-owned on a fresh
+# Pod; the copied binary is world-executable so the main container can run it
+# whatever user its image defines.
+ENTRYPOINT ["/bin/sh", "-c", "set -e; mkdir -p /agyn-bin/cli; cp /opt/agyn/agyn /agyn-bin/cli/agyn; chmod 0755 /agyn-bin/cli/agyn"]
