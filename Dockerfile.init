@@ -1,12 +1,12 @@
 # syntax=docker/dockerfile:1.8
 #
 # The init-container form of the agyn CLI. Its entire job is to copy the binary
-# into the shared /agyn-bin volume every workload mounts, which is what the
+# into the shared /agyn/bin volume every workload mounts, which is what the
 # -init suffix records: an image from this repository that ran as something
 # other than an init container would take a different suffix rather than
 # overload this one.
 #
-# It lands in /agyn-bin/cli rather than /agyn-bin so the three init images write
+# It lands in /agyn/bin/cli rather than /agyn/bin so the three init images write
 # disjoint paths and compose without coordinating. agynd prepends both to PATH
 # when it spawns the agent, so `agyn` is available by name.
 ARG BUF_VERSION=1.66.1
@@ -40,4 +40,4 @@ COPY --from=build /out/agyn /opt/agyn/agyn
 # It runs as root because the emptyDir it writes into is root-owned on a fresh
 # Pod; the copied binary is world-executable so the main container can run it
 # whatever user its image defines.
-ENTRYPOINT ["/bin/sh", "-c", "set -e; mkdir -p /agyn-bin/cli; cp /opt/agyn/agyn /agyn-bin/cli/agyn; chmod 0755 /agyn-bin/cli/agyn"]
+ENTRYPOINT ["/bin/sh", "-c", "set -e; mkdir -p /agyn/bin/cli; cp /opt/agyn/agyn /agyn/bin/cli/agyn; chmod 0755 /agyn/bin/cli/agyn"]
