@@ -1,0 +1,11 @@
+pkg/filesystem
+pkg/filesystem/behavior
+pkg/filesystem/behavior/internal/format
+pkg/filesystem/internal/syscall
+pkg/mutagen
+pkg/state
+pkg/stream
+pkg/synchronization/core
+pkg/synchronization/core/fastpath
+pkg/synchronization/core/ignore
+pkg/synchronization/core/ignore/mutagen
