@@ -188,6 +188,13 @@ func requiresAuth(cmd *cobra.Command, args []string) bool {
 			return false
 		}
 	}
+	// The sync endpoint runs inside a container, speaks its protocol on stdin
+	// and stdout, and never calls the Gateway. Requiring a credential it does
+	// not use would make it fail to start wherever none happens to be
+	// configured.
+	if cmd.Name() == "serve" && cmd.Parent() != nil && cmd.Parent().Name() == "sync" {
+		return false
+	}
 	// `agyn local` manages the local VM and never talks to the gateway.
 	if strings.HasPrefix(cmd.CommandPath(), "agyn local") {
 		return false

@@ -10,6 +10,7 @@ import (
 	"connectrpc.com/connect"
 	agentsv1 "github.com/agynio/agyn-cli/gen/agynio/api/agents/v1"
 	gatewayv1 "github.com/agynio/agyn-cli/gen/agynio/api/gateway/v1"
+	terminalproxyv1 "github.com/agynio/agyn-cli/gen/agynio/api/terminal_proxy/v1"
 	"github.com/agynio/agyn-cli/internal/terminal"
 )
 
@@ -48,6 +49,7 @@ func attachToSandbox(ctx context.Context, clients *sandboxClients, sandbox *agen
 	session, err := clients.terminal.CreateTerminalSession(ctx, connect.NewRequest(&gatewayv1.CreateTerminalSessionRequest{
 		WorkloadId:    workloadID,
 		ContainerName: sandboxMainContainer,
+		Kind:          terminalproxyv1.SessionKind_SESSION_KIND_SHELL,
 	}))
 	if err != nil {
 		return err

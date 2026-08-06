@@ -1,0 +1,241 @@
+syntax = "proto3";
+
+// The workspace-sync endpoint protocol, spoken between two copies of the agyn
+// binary over one exec stream. It crosses no service boundary, so it lives here
+// rather than in the platform's shared API module.
+//
+// See architecture/architecture/sandbox-sync.md#endpoint-protocol.
+package agyn.sync.v1;
+
+option go_package = "github.com/agynio/agyn-cli/gen/agyn/sync/v1;syncv1";
+
+// Frame is the unit the codec length-prefixes. The exchange is strictly
+// request/response and controller-initiated, with one request in flight — but
+// one request may carry many chunks, which is how bodies stream without being
+// buffered whole.
+message Frame {
+  oneof payload {
+    Request request = 1;
+    Response response = 2;
+    Chunk chunk = 3;
+  }
+}
+
+// Chunk carries one slice of a body. A chunk with eof set terminates the body
+// and carries no data.
+message Chunk {
+  bytes data = 1;
+  bool eof = 2;
+}
+
+message Request {
+  oneof request {
+    HandshakeRequest handshake = 1;
+    ScanRequest scan = 2;
+    StageQueryRequest stage_query = 3;
+    StagePutRequest stage_put = 4;
+    TransitionRequest transition = 5;
+    SupplyRequest supply = 6;
+  }
+}
+
+message Response {
+  oneof response {
+    HandshakeResponse handshake = 1;
+    ScanResponse scan = 2;
+    StageQueryResponse stage_query = 3;
+    StagePutResponse stage_put = 4;
+    TransitionResponse transition = 5;
+    SupplyResponse supply = 6;
+    ErrorResponse error = 15;
+  }
+}
+
+// ErrorResponse reports a request that could not be served. Per-path problems
+// are never reported this way — they ride on the response for the request that
+// hit them, so one bad file cannot fail a batch.
+message ErrorResponse {
+  ErrorCode code = 1;
+  string message = 2;
+}
+
+enum ErrorCode {
+  ERROR_CODE_UNSPECIFIED = 0;
+  ERROR_CODE_PROTOCOL_VERSION = 1;
+  ERROR_CODE_ROOT_INVALID = 2;
+  ERROR_CODE_ROOT_OUTSIDE_WORKSPACE = 3;
+  ERROR_CODE_NO_SPACE = 4;
+  ERROR_CODE_INTERNAL = 5;
+}
+
+// MarkerMode says what the endpoint should do about the root marker. `sync`
+// establishes an ongoing relationship and creates one; `cp` reads it and never
+// writes one, because a copy creates no relationship to identify later.
+enum MarkerMode {
+  MARKER_MODE_UNSPECIFIED = 0;
+  MARKER_MODE_READ = 1;
+  MARKER_MODE_CREATE = 2;
+}
+
+// WatchMode is what the endpoint can actually do, not what it was asked for.
+// A degraded mode is reported rather than hidden — an endpoint that has run out
+// of inotify watches must not look like one that is watching.
+enum WatchMode {
+  WATCH_MODE_UNSPECIFIED = 0;
+  WATCH_MODE_NATIVE = 1;
+  WATCH_MODE_POLL = 2;
+}
+
+message HandshakeRequest {
+  // The inclusive range of protocol versions the controller speaks. The
+  // endpoint selects the highest it shares, or fails the session naming both.
+  uint32 version_min = 1;
+  uint32 version_max = 2;
+  MarkerMode marker_mode = 3;
+  // The session this root is expected to belong to. Empty on first contact and
+  // for cp. A mismatch is reported, never repaired.
+  string expected_session_id = 4;
+}
+
+message HandshakeResponse {
+  uint32 version = 1;
+  // The root after symlink resolution — the only place confinement to the
+  // workspace mount can be checked, since nothing outside the container can see
+  // the filesystem.
+  string resolved_root = 2;
+  bool root_exists = 3;
+  bool root_empty = 4;
+  // The marker found or created. Empty when the root carries none.
+  string session_id = 5;
+  WatchMode watch_mode = 6;
+  // Staging directories left by earlier terminated sessions, collected during
+  // this handshake. Reported so an operator can see the endpoint is not leaking.
+  uint32 collected_staging_dirs = 7;
+  string endpoint_version = 8;
+}
+
+// EntryKind is deliberately coarse. Anything that is not a regular file, a
+// directory, or a symlink is reported as unsupported rather than guessed at.
+enum EntryKind {
+  ENTRY_KIND_UNSPECIFIED = 0;
+  ENTRY_KIND_FILE = 1;
+  ENTRY_KIND_DIRECTORY = 2;
+  ENTRY_KIND_SYMLINK = 3;
+  ENTRY_KIND_UNSUPPORTED = 4;
+}
+
+message Entry {
+  // Slash-separated and relative to the root, on every platform.
+  string path = 1;
+  EntryKind kind = 2;
+  int64 size = 3;
+  int64 modified_unix_nano = 4;
+  // Only the executable bit crosses; ownership never does.
+  bool executable = 5;
+  // Hex-encoded content digest. Empty for anything but a regular file.
+  string digest = 6;
+  // Link target, for symlinks only.
+  string target = 7;
+}
+
+// CachedDigest lets the controller spend a stat instead of a read: an entry
+// whose size and mtime are unchanged keeps its known digest.
+message CachedDigest {
+  string path = 1;
+  int64 size = 2;
+  int64 modified_unix_nano = 3;
+  string digest = 4;
+}
+
+message ScanRequest {
+  repeated CachedDigest cache = 1;
+}
+
+// Problem is a per-path failure. It is reported, never fatal — an unreadable
+// file must not stop every other path from syncing.
+message Problem {
+  string path = 1;
+  string message = 2;
+}
+
+message ScanResponse {
+  repeated Entry entries = 1;
+  repeated Problem problems = 2;
+  // Digests re-read because size or mtime moved, for cache accounting.
+  uint64 rehashed = 3;
+}
+
+message StageQueryRequest {
+  repeated string digests = 1;
+}
+
+message StageQueryResponse {
+  // The subset the endpoint does not already hold and therefore needs sent.
+  repeated string missing = 1;
+  // Free bytes on the staging filesystem, so the controller can decline before
+  // writing rather than discover it partway through.
+  int64 available_bytes = 2;
+}
+
+// StagePutRequest is followed by the body as chunk frames, terminated by a
+// chunk with eof set.
+message StagePutRequest {
+  string digest = 1;
+  int64 size = 2;
+}
+
+message StagePutResponse {
+  // What the endpoint actually computed over the bytes it received. The
+  // controller compares; a mismatch means the body was corrupted in transit.
+  string digest = 1;
+}
+
+// Change is one filesystem operation to apply out of staging.
+message Change {
+  ChangeKind kind = 1;
+  string path = 2;
+  // For CREATE_FILE: the staged content to rename into place.
+  string digest = 3;
+  bool executable = 4;
+  // For CREATE_SYMLINK.
+  string target = 5;
+}
+
+enum ChangeKind {
+  CHANGE_KIND_UNSPECIFIED = 0;
+  CHANGE_KIND_CREATE_FILE = 1;
+  CHANGE_KIND_CREATE_DIRECTORY = 2;
+  CHANGE_KIND_CREATE_SYMLINK = 3;
+  CHANGE_KIND_REMOVE = 4;
+  CHANGE_KIND_SET_EXECUTABLE = 5;
+}
+
+message TransitionRequest {
+  repeated Change changes = 1;
+}
+
+// Result is per path. A failure on one path does not abort the batch, so the
+// response carries an outcome for every change rather than a single status.
+message Result {
+  string path = 1;
+  bool applied = 2;
+  string message = 3;
+}
+
+message TransitionResponse {
+  repeated Result results = 1;
+}
+
+// SupplyRequest asks for one file's content. The response frame comes first,
+// then the body as chunk frames terminated by eof.
+message SupplyRequest {
+  string path = 1;
+  // What the controller believes it will receive. The endpoint declines rather
+  // than sending different content under the expected name.
+  string expected_digest = 2;
+}
+
+message SupplyResponse {
+  int64 size = 1;
+  string digest = 2;
+}

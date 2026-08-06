@@ -15,9 +15,13 @@ jobs:
       - name: Generate
         run: buf generate
       - name: Vet
-        run: go vet ./...
+        # third_party/ is vendored upstream source, edited only to rewrite import
+        # paths. Vetting it would report style in code we do not own, and fixing
+        # that would break the diff against upstream that makes a refresh
+        # reviewable.
+        run: go vet ./cmd/... ./internal/...
       - name: Test
-        run: go test ./...
+        run: go test ./cmd/... ./internal/...
       - name: Command smoke test
         run: bash scripts/command_smoke_test.sh
       - name: Build
