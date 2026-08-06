@@ -92,8 +92,42 @@ func ensureRunningSandbox(ctx context.Context, clients *sandboxClients, orgID st
 // createSyncSession records a new session, refusing one whose local root would
 // overlap an existing session's — two engines writing one subtree cannot be
 // reconciled.
-func createSyncSession(sandbox *agentsv1.Sandbox, localPath, remotePath string) (*session.State, error) {
+// checkSyncLocalRoot resolves the local root and refuses one that overlaps an
+// existing session. It is separate from createSyncSession so `sandbox start
+// --sync` can run it *before* creating a sandbox: failing afterwards leaves a
+// sandbox nobody asked for, running and billable.
+func checkSyncLocalRoot(localPath string) (string, error) {
 	local, err := resolveLocalRoot(localPath)
+	if err != nil {
+		return "", err
+	}
+	store, err := openSessionStore()
+	if err != nil {
+		return "", err
+	}
+	existing, err := store.List()
+	if err != nil {
+		return "", err
+	}
+	for _, other := range existing {
+		if !session.Overlaps(local, other.LocalRoot) {
+			continue
+		}
+		// Two engines writing one subtree cannot be reconciled. Name the way
+		// out: without it the only clue is a session the engineer may have
+		// forgotten, possibly for a sandbox that no longer exists.
+		if other.LocalRoot == local {
+			return "", fmt.Errorf("%s is already synced by session %q (%s).\nRemove it with `agyn sandbox sync stop %s`, or sync a different directory with --sync PATH",
+				local, other.Name, other.Sandbox, other.Name)
+		}
+		return "", fmt.Errorf("%s overlaps session %q at %s.\nTwo sessions cannot write one subtree; remove it with `agyn sandbox sync stop %s`",
+			local, other.Name, other.LocalRoot, other.Name)
+	}
+	return local, nil
+}
+
+func createSyncSession(sandbox *agentsv1.Sandbox, localPath, remotePath string) (*session.State, error) {
+	local, err := checkSyncLocalRoot(localPath)
 	if err != nil {
 		return nil, err
 	}
@@ -111,9 +145,6 @@ func createSyncSession(sandbox *agentsv1.Sandbox, localPath, remotePath string) 
 	}
 	taken := map[string]bool{}
 	for _, other := range existing {
-		if session.Overlaps(local, other.LocalRoot) {
-			return nil, fmt.Errorf("local root overlaps session %q at %s", other.Name, other.LocalRoot)
-		}
 		taken[other.Name] = true
 	}
 	inode, err := session.RootInode(local)
