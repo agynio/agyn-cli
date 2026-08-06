@@ -45,6 +45,11 @@ Two, both deliberate:
 
 Test files are not vendored.
 
+`go vet` and `go test` in CI are scoped to `./cmd/...` and `./internal/...` for
+the same reason: vetting reports style in code we do not own, and changing it to
+satisfy the linter would break the diff against upstream that makes a refresh
+reviewable.
+
 ## Third-party code within the subset
 
 The vendored packages carry no forked code under a foreign license. The one
