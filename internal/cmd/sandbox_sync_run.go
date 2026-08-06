@@ -42,78 +42,23 @@ func newSandboxSyncStartCmd() *cobra.Command {
 				return err
 			}
 
-			local, err := resolveLocalRoot(localPath)
+			running, err := ensureRunningSandbox(ctx, clients, orgID, positional)
 			if err != nil {
 				return err
 			}
-			remote := strings.TrimSpace(remotePath)
-			if remote == "" {
-				remote = defaultRemoteRoot
-			}
-
-			store, err := openSessionStore()
-			if err != nil {
-				return err
-			}
-			existing, err := store.List()
-			if err != nil {
-				return err
-			}
-			// Two engines writing one subtree cannot be reconciled.
-			for _, other := range existing {
-				if session.Overlaps(local, other.LocalRoot) {
-					return fmt.Errorf("local root overlaps session %q at %s", other.Name, other.LocalRoot)
-				}
-			}
-
-			var name string
-			if len(positional) == 1 {
-				name = positional[0]
-			}
-			sandbox, err := clients.resolveSandbox(ctx, orgID, name)
-			if err != nil {
-				return err
-			}
-			// An explicit start is a person asking, which is not the same event
-			// as a file changing: it may bring the sandbox up.
-			ensured, err := clients.agents.EnsureSandboxRunning(ctx, connect.NewRequest(&agentsv1.EnsureSandboxRunningRequest{
-				Id: sandbox.GetMeta().GetId(),
-			}))
-			if err != nil {
-				return err
-			}
-			running, err := waitForRunningSandbox(ctx, clients, ensured.Msg.GetSandbox())
-			if err != nil {
-				return err
-			}
-
-			inode, err := session.RootInode(local)
-			if err != nil {
-				return err
-			}
-			taken := map[string]bool{}
-			for _, other := range existing {
-				taken[other.Name] = true
-			}
-			state := &session.State{
-				ID:             uuid.NewString(),
-				Name:           session.NameFor(local, running.GetName(), func(c string) bool { return taken[c] }),
-				LocalRoot:      local,
-				LocalRootInode: inode,
-				SandboxID:      running.GetMeta().GetId(),
-				Sandbox:        running.GetName(),
-				RemoteRoot:     remote,
-				Status:         session.StatusIdle,
-			}
-			if err := store.Save(state); err != nil {
-				return err
-			}
-
 			if foreground {
-				fmt.Fprintf(os.Stderr, "syncing %s ⇄ %s:%s\n", local, state.Sandbox, remote)
+				state, err := createSyncSession(running, localPath, remotePath)
+				if err != nil {
+					return err
+				}
+				store, err := openSessionStore()
+				if err != nil {
+					return err
+				}
+				fmt.Fprintf(os.Stderr, "syncing %s ⇄ %s:%s\n", state.LocalRoot, state.Sandbox, state.RemoteRoot)
 				return runSession(ctx, clients, store, state, true)
 			}
-			return startDetached(cmd, state)
+			return startSyncSession(cmd, clients, running, localPath, remotePath)
 		},
 	}
 	cmd.Flags().StringVar(&localPath, "local", "", "Local directory (default the working directory)")
@@ -121,6 +66,84 @@ func newSandboxSyncStartCmd() *cobra.Command {
 	cmd.Flags().BoolVar(&foreground, "foreground", false, "Run in this process with no daemon, for debugging and non-interactive use")
 	cmd.Flags().StringVar(&organizationID, "organization-id", "", "Organization ID (defaults to the selected organization)")
 	return cmd
+}
+
+// ensureRunningSandbox resolves the sandbox and brings it up. An explicit start
+// calls EnsureSandboxRunning because a person asking is not the same event as a
+// file changing; reconnection never does.
+func ensureRunningSandbox(ctx context.Context, clients *sandboxClients, orgID string, positional []string) (*agentsv1.Sandbox, error) {
+	var name string
+	if len(positional) == 1 {
+		name = positional[0]
+	}
+	sandbox, err := clients.resolveSandbox(ctx, orgID, name)
+	if err != nil {
+		return nil, err
+	}
+	ensured, err := clients.agents.EnsureSandboxRunning(ctx, connect.NewRequest(&agentsv1.EnsureSandboxRunningRequest{
+		Id: sandbox.GetMeta().GetId(),
+	}))
+	if err != nil {
+		return nil, err
+	}
+	return waitForRunningSandbox(ctx, clients, ensured.Msg.GetSandbox())
+}
+
+// createSyncSession records a new session, refusing one whose local root would
+// overlap an existing session's — two engines writing one subtree cannot be
+// reconciled.
+func createSyncSession(sandbox *agentsv1.Sandbox, localPath, remotePath string) (*session.State, error) {
+	local, err := resolveLocalRoot(localPath)
+	if err != nil {
+		return nil, err
+	}
+	remote := strings.TrimSpace(remotePath)
+	if remote == "" {
+		remote = defaultRemoteRoot
+	}
+	store, err := openSessionStore()
+	if err != nil {
+		return nil, err
+	}
+	existing, err := store.List()
+	if err != nil {
+		return nil, err
+	}
+	taken := map[string]bool{}
+	for _, other := range existing {
+		if session.Overlaps(local, other.LocalRoot) {
+			return nil, fmt.Errorf("local root overlaps session %q at %s", other.Name, other.LocalRoot)
+		}
+		taken[other.Name] = true
+	}
+	inode, err := session.RootInode(local)
+	if err != nil {
+		return nil, err
+	}
+	state := &session.State{
+		ID:             uuid.NewString(),
+		Name:           session.NameFor(local, sandbox.GetName(), func(c string) bool { return taken[c] }),
+		LocalRoot:      local,
+		LocalRootInode: inode,
+		SandboxID:      sandbox.GetMeta().GetId(),
+		Sandbox:        sandbox.GetName(),
+		RemoteRoot:     remote,
+		Status:         session.StatusIdle,
+	}
+	if err := store.Save(state); err != nil {
+		return nil, err
+	}
+	return state, nil
+}
+
+// startSyncSession creates a session and detaches it. Shared by `sync start`
+// and `sandbox start --sync`.
+func startSyncSession(cmd *cobra.Command, clients *sandboxClients, sandbox *agentsv1.Sandbox, localPath, remotePath string) error {
+	state, err := createSyncSession(sandbox, localPath, remotePath)
+	if err != nil {
+		return err
+	}
+	return startDetached(cmd, state)
 }
 
 // runSession drives one session to completion. It is the body of both the
