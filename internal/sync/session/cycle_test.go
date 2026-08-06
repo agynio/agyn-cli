@@ -68,9 +68,46 @@ func TestFirstPassDoesNotHalt(t *testing.T) {
 	}
 }
 
-// The inode identifies the directory itself. A directory deleted and recreated
-// is a different one, and would otherwise scan as an empty tree.
-func TestRootIdentityCatchesARecreatedDirectory(t *testing.T) {
+// The inode identifies the directory itself, which is what catches a root that
+// is no longer the one the session was created for.
+func TestRootIdentityCatchesADifferentDirectory(t *testing.T) {
+	root := t.TempDir()
+	original := filepath.Join(root, "project")
+	replacement := filepath.Join(root, "other")
+	for _, dir := range []string{original, replacement} {
+		if err := os.Mkdir(dir, 0o755); err != nil {
+			t.Fatalf("mkdir: %v", err)
+		}
+	}
+	inode, err := RootInode(original)
+	if err != nil {
+		t.Skipf("inode unavailable: %v", err)
+	}
+
+	cycle := &Cycle{State: &State{LocalRoot: original, LocalRootInode: inode}}
+	if err := cycle.checkLocalIdentity(); err != nil {
+		t.Fatalf("an unchanged directory failed its identity check: %v", err)
+	}
+
+	// The path now names a different directory — a remount, a swapped volume,
+	// a symlink repointed.
+	cycle.State.LocalRoot = replacement
+	err = cycle.checkLocalIdentity()
+	if err == nil {
+		t.Fatal("a different directory passed the identity check")
+	}
+	halt, ok := err.(*Halt)
+	if !ok || halt.Reason != HaltRootReplaced {
+		t.Fatalf("expected a root-replaced halt, got %v", err)
+	}
+}
+
+// A directory deleted and recreated in place commonly reuses its inode on Linux,
+// so identity alone cannot catch it. That is exactly why the content-loss guard
+// is the load-bearing check and inode is only a cheap fast path over it: the
+// recreated directory scans as an empty tree, which the guard refuses to
+// propagate.
+func TestRecreatedDirectoryFallsToTheContentLossGuard(t *testing.T) {
 	root := t.TempDir()
 	target := filepath.Join(root, "project")
 	if err := os.Mkdir(target, 0o755); err != nil {
@@ -80,12 +117,6 @@ func TestRootIdentityCatchesARecreatedDirectory(t *testing.T) {
 	if err != nil {
 		t.Skipf("inode unavailable: %v", err)
 	}
-
-	cycle := &Cycle{State: &State{LocalRoot: target, LocalRootInode: inode}}
-	if err := cycle.checkLocalIdentity(); err != nil {
-		t.Fatalf("an unchanged directory failed its identity check: %v", err)
-	}
-
 	if err := os.RemoveAll(target); err != nil {
 		t.Fatalf("remove: %v", err)
 	}
@@ -93,13 +124,25 @@ func TestRootIdentityCatchesARecreatedDirectory(t *testing.T) {
 		t.Fatalf("recreate: %v", err)
 	}
 
-	err = cycle.checkLocalIdentity()
-	if err == nil {
-		t.Fatal("a recreated directory passed the identity check")
+	recreated, err := RootInode(target)
+	if err != nil {
+		t.Fatalf("inode: %v", err)
 	}
-	halt, ok := err.(*Halt)
-	if !ok || halt.Reason != HaltRootReplaced {
-		t.Fatalf("expected a root-replaced halt, got %v", err)
+	cycle := &Cycle{State: &State{LocalRoot: target, LocalRootInode: inode}}
+	if recreated != inode {
+		// The filesystem gave a fresh inode, so the fast path catches it.
+		if err := cycle.checkLocalIdentity(); err == nil {
+			t.Fatal("a recreated directory with a new inode passed the identity check")
+		}
+		return
+	}
+	// The inode was reused: identity cannot tell, and the guard must.
+	if err := cycle.checkLocalIdentity(); err != nil {
+		t.Fatalf("unexpected identity failure on a reused inode: %v", err)
+	}
+	base := ancestorOf(40)
+	if halt := guardContentLoss(base.Ancestor, nil, entries(40)); halt == nil {
+		t.Fatal("an emptied root with a reused inode was not caught by the content-loss guard")
 	}
 }
 
