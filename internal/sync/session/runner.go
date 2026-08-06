@@ -3,6 +3,7 @@ package session
 import (
 	"context"
 	"errors"
+	"fmt"
 	"math/rand"
 	"time"
 
@@ -130,6 +131,7 @@ func (r *Runner) attachAndSync(ctx context.Context) error {
 	r.backoff = 0
 	r.setStatus(StatusIdle, "")
 
+	first := true
 	for {
 		if err := ctx.Err(); err != nil {
 			return err
@@ -137,13 +139,28 @@ func (r *Runner) attachAndSync(ctx context.Context) error {
 		cycle := &Cycle{State: r.State, Store: r.Store, Endpoint: connection.Client}
 		outcome, err := cycle.Run()
 		if err != nil {
+			diagnostics := ""
 			if connection.Diagnostics != nil {
-				if diagnostics := connection.Diagnostics(); diagnostics != "" {
-					r.Log("sandbox: %s", diagnostics)
+				diagnostics = connection.Diagnostics()
+			}
+			if diagnostics != "" {
+				r.Log("sandbox: %s", diagnostics)
+			}
+			// An endpoint that wrote to stderr and then closed the stream
+			// before its first exchange did not fail in transit — it ran and
+			// refused. Retrying cannot fix a binary that does not understand
+			// the command it was given, and a session that reconnects forever
+			// while reporting itself idle is worse than one that says why it
+			// stopped.
+			if first && diagnostics != "" {
+				return &Halt{
+					Reason: HaltVersionGap,
+					Detail: fmt.Sprintf("the in-sandbox endpoint refused to start: %s", diagnostics),
 				}
 			}
 			return err
 		}
+		first = false
 		if outcome.AppliedLocal > 0 || outcome.AppliedRemote > 0 {
 			r.Log("synced %d local, %d remote", outcome.AppliedLocal, outcome.AppliedRemote)
 		}
