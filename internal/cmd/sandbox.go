@@ -84,6 +84,15 @@ func newSandboxStartCmd() *cobra.Command {
 				return err
 			}
 
+			// Validate the sync root before creating anything: a sandbox
+			// created and then abandoned because --sync was refused is one
+			// nobody asked for, left running and billable.
+			if path := strings.TrimSpace(args.sync); path != "" {
+				if _, err := checkSyncLocalRoot(path); err != nil {
+					return err
+				}
+			}
+
 			request := &agentsv1.CreateSandboxRequest{
 				OrganizationId: organizationID,
 				EnvironmentId:  environmentID,
