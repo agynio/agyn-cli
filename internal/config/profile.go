@@ -16,6 +16,10 @@ type Profile struct {
 	GatewayURL   string `yaml:"gatewayUrl,omitempty"`
 	Organization string `yaml:"organization,omitempty"`
 	CAFile       string `yaml:"caFile,omitempty"`
+	// A local preference, not policy: the server validates it like any other
+	// requested value. Per profile because a local VM and a production tenant
+	// deserve different answers, and switching profiles should switch this too.
+	SandboxIdleTimeout string `yaml:"sandboxIdleTimeout,omitempty"`
 }
 
 const (
@@ -80,6 +84,9 @@ func (c *Config) SetProfile(name string, update Profile) {
 	}
 	if update.CAFile != "" {
 		existing.CAFile = update.CAFile
+	}
+	if update.SandboxIdleTimeout != "" {
+		existing.SandboxIdleTimeout = update.SandboxIdleTimeout
 	}
 	c.Profiles[name] = existing
 }
@@ -180,6 +187,9 @@ func SaveProfiles(currentProfile string, profiles map[string]Profile) error {
 			}
 			if profile.CAFile != "" {
 				entry["caFile"] = profile.CAFile
+			}
+			if profile.SandboxIdleTimeout != "" {
+				entry["sandboxIdleTimeout"] = profile.SandboxIdleTimeout
 			}
 			encoded[name] = entry
 		}

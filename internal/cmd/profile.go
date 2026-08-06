@@ -17,12 +17,13 @@ import (
 // token is stored rather than the token itself: `show` and `list` are the
 // commands people paste into issues.
 type profileOutput struct {
-	Name         string `json:"name" yaml:"name"`
-	Current      bool   `json:"current" yaml:"current"`
-	GatewayURL   string `json:"gateway_url" yaml:"gateway_url"`
-	Organization string `json:"organization,omitempty" yaml:"organization,omitempty"`
-	CAFile       string `json:"ca_file,omitempty" yaml:"ca_file,omitempty"`
-	TokenStored  bool   `json:"token_stored" yaml:"token_stored"`
+	Name               string `json:"name" yaml:"name"`
+	Current            bool   `json:"current" yaml:"current"`
+	GatewayURL         string `json:"gateway_url" yaml:"gateway_url"`
+	Organization       string `json:"organization,omitempty" yaml:"organization,omitempty"`
+	CAFile             string `json:"ca_file,omitempty" yaml:"ca_file,omitempty"`
+	SandboxIdleTimeout string `json:"sandbox_idle_timeout,omitempty" yaml:"sandbox_idle_timeout,omitempty"`
+	TokenStored        bool   `json:"token_stored" yaml:"token_stored"`
 }
 
 func newProfileCmd() *cobra.Command {
@@ -264,7 +265,7 @@ func newProfileSetCmd() *cobra.Command {
 				return fmt.Errorf("profile name must not be empty")
 			}
 			if update == (config.Profile{}) {
-				return fmt.Errorf("nothing to set; pass --gateway-url, --organization or --ca-file")
+				return fmt.Errorf("nothing to set; pass --gateway-url, --organization, --ca-file or --sandbox-idle-timeout")
 			}
 
 			cfg := runContext.Config
@@ -280,6 +281,7 @@ func newProfileSetCmd() *cobra.Command {
 	cmd.Flags().StringVar(&update.GatewayURL, "gateway-url", "", "Gateway base URL")
 	cmd.Flags().StringVar(&update.Organization, "organization", "", "Organization ID for org-scoped commands")
 	cmd.Flags().StringVar(&update.CAFile, "ca-file", "", "PEM bundle trusted in addition to the system trust store")
+	cmd.Flags().StringVar(&update.SandboxIdleTimeout, "sandbox-idle-timeout", "", "Default idle timeout for sandboxes started on this profile (e.g. 2h)")
 
 	return cmd
 }
@@ -318,9 +320,10 @@ func profileOutputFor(cfg *config.Config, name, currentName string) profileOutpu
 		Name:         name,
 		Current:      name == currentName,
 		GatewayURL:   cfg.ResolveGatewayTargetFor(name, "").URL,
-		Organization: profile.Organization,
-		CAFile:       profile.CAFile,
-		TokenStored:  auth.HasTokenFor(name),
+		Organization:       profile.Organization,
+		CAFile:             profile.CAFile,
+		SandboxIdleTimeout: profile.SandboxIdleTimeout,
+		TokenStored:        auth.HasTokenFor(name),
 	}
 }
 
