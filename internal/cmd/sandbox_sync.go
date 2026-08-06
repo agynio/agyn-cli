@@ -21,6 +21,16 @@ func newSandboxSyncCmd() *cobra.Command {
 		Short: "Keep a local directory and a sandbox directory reconciled",
 	}
 	cmd.AddCommand(newSandboxSyncServeCmd())
+	cmd.AddCommand(newSandboxSyncStartCmd())
+	cmd.AddCommand(newSandboxSyncRunCmd())
+	cmd.AddCommand(newSandboxSyncListCmd())
+	cmd.AddCommand(newSandboxSyncStatusCmd())
+	cmd.AddCommand(newSandboxSyncStopCmd())
+	cmd.AddCommand(newSandboxSyncResumeCmd())
+	cmd.AddCommand(newSandboxSyncResolveCmd())
+	cmd.AddCommand(newSandboxSyncAcceptDeletionsCmd())
+	cmd.AddCommand(newSandboxSyncResetCmd())
+	cmd.AddCommand(newSandboxSyncUndeleteCmd())
 	return cmd
 }
 

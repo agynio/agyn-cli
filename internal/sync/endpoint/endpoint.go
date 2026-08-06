@@ -115,7 +115,10 @@ func (s *session) handshake(request *syncv1.HandshakeRequest) error {
 		return s.fail(syncv1.ErrorCode_ERROR_CODE_PROTOCOL_VERSION, err.Error())
 	}
 
-	root, err := s.resolveRoot()
+	// A sync session establishes a relationship with a directory and may create
+	// it; a copy never does, because it asserts nothing about a root it is only
+	// reading through.
+	root, err := s.resolveRoot(request.GetMarkerMode() == syncv1.MarkerMode_MARKER_MODE_CREATE)
 	if err != nil {
 		code := syncv1.ErrorCode_ERROR_CODE_ROOT_INVALID
 		if errors.Is(err, errOutsideWorkspace) {
@@ -193,16 +196,66 @@ func negotiate(min, max uint32) (uint32, error) {
 
 var errOutsideWorkspace = errors.New("root resolves outside the workspace mount")
 
+// createRoot makes a missing sync root, but only after confining the nearest
+// existing ancestor: a path that does not exist yet cannot be resolved, and
+// creating it first would let a root outside the workspace be brought into
+// being by the very check meant to refuse it.
+func (s *session) createRoot(root string) error {
+	if _, err := os.Stat(root); err == nil {
+		return nil
+	}
+	ancestor := root
+	for {
+		parent := filepath.Dir(ancestor)
+		if parent == ancestor {
+			return fmt.Errorf("no existing ancestor of %q", root)
+		}
+		ancestor = parent
+		if _, err := os.Stat(ancestor); err == nil {
+			break
+		}
+	}
+	resolvedAncestor, err := filepath.EvalSymlinks(ancestor)
+	if err != nil {
+		return err
+	}
+	if err := s.confine(resolvedAncestor); err != nil {
+		return err
+	}
+	return os.MkdirAll(root, 0o755)
+}
+
+// confine refuses a path that lands outside the workspace mount.
+func (s *session) confine(resolved string) error {
+	workspace := strings.TrimSpace(s.opts.Workspace)
+	if workspace == "" {
+		return nil
+	}
+	resolvedWorkspace, err := filepath.EvalSymlinks(workspace)
+	if err != nil {
+		return fmt.Errorf("resolve workspace %q: %w", workspace, err)
+	}
+	if resolved != resolvedWorkspace && !strings.HasPrefix(resolved, resolvedWorkspace+string(filepath.Separator)) {
+		return fmt.Errorf("%w: %s is not under %s", errOutsideWorkspace, resolved, resolvedWorkspace)
+	}
+	return nil
+}
+
 // resolveRoot follows symlinks and confines the result. This is the only place
 // either check can happen: the Gateway validates the path lexically at issuance
 // but has no mount data for a container and cannot see its filesystem.
-func (s *session) resolveRoot() (string, error) {
+func (s *session) resolveRoot(create bool) (string, error) {
 	root := strings.TrimSpace(s.opts.Root)
 	if root == "" {
 		return "", errors.New("root is required")
 	}
 	if !filepath.IsAbs(root) {
 		return "", fmt.Errorf("root %q is not absolute", root)
+	}
+	if create {
+		if err := s.createRoot(root); err != nil {
+			return "", err
+		}
 	}
 	resolved, err := filepath.EvalSymlinks(root)
 	if err != nil {
@@ -215,16 +268,8 @@ func (s *session) resolveRoot() (string, error) {
 	if !info.IsDir() {
 		return "", fmt.Errorf("root %q is not a directory", resolved)
 	}
-	workspace := strings.TrimSpace(s.opts.Workspace)
-	if workspace == "" {
-		return resolved, nil
-	}
-	resolvedWorkspace, err := filepath.EvalSymlinks(workspace)
-	if err != nil {
-		return "", fmt.Errorf("resolve workspace %q: %w", workspace, err)
-	}
-	if resolved != resolvedWorkspace && !strings.HasPrefix(resolved, resolvedWorkspace+string(filepath.Separator)) {
-		return "", fmt.Errorf("%w: %s is not under %s", errOutsideWorkspace, resolved, resolvedWorkspace)
+	if err := s.confine(resolved); err != nil {
+		return "", err
 	}
 	return resolved, nil
 }
