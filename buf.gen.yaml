@@ -14,6 +14,10 @@ plugins:
     opt:
       - paths=source_relative
 inputs:
+  # The sync endpoint and daemon protocols are spoken between two copies of this
+  # binary and cross no service boundary, so they live here rather than in the
+  # platform's shared API module.
+  - directory: proto
   - module: buf.build/agynio/api
     paths:
       - agynio/api/gateway/v1/apps.proto

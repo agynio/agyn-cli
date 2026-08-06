@@ -1,3 +1,7 @@
 version: v2
+# The CLI's own protocols live under proto/. Naming it as the module keeps
+# generated Go out of the module's own input set.
+modules:
+  - path: proto
 deps:
   - buf.build/agynio/api
