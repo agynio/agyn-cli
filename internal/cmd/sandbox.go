@@ -41,6 +41,10 @@ type sandboxArgs struct {
 	name           string
 	all            bool
 	terminated     bool
+	// sync composes start, sync, and shell attach in one invocation. The
+	// session is established before the shell so the workspace is already in
+	// step when the prompt appears.
+	sync string
 }
 
 func newSandboxCmd() *cobra.Command {
@@ -93,12 +97,23 @@ func newSandboxStartCmd() *cobra.Command {
 			}
 			sandbox := response.Msg.GetSandbox()
 			fmt.Fprintf(os.Stderr, "Starting sandbox %s...\n", sandbox.GetName())
+			if path := strings.TrimSpace(args.sync); path != "" {
+				running, err := waitForRunningSandbox(ctx, clients, sandbox)
+				if err != nil {
+					return err
+				}
+				if err := startSyncSession(cmd, clients, running, path, defaultRemoteRoot); err != nil {
+					return err
+				}
+				sandbox = running
+			}
 			return attachToSandbox(ctx, clients, sandbox)
 		},
 	}
 	cmd.Flags().StringVar(&args.organizationID, "organization-id", "", "Organization ID (defaults to the selected organization)")
 	cmd.Flags().StringVar(&args.environment, "env", "", "Environment name (defaults to the sole environment)")
 	cmd.Flags().StringVar(&args.name, "name", "", "Sandbox name (auto-generated when omitted)")
+	cmd.Flags().StringVar(&args.sync, "sync", "", "Also sync this local directory with the sandbox workspace")
 	return cmd
 }
 

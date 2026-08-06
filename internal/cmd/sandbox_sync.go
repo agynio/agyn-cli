@@ -31,6 +31,8 @@ func newSandboxSyncCmd() *cobra.Command {
 	cmd.AddCommand(newSandboxSyncAcceptDeletionsCmd())
 	cmd.AddCommand(newSandboxSyncResetCmd())
 	cmd.AddCommand(newSandboxSyncUndeleteCmd())
+	cmd.AddCommand(newSandboxSyncDaemonCmd())
+	cmd.AddCommand(newSandboxSyncResumeAllCmd())
 	return cmd
 }
 
