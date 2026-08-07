@@ -705,3 +705,35 @@ func newEnvironmentSubscriptionsCmd() *cobra.Command {
 	}
 	return cmd
 }
+
+// printEnvironmentSubscriptions lists what a native environment can reach, and
+// says plainly when the answer is nothing. Failing to read them is reported
+// rather than swallowed: silence here reads as "no subscriptions attached",
+// which is the one thing it must not be confused with.
+func printEnvironmentSubscriptions(cmd *cobra.Command, writer io.Writer, environment *agentsv1.Environment) {
+	client, _, err := llmGatewayClient(cmd)
+	if err != nil {
+		fmt.Fprintf(writer, "Subscriptions: cannot be read (%v)\n", err)
+		return
+	}
+	environmentID := environment.GetMeta().GetId()
+	response, err := client.ListSubscriptionAttachments(cmd.Context(), connect.NewRequest(&llmv1.ListSubscriptionAttachmentsRequest{
+		OrganizationId: environment.GetOrganizationId(),
+		EnvironmentId:  &environmentID,
+		PageSize:       subscriptionPageSize,
+	}))
+	if err != nil {
+		fmt.Fprintf(writer, "Subscriptions: cannot be read (%v)\n", err)
+		return
+	}
+	attachments := response.Msg.GetSubscriptionAttachments()
+	if len(attachments) == 0 {
+		fmt.Fprintf(writer, "Subscriptions: none — this environment is in native mode and cannot start a workload until one is attached.\n")
+		return
+	}
+	vendors := make([]string, 0, len(attachments))
+	for _, attachment := range attachments {
+		vendors = append(vendors, vendorName(attachment.GetVendor()))
+	}
+	fmt.Fprintf(writer, "Subscriptions: %s\n", strings.Join(vendors, ", "))
+}
