@@ -387,3 +387,11 @@ func isPermissionDenied(err error) bool {
 func init() {
 	rootCmd.AddCommand(newEnvironmentsCmd())
 }
+
+func (c *sandboxClients) getEnvironment(ctx context.Context, environmentID string) (*agentsv1.Environment, error) {
+	response, err := c.agents.GetEnvironment(ctx, connect.NewRequest(&agentsv1.GetEnvironmentRequest{Id: environmentID}))
+	if err != nil {
+		return nil, err
+	}
+	return response.Msg.GetEnvironment(), nil
+}

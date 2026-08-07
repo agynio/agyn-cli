@@ -105,6 +105,8 @@ func newSandboxStartCmd() *cobra.Command {
 				return err
 			}
 			sandbox := response.Msg.GetSandbox()
+			warnIfNoPersistentVolume(cmd, clients, ctx, environmentID,
+				"Nothing written in this sandbox will survive it stopping: %s declares no persistent volume.\n")
 			fmt.Fprintf(os.Stderr, "Starting sandbox %s...\n", sandbox.GetName())
 			if path := strings.TrimSpace(args.sync); path != "" {
 				running, err := waitForRunningSandbox(ctx, clients, sandbox)
@@ -201,6 +203,27 @@ func newSandboxListCmd() *cobra.Command {
 	return cmd
 }
 
+// warnIfNoPersistentVolume states the consequence of an environment declaring
+// no persistent volume, which is invisible at a shell until work is lost. A
+// failure to read the environment's volumes is not worth failing the command
+// over: the warning is advice, not a gate.
+func warnIfNoPersistentVolume(cmd *cobra.Command, clients *sandboxClients, ctx context.Context, environmentID, format string) {
+	volumes, err := clients.listEnvironmentVolumes(ctx, environmentID)
+	if err != nil {
+		return
+	}
+	for _, volume := range volumes {
+		if volume.GetPersistent() {
+			return
+		}
+	}
+	name := environmentID
+	if environment, err := clients.getEnvironment(ctx, environmentID); err == nil && environment.GetName() != "" {
+		name = environment.GetName()
+	}
+	fmt.Fprintf(cmd.ErrOrStderr(), format, name)
+}
+
 func newSandboxStopCmd() *cobra.Command {
 	args := &sandboxArgs{}
 	cmd := &cobra.Command{
@@ -209,6 +232,13 @@ func newSandboxStopCmd() *cobra.Command {
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, positional []string) error {
 			return runSandboxMutation(cmd, args, positional, func(ctx context.Context, clients *sandboxClients, id string) (*agentsv1.Sandbox, error) {
+				// Warned before stopping, not after: afterwards the work is gone.
+				if sandbox, err := clients.agents.GetSandbox(ctx, connect.NewRequest(&agentsv1.GetSandboxRequest{
+					Ref: &agentsv1.GetSandboxRequest_Id{Id: id},
+				})); err == nil {
+					warnIfNoPersistentVolume(cmd, clients, ctx, sandbox.Msg.GetSandbox().GetEnvironmentId(),
+						"Stopping discards everything in this sandbox: %s declares no persistent volume.\n")
+				}
 				response, err := clients.agents.StopSandbox(ctx, connect.NewRequest(&agentsv1.StopSandboxRequest{Id: id}))
 				if err != nil {
 					return nil, err
