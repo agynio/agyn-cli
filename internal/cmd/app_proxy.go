@@ -119,6 +119,9 @@ func parseAppProxyArgs(args []string) (string, string, map[string]any, error) {
 				return "", "", nil, fmt.Errorf("missing value for flag %s", arg)
 			}
 			value := args[i+1]
+			if strings.HasPrefix(value, "-") {
+				return "", "", nil, fmt.Errorf("missing value for flag %s", arg)
+			}
 			snakeKey, err := toSnakeCase(key)
 			if err != nil {
 				return "", "", nil, err
