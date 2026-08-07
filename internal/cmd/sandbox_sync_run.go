@@ -47,7 +47,7 @@ func newSandboxSyncStartCmd() *cobra.Command {
 				return err
 			}
 			if foreground {
-				state, err := createSyncSession(running, localPath, remotePath)
+				state, err := createSyncSession(ctx, clients, running, localPath, remotePath)
 				if err != nil {
 					return err
 				}
@@ -96,7 +96,7 @@ func ensureRunningSandbox(ctx context.Context, clients *sandboxClients, orgID st
 // existing session. It is separate from createSyncSession so `sandbox start
 // --sync` can run it *before* creating a sandbox: failing afterwards leaves a
 // sandbox nobody asked for, running and billable.
-func checkSyncLocalRoot(localPath string) (string, error) {
+func checkSyncLocalRoot(ctx context.Context, clients *sandboxClients, localPath string) (string, error) {
 	local, err := resolveLocalRoot(localPath)
 	if err != nil {
 		return "", err
@@ -113,6 +113,20 @@ func checkSyncLocalRoot(localPath string) (string, error) {
 		if !session.Overlaps(local, other.LocalRoot) {
 			continue
 		}
+		// A session whose sandbox is gone can never sync again — it would halt
+		// on the identity check every cycle. Blocking a directory forever on
+		// one is friction with no safety behind it, so it is cleared rather
+		// than reported. This covers a sandbox deleted from the Console too,
+		// where nothing local was there to clean up.
+		if gone, err := sandboxIsGone(ctx, clients, other.SandboxID); err == nil && gone {
+			signalSession(other, os.Interrupt)
+			clearSentinel(other)
+			if err := store.Remove(other.ID); err != nil {
+				return "", err
+			}
+			fmt.Fprintf(os.Stderr, "removed session %s; its sandbox %s no longer exists\n", other.Name, other.Sandbox)
+			continue
+		}
 		// Two engines writing one subtree cannot be reconciled. Name the way
 		// out: without it the only clue is a session the engineer may have
 		// forgotten, possibly for a sandbox that no longer exists.
@@ -126,8 +140,8 @@ func checkSyncLocalRoot(localPath string) (string, error) {
 	return local, nil
 }
 
-func createSyncSession(sandbox *agentsv1.Sandbox, localPath, remotePath string) (*session.State, error) {
-	local, err := checkSyncLocalRoot(localPath)
+func createSyncSession(ctx context.Context, clients *sandboxClients, sandbox *agentsv1.Sandbox, localPath, remotePath string) (*session.State, error) {
+	local, err := checkSyncLocalRoot(ctx, clients, localPath)
 	if err != nil {
 		return nil, err
 	}
@@ -167,10 +181,55 @@ func createSyncSession(sandbox *agentsv1.Sandbox, localPath, remotePath string) 
 	return state, nil
 }
 
+// sandboxIsGone reports whether a sandbox has been deleted or terminated. A
+// lookup failure is not treated as gone: refusing to sync is safer than
+// discarding a session because the Gateway was briefly unreachable.
+func sandboxIsGone(ctx context.Context, clients *sandboxClients, sandboxID string) (bool, error) {
+	if clients == nil || strings.TrimSpace(sandboxID) == "" {
+		return false, nil
+	}
+	response, err := clients.agents.GetSandbox(ctx, connect.NewRequest(&agentsv1.GetSandboxRequest{
+		Ref: &agentsv1.GetSandboxRequest_Id{Id: sandboxID},
+	}))
+	if err != nil {
+		if connect.CodeOf(err) == connect.CodeNotFound {
+			return true, nil
+		}
+		return false, err
+	}
+	return response.Msg.GetSandbox().GetStatus() == agentsv1.SandboxStatus_SANDBOX_STATUS_TERMINATED, nil
+}
+
+// removeSessionsForSandbox clears local sync sessions bound to a sandbox that
+// is being deleted. The session cannot outlive its sandbox, and leaving it
+// behind blocks its local directory for every later session.
+func removeSessionsForSandbox(sandboxID string) int {
+	store, err := openSessionStore()
+	if err != nil {
+		return 0
+	}
+	states, err := store.List()
+	if err != nil {
+		return 0
+	}
+	removed := 0
+	for _, state := range states {
+		if state.SandboxID != sandboxID {
+			continue
+		}
+		signalSession(state, os.Interrupt)
+		clearSentinel(state)
+		if err := store.Remove(state.ID); err == nil {
+			removed++
+		}
+	}
+	return removed
+}
+
 // startSyncSession creates a session and detaches it. Shared by `sync start`
 // and `sandbox start --sync`.
 func startSyncSession(cmd *cobra.Command, clients *sandboxClients, sandbox *agentsv1.Sandbox, localPath, remotePath string) error {
-	state, err := createSyncSession(sandbox, localPath, remotePath)
+	state, err := createSyncSession(cmd.Context(), clients, sandbox, localPath, remotePath)
 	if err != nil {
 		return err
 	}
