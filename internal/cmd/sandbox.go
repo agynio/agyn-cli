@@ -88,7 +88,7 @@ func newSandboxStartCmd() *cobra.Command {
 			// created and then abandoned because --sync was refused is one
 			// nobody asked for, left running and billable.
 			if path := strings.TrimSpace(args.sync); path != "" {
-				if _, err := checkSyncLocalRoot(path); err != nil {
+				if _, err := checkSyncLocalRoot(ctx, clients, path); err != nil {
 					return err
 				}
 			}
