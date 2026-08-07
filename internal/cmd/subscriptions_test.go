@@ -1,0 +1,119 @@
+package cmd
+
+import (
+	"testing"
+
+	agentsv1 "github.com/agynio/agyn-cli/gen/agynio/api/agents/v1"
+	llmv1 "github.com/agynio/agyn-cli/gen/agynio/api/llm/v1"
+)
+
+func TestSubscriptionsCommandRegistration(t *testing.T) {
+	cmd := newSubscriptionsCmd()
+	if cmd.Use != "subscriptions" {
+		t.Fatalf("unexpected command use %q", cmd.Use)
+	}
+	for _, name := range []string{"create", "list", "show", "update", "delete", "attach", "detach", "attachments"} {
+		found, _, err := cmd.Find([]string{name})
+		if err != nil {
+			t.Fatalf("find %s command: %v", name, err)
+		}
+		if found == nil || found.Name() != name {
+			t.Fatalf("missing %s command", name)
+		}
+	}
+}
+
+func TestParseVendor(t *testing.T) {
+	cases := []struct {
+		raw     string
+		want    llmv1.Vendor
+		wantErr bool
+	}{
+		{"claude", llmv1.Vendor_VENDOR_CLAUDE, false},
+		{"CODEX", llmv1.Vendor_VENDOR_CODEX, false},
+		{"  claude  ", llmv1.Vendor_VENDOR_CLAUDE, false},
+		{"gemini", llmv1.Vendor_VENDOR_UNSPECIFIED, true},
+		{"", llmv1.Vendor_VENDOR_UNSPECIFIED, true},
+	}
+	for _, tc := range cases {
+		got, err := parseVendor(tc.raw)
+		if tc.wantErr {
+			if err == nil {
+				t.Fatalf("parseVendor(%q) = %v, want an error", tc.raw, got)
+			}
+			continue
+		}
+		if err != nil {
+			t.Fatalf("parseVendor(%q): %v", tc.raw, err)
+		}
+		if got != tc.want {
+			t.Fatalf("parseVendor(%q) = %v, want %v", tc.raw, got, tc.want)
+		}
+	}
+}
+
+func TestSubscriptionsAttachRequiresExactlyOneTarget(t *testing.T) {
+	cases := []struct {
+		name string
+		args []string
+	}{
+		{"neither", []string{"attach", "sub-1"}},
+		{"both", []string{"attach", "sub-1", "--agent", "a-1", "--environment", "e-1"}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			cmd := newSubscriptionsCmd()
+			cmd.SetArgs(tc.args)
+			cmd.SetOut(discardWriter{})
+			cmd.SetErr(discardWriter{})
+			if err := cmd.Execute(); err == nil {
+				t.Fatal("expected an error naming the target flags")
+			}
+		})
+	}
+}
+
+func TestAttachmentTargetNamesTheScope(t *testing.T) {
+	agent := subscriptionAttachmentOutput{AgentID: "a-1"}
+	if got := attachmentTarget(agent); got != "agent a-1" {
+		t.Fatalf("attachmentTarget(agent) = %q", got)
+	}
+	environment := subscriptionAttachmentOutput{EnvironmentID: "e-1"}
+	if got := attachmentTarget(environment); got != "environment e-1" {
+		t.Fatalf("attachmentTarget(environment) = %q", got)
+	}
+}
+
+func TestParseLLMMode(t *testing.T) {
+	for raw, want := range map[string]agentsv1.LLMMode{
+		"platform": agentsv1.LLMMode_LLM_MODE_PLATFORM,
+		"native":   agentsv1.LLMMode_LLM_MODE_NATIVE,
+		"NATIVE":   agentsv1.LLMMode_LLM_MODE_NATIVE,
+	} {
+		got, err := parseLLMMode(raw)
+		if err != nil {
+			t.Fatalf("parseLLMMode(%q): %v", raw, err)
+		}
+		if got != want {
+			t.Fatalf("parseLLMMode(%q) = %v, want %v", raw, got, want)
+		}
+	}
+	if _, err := parseLLMMode("hosted"); err == nil {
+		t.Fatal("expected an error for an unknown mode")
+	}
+}
+
+// An environment that predates native mode carries no mode at all, and reading
+// that as anything but platform would report a change nobody made.
+func TestLLMModeLabelDefaultsToPlatform(t *testing.T) {
+	if got := llmModeLabel(agentsv1.LLMMode_LLM_MODE_UNSPECIFIED); got != "platform" {
+		t.Fatalf("llmModeLabel(unspecified) = %q", got)
+	}
+	if got := llmModeLabel(agentsv1.LLMMode_LLM_MODE_NATIVE); got != "native" {
+		t.Fatalf("llmModeLabel(native) = %q", got)
+	}
+}
+
+type discardWriter struct{}
+
+func (discardWriter) Write(p []byte) (int, error) { return len(p), nil }

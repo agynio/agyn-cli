@@ -32,7 +32,9 @@ inputs:
       - agynio/api/gateway/v1/agents.proto
       - agynio/api/gateway/v1/terminal.proto
       - agynio/api/gateway/v1/organizations.proto
+      - agynio/api/gateway/v1/llm.proto
       - agynio/api/agents/v1/agents.proto
+      - agynio/api/llm/v1/llm.proto
       - agynio/api/organizations/v1/organizations.proto
       - agynio/api/terminal_proxy/v1/terminal_proxy.proto
       - agynio/api/apps/v1/apps.proto
