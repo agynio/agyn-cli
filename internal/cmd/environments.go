@@ -56,6 +56,7 @@ func newEnvironmentsCmd() *cobra.Command {
 	cmd.AddCommand(newEnvironmentInitScriptsCmd())
 	cmd.AddCommand(newEnvironmentVarsCmd())
 	cmd.AddCommand(newEnvironmentRolesCmd())
+	cmd.AddCommand(newEnvironmentSubscriptionsCmd())
 	return cmd
 }
 

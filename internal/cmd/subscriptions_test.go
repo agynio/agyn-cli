@@ -52,24 +52,36 @@ func TestParseVendor(t *testing.T) {
 	}
 }
 
-func TestSubscriptionsAttachRequiresExactlyOneTarget(t *testing.T) {
-	cases := []struct {
-		name string
-		args []string
-	}{
-		{"neither", []string{"attach", "sub-1"}},
-		{"both", []string{"attach", "sub-1", "--agent", "a-1", "--environment", "e-1"}},
-	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
+// Environment scope lives on `agyn environments subscriptions`, where the
+// environment is named rather than typed as a UUID; this group covers agent
+// scope, which has no environment to hang off.
+func TestSubscriptionsAttachRequiresAnAgent(t *testing.T) {
+	for _, name := range []string{"attach", "detach"} {
+		t.Run(name, func(t *testing.T) {
 			cmd := newSubscriptionsCmd()
-			cmd.SetArgs(tc.args)
+			cmd.SetArgs([]string{name, "some-subscription"})
 			cmd.SetOut(discardWriter{})
 			cmd.SetErr(discardWriter{})
 			if err := cmd.Execute(); err == nil {
-				t.Fatal("expected an error naming the target flags")
+				t.Fatal("expected an error naming --agent")
 			}
 		})
+	}
+}
+
+func TestEnvironmentSubscriptionsCommandRegistration(t *testing.T) {
+	cmd := newEnvironmentSubscriptionsCmd()
+	if cmd.Use != "subscriptions" {
+		t.Fatalf("unexpected command use %q", cmd.Use)
+	}
+	for _, name := range []string{"list", "attach", "detach"} {
+		found, _, err := cmd.Find([]string{name})
+		if err != nil {
+			t.Fatalf("find %s command: %v", name, err)
+		}
+		if found == nil || found.Name() != name {
+			t.Fatalf("missing %s command", name)
+		}
 	}
 }
 

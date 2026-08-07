@@ -9,6 +9,7 @@ import (
 
 	"connectrpc.com/connect"
 	agentsv1 "github.com/agynio/agyn-cli/gen/agynio/api/agents/v1"
+	llmv1 "github.com/agynio/agyn-cli/gen/agynio/api/llm/v1"
 	"github.com/agynio/agyn-cli/internal/output"
 	"github.com/spf13/cobra"
 )
@@ -601,4 +602,106 @@ func resolveEnvironmentArg(cmd *cobra.Command, organizationIDFlag, name string) 
 		return nil, nil, err
 	}
 	return clients, environment, nil
+}
+
+// newEnvironmentSubscriptionsCmd is where a subscription meets an environment.
+// The subscription itself is an organization resource -- one is normally shared
+// by several environments -- so it is created and deleted from `agyn
+// subscriptions`, and only bound here.
+func newEnvironmentSubscriptionsCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:     "subscriptions",
+		Aliases: []string{"subscription"},
+		Short:   "Vendor subscriptions the environment's workloads reach models on",
+	}
+	args := &varArgs{}
+	list := &cobra.Command{
+		Use:   "list ENV",
+		Short: "List the subscriptions attached to the environment",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, positional []string) error {
+			clients, environment, err := resolveEnvironmentArg(cmd, args.organizationID, positional[0])
+			if err != nil {
+				return err
+			}
+			client, _, err := llmGatewayClient(cmd)
+			if err != nil {
+				return err
+			}
+			environmentID := environment.GetMeta().GetId()
+			response, err := client.ListSubscriptionAttachments(cmd.Context(), connect.NewRequest(&llmv1.ListSubscriptionAttachmentsRequest{
+				OrganizationId: environment.GetOrganizationId(),
+				EnvironmentId:  &environmentID,
+				PageSize:       subscriptionPageSize,
+			}))
+			if err != nil {
+				return err
+			}
+			attachments := response.Msg.GetSubscriptionAttachments()
+			rows := make([][]string, 0, len(attachments))
+			for _, attachment := range attachments {
+				rows = append(rows, []string{attachment.GetSubscriptionId(), vendorName(attachment.GetVendor())})
+			}
+			return output.Print(clients.runContext.OutputFormat, output.Table{
+				Headers: []string{"SUBSCRIPTION", "VENDOR"},
+				Rows:    rows,
+			})
+		},
+	}
+	attach := &cobra.Command{
+		Use:   "attach ENV SUBSCRIPTION",
+		Short: "Attach a subscription to the environment",
+		Args:  cobra.ExactArgs(2),
+		RunE: func(cmd *cobra.Command, positional []string) error {
+			clients, environment, err := resolveEnvironmentArg(cmd, args.organizationID, positional[0])
+			if err != nil {
+				return err
+			}
+			client, _, subscription, err := resolveSubscriptionArg(cmd, environment.GetOrganizationId(), positional[1])
+			if err != nil {
+				return err
+			}
+			environmentID := environment.GetMeta().GetId()
+			response, err := client.CreateSubscriptionAttachment(cmd.Context(), connect.NewRequest(&llmv1.CreateSubscriptionAttachmentRequest{
+				SubscriptionId: subscription.GetMeta().GetId(),
+				Target:         &llmv1.CreateSubscriptionAttachmentRequest_EnvironmentId{EnvironmentId: environmentID},
+			}))
+			if err != nil {
+				return err
+			}
+			return output.Print(clients.runContext.OutputFormat, subscriptionAttachmentOutputFrom(response.Msg.GetSubscriptionAttachment()))
+		},
+	}
+	detach := &cobra.Command{
+		Use:   "detach ENV SUBSCRIPTION",
+		Short: "Detach a subscription from the environment",
+		Args:  cobra.ExactArgs(2),
+		RunE: func(cmd *cobra.Command, positional []string) error {
+			_, environment, err := resolveEnvironmentArg(cmd, args.organizationID, positional[0])
+			if err != nil {
+				return err
+			}
+			client, _, subscription, err := resolveSubscriptionArg(cmd, environment.GetOrganizationId(), positional[1])
+			if err != nil {
+				return err
+			}
+			environmentID := environment.GetMeta().GetId()
+			attachment, err := findSubscriptionAttachment(cmd, client, environment.GetOrganizationId(), subscription.GetMeta().GetId(), nil, &environmentID)
+			if err != nil {
+				return err
+			}
+			if _, err := client.DeleteSubscriptionAttachment(cmd.Context(), connect.NewRequest(&llmv1.DeleteSubscriptionAttachmentRequest{
+				Id: attachment.GetMeta().GetId(),
+			})); err != nil {
+				return err
+			}
+			fmt.Fprintf(cmd.OutOrStdout(), "Detached %s from %s\n", positional[1], positional[0])
+			return nil
+		},
+	}
+	for _, sub := range []*cobra.Command{list, attach, detach} {
+		sub.Flags().StringVar(&args.organizationID, "organization-id", "", "Organization ID (defaults to the selected organization)")
+		cmd.AddCommand(sub)
+	}
+	return cmd
 }
