@@ -134,6 +134,12 @@ func newEnvironmentsShowCmd() *cobra.Command {
 			if len(out.LLMAllowedModels) > 0 {
 				fmt.Fprintf(writer, "Allowed models: %s\n", strings.Join(out.LLMAllowedModels, ", "))
 			}
+			// A native environment with nothing attached cannot start a
+			// workload at all. Saying so here is the difference between finding
+			// out now and finding out when a sandbox refuses to come up.
+			if out.LLMMode == "native" {
+				printEnvironmentSubscriptions(cmd, writer, environment)
+			}
 
 			// Printing nothing under "Volumes" reads as "declares no storage",
 			// which is a different fact from "you cannot see the storage it
