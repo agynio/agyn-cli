@@ -17,6 +17,7 @@ type sandboxClients struct {
 	agents        gatewayv1connect.AgentsGatewayClient
 	terminal      gatewayv1connect.TerminalGatewayClient
 	organizations gatewayv1connect.OrganizationsGatewayClient
+	users         gatewayv1connect.UsersGatewayClient
 	runContext    *RunContext
 }
 
@@ -35,6 +36,7 @@ func sandboxGatewayClients(cmd *cobra.Command) (*sandboxClients, error) {
 		agents:        gatewayv1connect.NewAgentsGatewayClient(httpClient, baseURL, opts...),
 		terminal:      gatewayv1connect.NewTerminalGatewayClient(httpClient, baseURL, opts...),
 		organizations: gatewayv1connect.NewOrganizationsGatewayClient(httpClient, baseURL, opts...),
+		users:         gatewayv1connect.NewUsersGatewayClient(httpClient, baseURL, opts...),
 		runContext:    runContext,
 	}, nil
 }
