@@ -11,6 +11,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+const subscriptionPageSize = 200
+
 type subscriptionOutput struct {
 	ID             string `json:"id" yaml:"id"`
 	Name           string `json:"name" yaml:"name"`
@@ -63,6 +65,7 @@ func newSubscriptionsCmd() *cobra.Command {
 	cmd.AddCommand(newSubscriptionsAttachCmd())
 	cmd.AddCommand(newSubscriptionsDetachCmd())
 	cmd.AddCommand(newSubscriptionsAttachmentsCmd())
+
 	return cmd
 }
 
@@ -156,37 +159,36 @@ func newSubscriptionsListCmd() *cobra.Command {
 }
 
 func newSubscriptionsShowCmd() *cobra.Command {
+	args := &subscriptionArgs{}
 	cmd := &cobra.Command{
-		Use:   "show ID",
+		Use:   "show NAME",
 		Short: "Show a subscription",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, positional []string) error {
-			client, runContext, err := llmGatewayClient(cmd)
+			client, runContext, subscription, err := resolveSubscriptionArg(cmd, args.organizationID, positional[0])
 			if err != nil {
 				return err
 			}
-			response, err := client.GetSubscription(cmd.Context(), connect.NewRequest(&llmv1.GetSubscriptionRequest{Id: positional[0]}))
-			if err != nil {
-				return err
-			}
-			return output.Print(runContext.OutputFormat, subscriptionOutputFrom(response.Msg.GetSubscription()))
+			_ = client
+			return output.Print(runContext.OutputFormat, subscriptionOutputFrom(subscription))
 		},
 	}
+	cmd.Flags().StringVar(&args.organizationID, "organization-id", "", "Organization ID (defaults to the selected organization)")
 	return cmd
 }
 
 func newSubscriptionsUpdateCmd() *cobra.Command {
 	args := &subscriptionArgs{}
 	cmd := &cobra.Command{
-		Use:   "update ID",
+		Use:   "update NAME",
 		Short: "Change a subscription; flags not given are left as they are",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, positional []string) error {
-			client, runContext, err := llmGatewayClient(cmd)
+			client, runContext, subscription, err := resolveSubscriptionArg(cmd, args.organizationID, positional[0])
 			if err != nil {
 				return err
 			}
-			request := &llmv1.UpdateSubscriptionRequest{Id: positional[0]}
+			request := &llmv1.UpdateSubscriptionRequest{Id: subscription.GetMeta().GetId()}
 			if name := strings.TrimSpace(args.name); cmd.Flags().Changed("name") {
 				request.Name = &name
 			}
@@ -207,6 +209,7 @@ func newSubscriptionsUpdateCmd() *cobra.Command {
 			return output.Print(runContext.OutputFormat, subscriptionOutputFrom(response.Msg.GetSubscription()))
 		},
 	}
+	cmd.Flags().StringVar(&args.organizationID, "organization-id", "", "Organization ID (defaults to the selected organization)")
 	cmd.Flags().StringVar(&args.name, "name", "", "New name")
 	cmd.Flags().StringVar(&args.secret, "secret", "", "Secret ID holding the subscription token")
 	cmd.Flags().StringVar(&args.accountID, "account-id", "", "Vendor account identifier; pass empty to clear")
@@ -214,17 +217,18 @@ func newSubscriptionsUpdateCmd() *cobra.Command {
 }
 
 func newSubscriptionsDeleteCmd() *cobra.Command {
+	args := &subscriptionArgs{}
 	cmd := &cobra.Command{
-		Use:   "delete ID",
+		Use:   "delete NAME",
 		Short: "Delete a subscription",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, positional []string) error {
-			client, _, err := llmGatewayClient(cmd)
+			client, _, subscription, err := resolveSubscriptionArg(cmd, args.organizationID, positional[0])
 			if err != nil {
 				return err
 			}
 			if _, err := client.DeleteSubscription(cmd.Context(), connect.NewRequest(&llmv1.DeleteSubscriptionRequest{
-				Id: positional[0],
+				Id: subscription.GetMeta().GetId(),
 			})); err != nil {
 				return err
 			}
@@ -232,64 +236,79 @@ func newSubscriptionsDeleteCmd() *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&args.organizationID, "organization-id", "", "Organization ID (defaults to the selected organization)")
 	return cmd
 }
 
+// Attaching to an environment is `agyn environments subscriptions attach`,
+// where the environment is named rather than typed as a UUID. These two cover
+// agent scope, which has no environment to hang off.
 func newSubscriptionsAttachCmd() *cobra.Command {
 	args := &subscriptionArgs{}
 	cmd := &cobra.Command{
-		Use:   "attach ID",
-		Short: "Attach a subscription to an environment or an agent",
+		Use:   "attach NAME --agent AGENT_ID",
+		Short: "Attach a subscription to an agent",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, positional []string) error {
-			client, runContext, err := llmGatewayClient(cmd)
+			client, runContext, subscription, err := resolveSubscriptionArg(cmd, args.organizationID, positional[0])
 			if err != nil {
 				return err
 			}
-			request := &llmv1.CreateSubscriptionAttachmentRequest{SubscriptionId: positional[0]}
 			agentID := strings.TrimSpace(args.agentID)
-			environmentID := strings.TrimSpace(args.environmentID)
-			switch {
-			case agentID != "" && environmentID != "":
-				return fmt.Errorf("pass --agent or --environment, not both")
-			case agentID != "":
-				request.Target = &llmv1.CreateSubscriptionAttachmentRequest_AgentId{AgentId: agentID}
-			case environmentID != "":
-				request.Target = &llmv1.CreateSubscriptionAttachmentRequest_EnvironmentId{EnvironmentId: environmentID}
-			default:
-				return fmt.Errorf("pass --agent or --environment")
+			if agentID == "" {
+				return fmt.Errorf("--agent is required; attach to an environment with `agyn environments subscriptions attach`")
 			}
-			response, err := client.CreateSubscriptionAttachment(cmd.Context(), connect.NewRequest(request))
+			response, err := client.CreateSubscriptionAttachment(cmd.Context(), connect.NewRequest(&llmv1.CreateSubscriptionAttachmentRequest{
+				SubscriptionId: subscription.GetMeta().GetId(),
+				Target:         &llmv1.CreateSubscriptionAttachmentRequest_AgentId{AgentId: agentID},
+			}))
 			if err != nil {
 				return err
 			}
 			return output.Print(runContext.OutputFormat, subscriptionAttachmentOutputFrom(response.Msg.GetSubscriptionAttachment()))
 		},
 	}
+	cmd.Flags().StringVar(&args.organizationID, "organization-id", "", "Organization ID (defaults to the selected organization)")
 	cmd.Flags().StringVar(&args.agentID, "agent", "", "Agent ID to attach to")
-	cmd.Flags().StringVar(&args.environmentID, "environment", "", "Environment ID to attach to")
+	_ = cmd.MarkFlagRequired("agent")
 	return cmd
 }
 
 func newSubscriptionsDetachCmd() *cobra.Command {
+	args := &subscriptionArgs{}
 	cmd := &cobra.Command{
-		Use:   "detach ATTACHMENT_ID",
-		Short: "Remove a subscription attachment",
+		Use:   "detach NAME --agent AGENT_ID",
+		Short: "Detach a subscription from an agent",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, positional []string) error {
-			client, _, err := llmGatewayClient(cmd)
+			client, _, subscription, err := resolveSubscriptionArg(cmd, args.organizationID, positional[0])
+			if err != nil {
+				return err
+			}
+			agentID := strings.TrimSpace(args.agentID)
+			if agentID == "" {
+				return fmt.Errorf("--agent is required; detach from an environment with `agyn environments subscriptions detach`")
+			}
+			organizationID, err := organizationIDForCommand(cmd, args.organizationID)
+			if err != nil {
+				return err
+			}
+			attachment, err := findSubscriptionAttachment(cmd, client, organizationID, subscription.GetMeta().GetId(), &agentID, nil)
 			if err != nil {
 				return err
 			}
 			if _, err := client.DeleteSubscriptionAttachment(cmd.Context(), connect.NewRequest(&llmv1.DeleteSubscriptionAttachmentRequest{
-				Id: positional[0],
+				Id: attachment.GetMeta().GetId(),
 			})); err != nil {
 				return err
 			}
-			fmt.Fprintf(cmd.OutOrStdout(), "Detached %s\n", positional[0])
+			fmt.Fprintf(cmd.OutOrStdout(), "Detached %s from agent %s\n", positional[0], agentID)
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&args.organizationID, "organization-id", "", "Organization ID (defaults to the selected organization)")
+	cmd.Flags().StringVar(&args.agentID, "agent", "", "Agent ID to detach from")
+	_ = cmd.MarkFlagRequired("agent")
 	return cmd
 }
 
@@ -354,6 +373,73 @@ func newSubscriptionsAttachmentsCmd() *cobra.Command {
 	cmd.Flags().Int32Var(&args.pageSize, "page-size", 0, "Page size")
 	cmd.Flags().StringVar(&args.pageToken, "page-token", "", "Page token")
 	return cmd
+}
+
+// resolveSubscriptionArg maps a name onto the subscription, the way every other
+// resource group addresses its members. A UUID is accepted too, so an id copied
+// out of `attachments` output works without a lookup.
+func resolveSubscriptionArg(cmd *cobra.Command, organizationIDFlag, name string) (gatewayv1connect.LLMGatewayClient, *RunContext, *llmv1.Subscription, error) {
+	client, runContext, err := llmGatewayClient(cmd)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	organizationID, err := organizationIDForCommand(cmd, organizationIDFlag)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	subscription, err := findSubscription(cmd, client, organizationID, name)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	return client, runContext, subscription, nil
+}
+
+func findSubscription(cmd *cobra.Command, client gatewayv1connect.LLMGatewayClient, organizationID, name string) (*llmv1.Subscription, error) {
+	wanted := strings.TrimSpace(name)
+	if wanted == "" {
+		return nil, fmt.Errorf("subscription name is required")
+	}
+	request := &llmv1.ListSubscriptionsRequest{OrganizationId: organizationID, PageSize: subscriptionPageSize}
+	for {
+		response, err := client.ListSubscriptions(cmd.Context(), connect.NewRequest(request))
+		if err != nil {
+			return nil, err
+		}
+		for _, subscription := range response.Msg.GetSubscriptions() {
+			if subscription.GetName() == wanted || subscription.GetMeta().GetId() == wanted {
+				return subscription, nil
+			}
+		}
+		request.PageToken = response.Msg.GetNextPageToken()
+		if request.PageToken == "" {
+			return nil, fmt.Errorf("no subscription named %q in this organization", wanted)
+		}
+	}
+}
+
+// findSubscriptionAttachment locates the one attachment of a subscription on a
+// target. Attachments are unique on (vendor, target), so there is at most one.
+func findSubscriptionAttachment(cmd *cobra.Command, client gatewayv1connect.LLMGatewayClient, organizationID, subscriptionID string, agentID, environmentID *string) (*llmv1.SubscriptionAttachment, error) {
+	request := &llmv1.ListSubscriptionAttachmentsRequest{
+		OrganizationId: organizationID,
+		SubscriptionId: &subscriptionID,
+		AgentId:        agentID,
+		EnvironmentId:  environmentID,
+		PageSize:       subscriptionPageSize,
+	}
+	for {
+		response, err := client.ListSubscriptionAttachments(cmd.Context(), connect.NewRequest(request))
+		if err != nil {
+			return nil, err
+		}
+		if attachments := response.Msg.GetSubscriptionAttachments(); len(attachments) > 0 {
+			return attachments[0], nil
+		}
+		request.PageToken = response.Msg.GetNextPageToken()
+		if request.PageToken == "" {
+			return nil, fmt.Errorf("the subscription is not attached to that target")
+		}
+	}
 }
 
 func llmGatewayClient(cmd *cobra.Command) (gatewayv1connect.LLMGatewayClient, *RunContext, error) {
