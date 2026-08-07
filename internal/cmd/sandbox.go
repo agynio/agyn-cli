@@ -9,6 +9,7 @@ import (
 
 	"connectrpc.com/connect"
 	agentsv1 "github.com/agynio/agyn-cli/gen/agynio/api/agents/v1"
+	"github.com/agynio/agyn-cli/internal/config"
 	"github.com/agynio/agyn-cli/internal/output"
 	"github.com/spf13/cobra"
 )
@@ -29,6 +30,7 @@ type sandboxOutput struct {
 	Status          string `json:"status" yaml:"status"`
 	IdleTimeout     string `json:"idle_timeout" yaml:"idle_timeout"`
 	TTL             string `json:"ttl" yaml:"ttl"`
+	TTLRemaining    string `json:"ttl_remaining,omitempty" yaml:"ttl_remaining,omitempty"`
 	WorkloadID      string `json:"workload_id,omitempty" yaml:"workload_id,omitempty"`
 	LastSessionAt   string `json:"last_session_at,omitempty" yaml:"last_session_at,omitempty"`
 	CreatedAt       string `json:"created_at" yaml:"created_at"`
@@ -41,6 +43,8 @@ type sandboxArgs struct {
 	name           string
 	all            bool
 	terminated     bool
+	// idleTimeout overrides the profile default for this invocation only.
+	idleTimeout string
 	// sync composes start, sync, and shell attach in one invocation. The
 	// session is established before the shell so the workspace is already in
 	// step when the prompt appears.
@@ -97,6 +101,8 @@ func newSandboxStartCmd() *cobra.Command {
 				OrganizationId: organizationID,
 				EnvironmentId:  environmentID,
 			}
+			profile := clients.runContext.Config.Profile(clients.runContext.ProfileName)
+			request.IdleTimeout = resolveSandboxIdleTimeout(args.idleTimeout, profile)
 			if name := strings.TrimSpace(args.name); name != "" {
 				request.Name = &name
 			}
@@ -123,6 +129,7 @@ func newSandboxStartCmd() *cobra.Command {
 	cmd.Flags().StringVar(&args.environment, "env", "", "Environment name (defaults to the sole environment)")
 	cmd.Flags().StringVar(&args.name, "name", "", "Sandbox name (auto-generated when omitted)")
 	cmd.Flags().StringVar(&args.sync, "sync", "", "Also sync this local directory with the sandbox workspace")
+	cmd.Flags().StringVar(&args.idleTimeout, "idle-timeout", "", "How long the sandbox survives with nothing attached (e.g. 4h); defaults to the profile, then the organization")
 	return cmd
 }
 
@@ -275,8 +282,8 @@ func printSandbox(format output.Format, sandbox *agentsv1.Sandbox) error {
 	out := sandboxOutputFrom(sandbox)
 	if format == output.FormatTable {
 		return output.Print(format, output.Table{
-			Headers: []string{"NAME", "ENVIRONMENT", "STATUS", "AGE"},
-			Rows:    [][]string{{out.Name, out.EnvironmentName, out.Status, out.Age}},
+			Headers: []string{"NAME", "ENVIRONMENT", "STATUS", "AGE", "IDLE", "TTL_LEFT"},
+			Rows:    [][]string{{out.Name, out.EnvironmentName, out.Status, out.Age, out.IdleTimeout, out.TTLRemaining}},
 		})
 	}
 	return output.Print(format, out)
@@ -288,15 +295,43 @@ func printSandboxes(format output.Format, sandboxes []*agentsv1.Sandbox) error {
 	for _, sandbox := range sandboxes {
 		out := sandboxOutputFrom(sandbox)
 		outputs = append(outputs, out)
-		rows = append(rows, []string{out.Name, out.EnvironmentName, out.Status, out.Age, out.LastSessionAt})
+		rows = append(rows, []string{out.Name, out.EnvironmentName, out.Status, out.Age, out.IdleTimeout, out.TTLRemaining, out.LastSessionAt})
 	}
 	if format == output.FormatTable {
 		return output.Print(format, output.Table{
-			Headers: []string{"NAME", "ENVIRONMENT", "STATUS", "AGE", "LAST_SESSION"},
+			Headers: []string{"NAME", "ENVIRONMENT", "STATUS", "AGE", "IDLE", "TTL_LEFT", "LAST_SESSION"},
 			Rows:    rows,
 		})
 	}
 	return output.Print(format, outputs)
+}
+
+// remainingTTL is what is left of the hard lifetime, which is the number that
+// matters at a shell — the stored duration only says what it was at creation.
+// An unparseable or elapsed TTL reports nothing rather than a negative.
+func remainingTTL(createdAt time.Time, ttl string) string {
+	parsed, err := time.ParseDuration(strings.TrimSpace(ttl))
+	if err != nil {
+		return ""
+	}
+	left := time.Until(createdAt.Add(parsed))
+	if left <= 0 {
+		return "expired"
+	}
+	return humanizeDuration(left)
+}
+
+// resolveSandboxIdleTimeout applies the precedence the flag documents: an
+// explicit flag, else the profile's default, else nothing — leaving the
+// organization's default to the server, which is the authority either way.
+func resolveSandboxIdleTimeout(flagValue string, profile config.Profile) *string {
+	if value := strings.TrimSpace(flagValue); value != "" {
+		return &value
+	}
+	if value := strings.TrimSpace(profile.SandboxIdleTimeout); value != "" {
+		return &value
+	}
+	return nil
 }
 
 func sandboxOutputFrom(sandbox *agentsv1.Sandbox) sandboxOutput {
@@ -316,6 +351,7 @@ func sandboxOutputFrom(sandbox *agentsv1.Sandbox) sandboxOutput {
 		createdAt := created.AsTime()
 		out.CreatedAt = createdAt.Format(time.RFC3339)
 		out.Age = humanizeDuration(time.Since(createdAt))
+		out.TTLRemaining = remainingTTL(createdAt, out.TTL)
 	}
 	if last := sandbox.GetLastSessionAt(); last != nil {
 		out.LastSessionAt = humanizeDuration(time.Since(last.AsTime())) + " ago"
