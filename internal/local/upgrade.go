@@ -1,13 +1,19 @@
 package local
 
 import (
+	_ "embed"
 	"fmt"
 	"io"
+	"strings"
 )
 
-// upgradeScript ships in the image. It upgrades the platform Helm releases in
-// place, reusing the values the release already holds.
-const upgradeScript = "/opt/agyn/upgrade-platform.sh"
+// A chart cannot upgrade itself, so this one script stays outside it. It ships
+// here rather than baked into the image because the image is what an upgrade
+// exists to avoid replacing: a fix to the upgrade path itself would otherwise
+// need a rebake to reach a machine that is already running.
+//
+//go:embed scripts/upgrade-platform.sh
+var upgradeScript string
 
 // UpgradePlatform moves the platform releases in the running VM to newer chart
 // versions, leaving the VM and its data alone.
@@ -32,17 +38,17 @@ func UpgradePlatform(stdout, stderr io.Writer, platformVersion, appsVersion stri
 		return fmt.Errorf("the local VM is not running (%s); start it with 'agyn local start'", instance.Status)
 	}
 
-	args := []string{"shell", InstanceName(), "--", "sudo", upgradeScript}
-	// Positional and order-dependent, so an apps version needs a platform slot
-	// ahead of it; empty means "latest".
-	if platformVersion != "" || appsVersion != "" {
-		args = append(args, platformVersion)
+	// Piped to a shell rather than written into the VM: nothing to install, and
+	// no baked copy left behind to drift from this caller. Empty means "latest".
+	args := []string{"shell", InstanceName(), "--", "sudo", "bash", "-s", "--"}
+	if platformVersion != "" {
+		args = append(args, "--platform-version", platformVersion)
 	}
 	if appsVersion != "" {
-		args = append(args, appsVersion)
+		args = append(args, "--apps-version", appsVersion)
 	}
 
-	if err := limactl(stdout, stderr, args...); err != nil {
+	if err := limactlStdin(strings.NewReader(upgradeScript), stdout, stderr, args...); err != nil {
 		return fmt.Errorf("upgrade the platform in the VM: %w", err)
 	}
 	return nil
