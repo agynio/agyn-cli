@@ -31,10 +31,11 @@ const (
 	// platformNamespace holds the platform workloads inside the VM.
 	platformNamespace = "platform"
 
-	// provisionConfigMap records what the image's build-time provisioning
-	// created. The organization it names is the one every org-scoped command
-	// runs against on a fresh VM.
-	provisionConfigMap = "agyn-local-provision"
+	// systemOrganization is the declaration the release ships for the
+	// organization platform-provisioned resources live in. Its status carries
+	// the id the platform assigned, which is the organization every org-scoped
+	// command runs against on a fresh VM.
+	systemOrganization = "organization.platform.agyn.io/system"
 )
 
 // GenerateBootstrapToken mints the Gateway bootstrap token for one install.
@@ -91,20 +92,20 @@ func SetIngressPort(port int) (string, error) {
 	return strings.TrimSpace(out), nil
 }
 
-// OrganizationID reads the organization the image provisioned. It is recorded
-// in a ConfigMap when the platform is baked, so it is readable as soon as the
-// API server answers — before the Gateway itself serves traffic — and it is
-// read through limactl rather than over the network, like the CA.
+// OrganizationID reads the organization the release provisioned. The
+// declaration records the assigned id on its own status, so this is read from
+// the object the platform reconciles rather than from anything a script left
+// behind -- and through limactl rather than over the network, like the CA.
 func OrganizationID() (string, error) {
 	out, err := Shell("sudo", "kubectl", "-n", platformNamespace,
-		"get", "configmap", provisionConfigMap, "-o", "jsonpath={.data.organizationId}")
+		"get", systemOrganization, "-o", "jsonpath={.status.organizationId}")
 	if err != nil {
 		return "", fmt.Errorf("read the provisioned organization from the VM: %w", err)
 	}
 	id := strings.TrimSpace(out)
 	if id == "" {
-		return "", fmt.Errorf("the VM records no provisioned organization in configmap %s/%s; the image predates credential provisioning",
-			platformNamespace, provisionConfigMap)
+		return "", fmt.Errorf("the VM has not provisioned its system organization yet; %s reports no organizationId",
+			systemOrganization)
 	}
 	return id, nil
 }
