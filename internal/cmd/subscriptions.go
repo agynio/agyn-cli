@@ -102,7 +102,7 @@ func newSubscriptionsCreateCmd() *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVar(&args.organizationID, "organization-id", "", "Organization ID (defaults to the selected organization)")
-	cmd.Flags().StringVar(&args.vendor, "vendor", "", "claude or codex")
+	cmd.Flags().StringVar(&args.vendor, "vendor", "", "anthropic or openai")
 	cmd.Flags().StringVar(&args.secret, "secret", "", "Secret ID holding the subscription token")
 	cmd.Flags().StringVar(&args.accountID, "account-id", "", "Vendor account identifier, when the vendor's API requires one")
 	_ = cmd.MarkFlagRequired("vendor")
@@ -456,21 +456,21 @@ func llmGatewayClient(cmd *cobra.Command) (gatewayv1connect.LLMGatewayClient, *R
 
 func parseVendor(raw string) (llmv1.Vendor, error) {
 	switch strings.ToLower(strings.TrimSpace(raw)) {
-	case "claude":
-		return llmv1.Vendor_VENDOR_CLAUDE, nil
-	case "codex":
-		return llmv1.Vendor_VENDOR_CODEX, nil
+	case "anthropic":
+		return llmv1.Vendor_VENDOR_ANTHROPIC, nil
+	case "openai":
+		return llmv1.Vendor_VENDOR_OPENAI, nil
 	default:
-		return llmv1.Vendor_VENDOR_UNSPECIFIED, fmt.Errorf("unknown vendor %q: expected claude or codex", raw)
+		return llmv1.Vendor_VENDOR_UNSPECIFIED, fmt.Errorf("unknown vendor %q: expected anthropic or openai", raw)
 	}
 }
 
 func vendorName(vendor llmv1.Vendor) string {
 	switch vendor {
-	case llmv1.Vendor_VENDOR_CLAUDE:
-		return "claude"
-	case llmv1.Vendor_VENDOR_CODEX:
-		return "codex"
+	case llmv1.Vendor_VENDOR_ANTHROPIC:
+		return "anthropic"
+	case llmv1.Vendor_VENDOR_OPENAI:
+		return "openai"
 	default:
 		return "unspecified"
 	}
