@@ -26,7 +26,7 @@ var upgradeScript string
 // Output is streamed rather than captured: a Helm upgrade that waits for
 // rollouts takes minutes, and silence for minutes is indistinguishable from a
 // hang.
-func UpgradePlatform(stdout, stderr io.Writer, platformVersion, appsVersion string) error {
+func UpgradePlatform(stdout, stderr io.Writer, platformVersion string) error {
 	instance, err := GetInstance()
 	if err != nil {
 		return err
@@ -43,9 +43,6 @@ func UpgradePlatform(stdout, stderr io.Writer, platformVersion, appsVersion stri
 	args := []string{"shell", InstanceName(), "--", "sudo", "bash", "-s", "--"}
 	if platformVersion != "" {
 		args = append(args, "--platform-version", platformVersion)
-	}
-	if appsVersion != "" {
-		args = append(args, "--apps-version", appsVersion)
 	}
 
 	if err := limactlStdin(strings.NewReader(upgradeScript), stdout, stderr, args...); err != nil {
