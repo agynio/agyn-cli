@@ -38,6 +38,21 @@ func limaEnv() ([]string, error) {
 	return append(os.Environ(), "LIMA_HOME="+limaHome), nil
 }
 
+// limactlStdin is limactl with something on the guest command's stdin, which is
+// how a script the CLI carries gets run without being written into the VM.
+func limactlStdin(stdin io.Reader, stdout, stderr io.Writer, args ...string) error {
+	env, err := limaEnv()
+	if err != nil {
+		return err
+	}
+	cmd := exec.Command("limactl", args...)
+	cmd.Env = env
+	cmd.Stdin = stdin
+	cmd.Stdout = stdout
+	cmd.Stderr = stderr
+	return cmd.Run()
+}
+
 func limactl(stdout, stderr io.Writer, args ...string) error {
 	env, err := limaEnv()
 	if err != nil {
