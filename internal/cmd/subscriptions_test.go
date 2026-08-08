@@ -29,9 +29,10 @@ func TestParseVendor(t *testing.T) {
 		want    llmv1.Vendor
 		wantErr bool
 	}{
-		{"claude", llmv1.Vendor_VENDOR_CLAUDE, false},
-		{"CODEX", llmv1.Vendor_VENDOR_CODEX, false},
-		{"  claude  ", llmv1.Vendor_VENDOR_CLAUDE, false},
+		{"anthropic", llmv1.Vendor_VENDOR_ANTHROPIC, false},
+		{"OPENAI", llmv1.Vendor_VENDOR_OPENAI, false},
+		{"  anthropic  ", llmv1.Vendor_VENDOR_ANTHROPIC, false},
+		{"claude", llmv1.Vendor_VENDOR_UNSPECIFIED, true},
 		{"gemini", llmv1.Vendor_VENDOR_UNSPECIFIED, true},
 		{"", llmv1.Vendor_VENDOR_UNSPECIFIED, true},
 	}
