@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	neturl "net/url"
 	"os"
 	"path/filepath"
 	"sort"
@@ -9,6 +10,9 @@ import (
 
 	"gopkg.in/yaml.v3"
 )
+
+// overlayHostnameSuffix is the TLD the platform's OpenZiti services intercept.
+const overlayHostnameSuffix = ".agyn"
 
 type Config struct {
 	// CurrentProfile is the profile commands run under when nothing overrides
@@ -321,6 +325,13 @@ func normalizeGatewayURL(value string) string {
 	return "http://" + trimmed
 }
 
-func isZitiURL(url string) bool {
-	return strings.Contains(strings.ToLower(url), ".ziti")
+// The overlay TLD is a suffix of the hostname, not a substring of the URL:
+// the platform's own domains start with the same label, so gateway.agyn.dev
+// would otherwise read as an overlay address and skip authentication.
+func isZitiURL(rawURL string) bool {
+	parsed, err := neturl.Parse(strings.TrimSpace(rawURL))
+	if err != nil {
+		return false
+	}
+	return strings.HasSuffix(strings.ToLower(parsed.Hostname()), overlayHostnameSuffix)
 }
