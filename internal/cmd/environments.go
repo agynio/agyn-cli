@@ -14,13 +14,15 @@ import (
 const environmentPageSize = 200
 
 type environmentOutput struct {
-	ID                string `json:"id" yaml:"id"`
-	Name              string `json:"name" yaml:"name"`
-	RunnerID          string `json:"runner_id,omitempty" yaml:"runner_id,omitempty"`
-	Flavor            string `json:"flavor,omitempty" yaml:"flavor,omitempty"`
-	WorkspaceImage    string `json:"workspace_image,omitempty" yaml:"workspace_image,omitempty"`
-	AgentRuntimeImage string `json:"agent_runtime_image,omitempty" yaml:"agent_runtime_image,omitempty"`
-	Availability      string `json:"availability" yaml:"availability"`
+	ID                string   `json:"id" yaml:"id"`
+	Name              string   `json:"name" yaml:"name"`
+	RunnerID          string   `json:"runner_id,omitempty" yaml:"runner_id,omitempty"`
+	Flavor            string   `json:"flavor,omitempty" yaml:"flavor,omitempty"`
+	WorkspaceImage    string   `json:"workspace_image,omitempty" yaml:"workspace_image,omitempty"`
+	AgentRuntimeImage string   `json:"agent_runtime_image,omitempty" yaml:"agent_runtime_image,omitempty"`
+	Availability      string   `json:"availability" yaml:"availability"`
+	LLMMode           string   `json:"llm_mode" yaml:"llm_mode"`
+	LLMAllowedModels  []string `json:"llm_allowed_models,omitempty" yaml:"llm_allowed_models,omitempty"`
 }
 
 type environmentArgs struct {
@@ -30,6 +32,8 @@ type environmentArgs struct {
 	workspaceImage    string
 	agentRuntimeImage string
 	availability      string
+	llmMode           string
+	allowedModels     []string
 }
 
 func newEnvironmentsCmd() *cobra.Command {
@@ -52,6 +56,7 @@ func newEnvironmentsCmd() *cobra.Command {
 	cmd.AddCommand(newEnvironmentInitScriptsCmd())
 	cmd.AddCommand(newEnvironmentVarsCmd())
 	cmd.AddCommand(newEnvironmentRolesCmd())
+	cmd.AddCommand(newEnvironmentSubscriptionsCmd())
 	return cmd
 }
 
@@ -125,6 +130,16 @@ func newEnvironmentsShowCmd() *cobra.Command {
 			fmt.Fprintf(writer, "Workspace:     %s\n", valueOrDash(out.WorkspaceImage))
 			fmt.Fprintf(writer, "Agent runtime: %s\n", valueOrDash(out.AgentRuntimeImage))
 			fmt.Fprintf(writer, "Availability:  %s\n", out.Availability)
+			fmt.Fprintf(writer, "LLM mode:      %s\n", out.LLMMode)
+			if len(out.LLMAllowedModels) > 0 {
+				fmt.Fprintf(writer, "Allowed models: %s\n", strings.Join(out.LLMAllowedModels, ", "))
+			}
+			// A native environment with nothing attached cannot start a
+			// workload at all. Saying so here is the difference between finding
+			// out now and finding out when a sandbox refuses to come up.
+			if out.LLMMode == "native" {
+				printEnvironmentSubscriptions(cmd, writer, environment)
+			}
 
 			// Printing nothing under "Volumes" reads as "declares no storage",
 			// which is a different fact from "you cannot see the storage it
@@ -165,11 +180,19 @@ func newEnvironmentsCreateCmd() *cobra.Command {
 				return err
 			}
 			request := &agentsv1.CreateEnvironmentRequest{
-				OrganizationId: organizationID,
-				Name:           positional[0],
-				RunnerId:       strings.TrimSpace(args.runner),
-				Flavor:         strings.TrimSpace(args.flavor),
-				Availability:   availability,
+				OrganizationId:   organizationID,
+				Name:             positional[0],
+				RunnerId:         strings.TrimSpace(args.runner),
+				Flavor:           strings.TrimSpace(args.flavor),
+				Availability:     availability,
+				LlmAllowedModels: args.allowedModels,
+			}
+			if raw := strings.TrimSpace(args.llmMode); raw != "" {
+				mode, err := parseLLMMode(raw)
+				if err != nil {
+					return err
+				}
+				request.LlmMode = mode
 			}
 			imageID, tag, err := splitImageReference(args.workspaceImage)
 			if err != nil {
@@ -204,6 +227,8 @@ func newEnvironmentsCreateCmd() *cobra.Command {
 	cmd.Flags().StringVar(&args.workspaceImage, "workspace-image", "", "Workspace image as IMAGE_ID:TAG")
 	cmd.Flags().StringVar(&args.agentRuntimeImage, "agent-runtime-image", "", "Agent runtime image as IMAGE_ID:TAG")
 	cmd.Flags().StringVar(&args.availability, "availability", "", "internal or private")
+	cmd.Flags().StringVar(&args.llmMode, "llm-mode", "", "platform or native (default platform)")
+	cmd.Flags().StringSliceVar(&args.allowedModels, "allowed-model", nil, "Restrict native mode to these vendor model names; repeatable")
 	_ = cmd.MarkFlagRequired("runner")
 	_ = cmd.MarkFlagRequired("workspace-image")
 	_ = cmd.MarkFlagRequired("availability")
@@ -244,6 +269,18 @@ func newEnvironmentsUpdateCmd() *cobra.Command {
 				}
 				request.Availability = &availability
 			}
+			if raw := strings.TrimSpace(args.llmMode); raw != "" {
+				mode, err := parseLLMMode(raw)
+				if err != nil {
+					return err
+				}
+				request.LlmMode = &mode
+			}
+			// Sent only when named, so an unrelated update does not silently
+			// replace the allowlist with nothing.
+			if cmd.Flags().Changed("allowed-model") {
+				request.LlmAllowedModels = args.allowedModels
+			}
 			if raw := strings.TrimSpace(args.workspaceImage); raw != "" {
 				imageID, tag, err := splitImageReference(raw)
 				if err != nil {
@@ -271,6 +308,8 @@ func newEnvironmentsUpdateCmd() *cobra.Command {
 	cmd.Flags().StringVar(&args.workspaceImage, "workspace-image", "", "Workspace image as IMAGE_ID:TAG")
 	cmd.Flags().StringVar(&args.agentRuntimeImage, "agent-runtime-image", "", "Agent runtime image as IMAGE_ID:TAG")
 	cmd.Flags().StringVar(&args.availability, "availability", "", "internal or private")
+	cmd.Flags().StringVar(&args.llmMode, "llm-mode", "", "platform or native")
+	cmd.Flags().StringSliceVar(&args.allowedModels, "allowed-model", nil, "Replace the native-mode model allowlist; repeatable")
 	return cmd
 }
 
@@ -314,7 +353,9 @@ func environmentOutputFrom(environment *agentsv1.Environment) environmentOutput 
 		RunnerID:     environment.GetRunnerId(),
 		Flavor:       environment.GetFlavor(),
 		Availability: availabilityLabel(environment.GetAvailability()),
+		LLMMode:      llmModeLabel(environment.GetLlmMode()),
 	}
+	out.LLMAllowedModels = append([]string(nil), environment.GetLlmAllowedModels()...)
 	if id := environment.GetWorkspaceImageId(); id != "" {
 		out.WorkspaceImage = id + ":" + environment.GetWorkspaceImageTag()
 	}
@@ -322,6 +363,27 @@ func environmentOutputFrom(environment *agentsv1.Environment) environmentOutput 
 		out.AgentRuntimeImage = id + ":" + environment.GetAgentRuntimeImageTag()
 	}
 	return out
+}
+
+func llmModeLabel(mode agentsv1.LLMMode) string {
+	if mode == agentsv1.LLMMode_LLM_MODE_NATIVE {
+		return "native"
+	}
+	// Unspecified reads as platform: it is the default the column carries and
+	// the mode every environment predating native mode is in.
+	return "platform"
+}
+
+func parseLLMMode(raw string) (agentsv1.LLMMode, error) {
+	switch strings.ToLower(strings.TrimSpace(raw)) {
+	case "platform":
+		return agentsv1.LLMMode_LLM_MODE_PLATFORM, nil
+	case "native":
+		return agentsv1.LLMMode_LLM_MODE_NATIVE, nil
+	default:
+		return agentsv1.LLMMode_LLM_MODE_UNSPECIFIED,
+			fmt.Errorf("llm-mode must be platform or native, got %q", raw)
+	}
 }
 
 func availabilityLabel(availability agentsv1.EnvironmentAvailability) string {
