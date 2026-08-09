@@ -506,7 +506,7 @@ func newLocalUpgradeCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "upgrade",
 		Short: "Upgrade the platform in the running VM to the latest charts",
-		Long: "Upgrades the agyn-platform and agyn-apps Helm releases inside the VM to\n" +
+		Long: "Upgrades the agyn-platform Helm release inside the VM to\n" +
 			"the newest published charts, keeping the VM and everything in it.\n\n" +
 			"This does not replace the disk image, so k3s, Istio, cert-manager and\n" +
 			"OpenZiti stay as they were baked. To move those — or to get a clean\n" +
@@ -518,7 +518,7 @@ func newLocalUpgradeCmd() *cobra.Command {
 			// No token to put back afterwards: the Gateway reads it from a
 			// Secret the chart reuses rather than from the Deployment spec it
 			// re-renders, so an upgrade leaves this install's token alone.
-			return local.UpgradePlatform(cmd.OutOrStdout(), cmd.ErrOrStderr(), "", "")
+			return local.UpgradePlatform(cmd.OutOrStdout(), cmd.ErrOrStderr(), "")
 		},
 	}
 }
