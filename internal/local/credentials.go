@@ -29,7 +29,7 @@ const (
 	ingressPortScript = "/opt/agyn/set-ingress-port.sh"
 
 	// platformNamespace holds the platform workloads inside the VM.
-	platformNamespace = "platform"
+	platformNamespace = "agyn-platform"
 
 	// systemOrganization is the declaration the release ships for the
 	// organization platform-provisioned resources live in. Its status carries
