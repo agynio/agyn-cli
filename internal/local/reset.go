@@ -38,14 +38,14 @@ if not keep:
     sys.exit(3)
 print(yaml.dump_all(keep))
 PYEOF
-helm get manifest agyn-platform -n platform | python3 /tmp/agyn-reset-filter.py >/tmp/agyn-reset.yaml || {
+helm get manifest agyn-platform -n agyn-platform | python3 /tmp/agyn-reset-filter.py >/tmp/agyn-reset.yaml || {
   status=$?
   if [ "${status}" -eq 3 ]; then
     echo "no matching workloads in the agyn-platform release" >&2
   fi
   exit "${status}"
 }
-kubectl replace -n platform -f /tmp/agyn-reset.yaml
+kubectl replace -n agyn-platform -f /tmp/agyn-reset.yaml
 rm -f /tmp/agyn-reset.yaml /tmp/agyn-reset-filter.py
 `
 
@@ -67,15 +67,15 @@ func WaitWorkloadsReady(names []string) error {
 set -eu
 export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
 for t in %s; do
-  kubectl -n platform rollout status "$t" --timeout=300s
+  kubectl -n agyn-platform rollout status "$t" --timeout=300s
 done
 `, target)
 	if len(names) == 0 {
 		script = `
 set -eu
 export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
-for d in $(kubectl -n platform get deploy -o name); do
-  kubectl -n platform rollout status "$d" --timeout=300s
+for d in $(kubectl -n agyn-platform get deploy -o name); do
+  kubectl -n agyn-platform rollout status "$d" --timeout=300s
 done
 `
 	}
