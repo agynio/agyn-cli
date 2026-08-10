@@ -130,3 +130,28 @@ func commandForUse(use string) *cobra.Command {
 		panic("unsupported command " + use)
 	}
 }
+
+// An environment is the only principal that reaches a sandbox, so the CLI has
+// to be able to name one.
+func TestParsePrincipalTypeAcceptsEnvironment(t *testing.T) {
+	principalType, err := parsePrincipalType("environment")
+	if err != nil {
+		t.Fatalf("parsePrincipalType: %v", err)
+	}
+	if principalType != networksv1.PrivateResourceAccessPrincipalType_PRIVATE_RESOURCE_ACCESS_PRINCIPAL_TYPE_ENVIRONMENT {
+		t.Fatalf("got %v", principalType)
+	}
+	if got := principalTypeString(principalType); got != "environment" {
+		t.Fatalf("principalTypeString: got %q", got)
+	}
+}
+
+// A grant made by a newer server is still a real grant. Listing one must not
+// take the process down, which is what the previous panic did.
+func TestPrincipalTypeStringSurvivesAnUnknownPrincipal(t *testing.T) {
+	unknown := networksv1.PrivateResourceAccessPrincipalType(999)
+	got := principalTypeString(unknown)
+	if got == "" {
+		t.Fatal("expected a name for an unknown principal type")
+	}
+}
