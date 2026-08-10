@@ -16,6 +16,7 @@ import (
 	"github.com/agynio/agyn-cli/internal/config"
 	"github.com/agynio/agyn-cli/internal/local"
 	"github.com/agynio/agyn-cli/internal/output"
+	"github.com/agynio/agyn-cli/internal/terminal"
 	"github.com/spf13/cobra"
 )
 
@@ -52,7 +53,7 @@ func newLocalCmd() *cobra.Command {
 		},
 	}
 
-	cmd.PersistentFlags().BoolVar(&localDebug, "debug", false, "Show raw VM manager output")
+	cmd.PersistentFlags().BoolVar(&localDebug, "debug", false, "Stream the raw output of limactl, helm and kubectl instead of the step display")
 	cmd.PersistentFlags().StringVar(&localInstance, "instance", "",
 		"VM to act on (default: the selected one, then \""+config.DefaultInstanceName+"\")")
 
@@ -77,15 +78,17 @@ func newLocalCmd() *cobra.Command {
 }
 
 type localStartFlags struct {
-	version      string
-	port         int
-	cpus         int
-	memory       string
-	installCA    bool
-	noCA         bool
-	downloadOnly bool
-	yes          bool
-	profiles     localProfileFlags
+	version       string
+	port          int
+	cpus          int
+	memory        string
+	installCA     bool
+	noCA          bool
+	installDeps   bool
+	noInstallDeps bool
+	downloadOnly  bool
+	yes           bool
+	profiles      localProfileFlags
 }
 
 func newLocalStartCmd() *cobra.Command {
@@ -108,6 +111,8 @@ func newLocalStartCmd() *cobra.Command {
 	cmd.Flags().StringVar(&flags.memory, "memory", "", "VM memory (default: from config, then 8GiB)")
 	cmd.Flags().BoolVar(&flags.installCA, "install-ca", false, "Install the local CA into the system trust store (needs sudo)")
 	cmd.Flags().BoolVar(&flags.noCA, "no-ca", false, "Skip certificate handling entirely")
+	cmd.Flags().BoolVar(&flags.installDeps, "install-deps", false, "Install missing host tools without asking")
+	cmd.Flags().BoolVar(&flags.noInstallDeps, "no-install-deps", false, "Never install host tools; print what is missing and stop")
 	cmd.Flags().BoolVar(&flags.downloadOnly, "download-only", false, "Download and verify the image without starting the VM")
 	cmd.Flags().BoolVarP(&flags.yes, "yes", "y", false, "Non-interactive: accept defaults, never prompt")
 	addLocalProfileFlags(cmd, &flags.profiles)
@@ -119,6 +124,7 @@ func runLocalStart(cmd *cobra.Command, flags localStartFlags) error {
 	stdout := cmd.OutOrStdout()
 	stderr := cmd.ErrOrStderr()
 	interactive := !flags.yes && isTerminal()
+	steps := newSteps(cmd)
 
 	cfg, err := config.Load()
 	if err != nil {
@@ -128,12 +134,8 @@ func runLocalStart(cmd *cobra.Command, flags localStartFlags) error {
 	_, configured := cfg.Local.Instances[instanceName]
 	firstRun := !configured
 
-	deps := local.CheckDependencies()
-	if missing := local.MissingRequired(deps); len(missing) > 0 {
-		for _, dep := range missing {
-			fmt.Fprintf(stderr, "missing dependency: %s (install with: %s)\n", dep.Name, dep.Fix)
-		}
-		return fmt.Errorf("install the missing dependencies and retry")
+	if err := runPreflight(cmd, steps, flags, interactive, firstRun); err != nil {
+		return err
 	}
 
 	// Resolve settings: flags > config > defaults, with a first-run wizard.
@@ -160,24 +162,21 @@ func runLocalStart(cmd *cobra.Command, flags localStartFlags) error {
 	}
 
 	if instance.Exists {
-		if instance.Status == "Running" {
-			fmt.Fprintln(stdout, "VM is already running.")
-			finishLocalStart(cmd, flags, settings.Port)
-			return nil
+		if instance.Status != "Running" {
+			step := steps.Start("Starting the VM")
+			limaIO, err := openRunLog(cmd)
+			if err != nil {
+				return step.Fail(err)
+			}
+			defer limaIO.close()
+			if err := local.Start(limaIO.stdout, limaIO.stderr, vmOptions(settings)); err != nil {
+				step.Fail(err)
+				limaIO.reportFailure(cmd)
+				return err
+			}
+			step.Done("")
 		}
-		fmt.Fprintln(stdout, "Starting VM (~30s)...")
-		limaIO, err := openLimaIO(cmd)
-		if err != nil {
-			return err
-		}
-		defer limaIO.close()
-		if err := local.Start(limaIO.stdout, limaIO.stderr, vmOptions(settings)); err != nil {
-			limaIO.reportFailure(cmd)
-			return err
-		}
-		fmt.Fprintln(stdout, "VM started.")
-		finishLocalStart(cmd, flags, settings.Port)
-		return nil
+		return finishLocalStart(cmd, steps, flags, settings.Port)
 	}
 
 	if interactive && firstRun && flags.port == 0 {
@@ -200,8 +199,7 @@ func runLocalStart(cmd *cobra.Command, flags localStartFlags) error {
 		return err
 	}
 
-	fmt.Fprintf(stdout, "Using image version %s (%s)\n", version, arch)
-	imageDir, err := local.EnsureImage(version, arch, stderr)
+	imageDir, err := ensureImage(steps, version, arch)
 	if err != nil {
 		return err
 	}
@@ -217,81 +215,219 @@ func runLocalStart(cmd *cobra.Command, flags localStartFlags) error {
 		return nil
 	}
 
-	fmt.Fprintln(stdout, "Creating and starting VM (first boot takes ~1m)...")
-	limaIO, err := openLimaIO(cmd)
+	step := steps.Start("Creating the VM")
+	step.Detail("first boot takes about a minute")
+	limaIO, err := openRunLog(cmd)
 	if err != nil {
-		return err
+		return step.Fail(err)
 	}
 	defer limaIO.close()
 	if err := local.CreateAndStart(imageDir, vmOptions(settings), limaIO.stdout, limaIO.stderr); err != nil {
+		step.Fail(err)
 		limaIO.reportFailure(cmd)
 		return err
 	}
-	fmt.Fprintln(stdout, "VM started.")
+	step.Done("")
 
 	if !flags.noCA {
-		if err := handleCAAfterStart(cmd, flags, interactive); err != nil {
-			fmt.Fprintf(stderr, "certificate setup incomplete: %v\n", err)
-			fmt.Fprintln(stderr, "you can finish it later with: agyn local ca install")
+		if err := handleCAAfterStart(cmd, steps, flags, interactive); err != nil {
+			return err
 		}
 	}
 
-	finishLocalStart(cmd, flags, settings.Port)
-	return nil
+	return finishLocalStart(cmd, steps, flags, settings.Port)
+}
+
+// ensureImage downloads and decompresses the image unless this machine already
+// has it, reporting each phase as its own step: one is minutes of network with
+// a byte count to show, the other minutes of CPU with nothing to show.
+func ensureImage(steps *terminal.Steps, version, arch string) (string, error) {
+	dir, present, err := local.HaveImage(version, arch)
+	if err != nil {
+		return "", err
+	}
+	if present {
+		steps.Report("Image "+version, arch+", already downloaded")
+		return dir, nil
+	}
+
+	step := steps.Start("Downloading image " + version)
+	step.Detail(arch)
+	if err := local.FetchImage(version, arch, step.Detail); err != nil {
+		return "", step.Fail(err)
+	}
+	step.Done(arch)
+
+	step = steps.Start("Decompressing the image")
+	step.Detail("about 4.6 GB")
+	dir, err = local.DecompressImage(version, arch)
+	if err != nil {
+		return "", step.Fail(err)
+	}
+	step.Done("")
+	return dir, nil
 }
 
 // finishLocalStart waits for the platform, provisions the credentials that make
-// the VM usable from the host, and prints the endpoint list.
-//
-// Provisioning failures are reported rather than returned: the VM is up and the
-// endpoints are worth printing, and `agyn local credentials` finishes the job.
-func finishLocalStart(cmd *cobra.Command, flags localStartFlags, port int) {
-	ready := waitForPlatform(cmd, port)
-	if !flags.profiles.noProfile {
-		if !ready {
-			fmt.Fprintln(cmd.ErrOrStderr(), "skipping credential setup while the platform is still starting")
-			fmt.Fprintln(cmd.ErrOrStderr(), "run it once the platform is up with: agyn local credentials")
-		} else if err := provisionLocalProfile(cmd, flags.profiles, port, !flags.noCA); err != nil {
-			fmt.Fprintf(cmd.ErrOrStderr(), "credential setup incomplete: %v\n", err)
-			fmt.Fprintln(cmd.ErrOrStderr(), "you can finish it later with: agyn local credentials")
-		}
-	}
-	printLocalEndpoints(cmd.OutOrStdout(), port)
-}
-
-// waitForPlatform blocks until the in-VM ingress actually serves the platform:
-// the guest reports "started" well before Istio and the apps are ready.
-func waitForPlatform(cmd *cobra.Command, port int) bool {
-	fmt.Fprint(cmd.OutOrStdout(), "Waiting for the platform to become ready...")
-	if local.WaitForPlatform(port, 3*time.Minute) {
-		fmt.Fprintln(cmd.OutOrStdout(), " ready.")
-		return true
-	}
-	fmt.Fprintln(cmd.OutOrStdout(), " not ready yet; check `agyn local status` in a minute.")
-	return false
-}
-
-func handleCAAfterStart(cmd *cobra.Command, flags localStartFlags, interactive bool) error {
-	if _, err := local.EnsureCA(); err != nil {
+// the VM usable from the host, and closes with the one thing to do next.
+func finishLocalStart(cmd *cobra.Command, steps *terminal.Steps, flags localStartFlags, port int) error {
+	step := steps.Start("Waiting for the platform")
+	readiness, err := local.WaitForReady(port, platformReadyTimeout, step.Detail)
+	if err != nil {
+		step.Fail(err)
+		fmt.Fprintf(cmd.ErrOrStderr(),
+			"\nThe VM is running. Watch it with `agyn local status`, and finish setup with:\n  agyn local credentials\n")
 		return err
 	}
+	step.Done("")
+
+	if !flags.profiles.noProfile {
+		if err := provisionLocalProfile(cmd, steps, flags.profiles, port, !flags.noCA, readiness.Organization); err != nil {
+			return err
+		}
+	}
+
+	steps.CallToAction("Open the console", local.ConsoleURL(port))
+	return nil
+}
+
+// platformReadyTimeout bounds the wait. A first boot has to start every
+// workload in the cluster and then provision the platform's own resources; five
+// minutes is past the point where more waiting is the wrong answer.
+const platformReadyTimeout = 5 * time.Minute
+
+func handleCAAfterStart(cmd *cobra.Command, steps *terminal.Steps, flags localStartFlags, interactive bool) error {
+	step := steps.Start("Reading the VM's certificate authority")
+	if _, err := local.EnsureCA(); err != nil {
+		return step.Fail(err)
+	}
+	step.Done("")
 
 	install := flags.installCA
 	if !install && interactive {
+		// Asked outside a step: sudo prompts for a password on this terminal,
+		// and a spinner redrawing over the prompt makes it unreadable.
 		install = promptYesNo(cmd, "Install the Agyn local CA into your system trust store? (asks for sudo)", true)
 	}
 	if !install {
-		if !flags.installCA {
-			fmt.Fprintln(cmd.OutOrStdout(), "Skipping CA install; browsers will warn about the certificate.")
-			fmt.Fprintln(cmd.OutOrStdout(), "Install later with: agyn local ca install")
-		}
+		steps.Skipped("Trusting the CA", "browsers will warn; install later with: agyn local ca install")
 		return nil
 	}
 	if err := local.InstallCA(); err != nil {
+		return steps.Failed("Trusting the CA",
+			fmt.Errorf("%w — retry with `agyn local ca install`, or start with --no-ca", err))
+	}
+	steps.Report("Trusting the CA", "installed in the system trust store")
+	return nil
+}
+
+// runPreflight is the dependency and environment check `agyn local doctor`
+// reports, run before every start. A host tool that is missing or too old is
+// the most common reason a first run fails, and left to limactl the failure
+// arrives as a tool error rather than a sentence naming what to install.
+func runPreflight(cmd *cobra.Command, steps *terminal.Steps, flags localStartFlags, interactive, firstRun bool) error {
+	step := steps.Start("Checking prerequisites")
+	checks := local.Preflight(local.PreflightOptions{Space: firstRun})
+	failures := local.BlockingFailures(checks)
+	if len(failures) == 0 {
+		step.Done(preflightSummary(checks))
+		return nil
+	}
+	step.Fail(fmt.Errorf("%s", failureSummary(failures)))
+
+	tools := local.InstallableTools(checks)
+	if len(tools) == 0 {
+		return reportUnfixable(cmd, failures)
+	}
+	command, installable := local.InstallCommand(tools)
+	if !installable {
+		return reportUnfixable(cmd, failures)
+	}
+
+	install := flags.installDeps
+	switch {
+	case flags.noInstallDeps:
+		install = false
+	case install:
+	case interactive:
+		fmt.Fprintf(cmd.OutOrStdout(), "\n  Missing: %s\n  Install with: %s\n\n", toolList(tools), command)
+		install = promptYesNo(cmd, "Run it now?", true)
+	}
+	if !install {
+		return reportUnfixable(cmd, failures)
+	}
+
+	// Run with the terminal attached rather than under a step: brew reports its
+	// own progress, and an install that needs sudo has to be able to ask.
+	steps.Note("$ " + command)
+	if err := local.InstallTools(tools, cmd.InOrStdin(), cmd.OutOrStdout(), cmd.ErrOrStderr()); err != nil {
 		return err
 	}
-	fmt.Fprintln(cmd.OutOrStdout(), "CA installed and trusted.")
+
+	step = steps.Start("Re-checking prerequisites")
+	checks = local.Preflight(local.PreflightOptions{Space: firstRun})
+	if failures := local.BlockingFailures(checks); len(failures) > 0 {
+		step.Fail(fmt.Errorf("%s", failureSummary(failures)))
+		return reportUnfixable(cmd, failures)
+	}
+	step.Done(preflightSummary(checks))
 	return nil
+}
+
+// reportUnfixable prints what is wrong and what would fix it, and stops. There
+// is nothing further to try: every remaining failure needs a decision, a
+// password, or a disk.
+func reportUnfixable(cmd *cobra.Command, failures []local.Check) error {
+	stderr := cmd.ErrOrStderr()
+	fmt.Fprintln(stderr)
+	for _, failure := range failures {
+		fmt.Fprintf(stderr, "  %s: %s\n", failure.Name, failure.Detail)
+		if failure.Fix != "" {
+			fmt.Fprintf(stderr, "    fix: %s\n", failure.Fix)
+		}
+	}
+	fmt.Fprintln(stderr)
+	return fmt.Errorf("prerequisites are not met")
+}
+
+// preflightSummary names the host tools and their versions. The environment
+// checks are deliberately not in it: "virtualization available" says nothing
+// once it passed, and the free-space figure would push the line past the width
+// of a terminal. `agyn local doctor` is where all of them are listed.
+func preflightSummary(checks []local.Check) string {
+	parts := make([]string, 0, len(checks))
+	for _, check := range checks {
+		if check.Tool() && check.State == local.CheckOK {
+			parts = append(parts, check.Name+" "+check.Detail)
+		}
+	}
+	return strings.Join(parts, ", ")
+}
+
+func failureSummary(failures []local.Check) string {
+	parts := make([]string, 0, len(failures))
+	for _, failure := range failures {
+		parts = append(parts, failure.Name+" "+failure.Detail)
+	}
+	return strings.Join(parts, "; ")
+}
+
+func toolList(tools []local.Tool) string {
+	names := make([]string, 0, len(tools))
+	for _, tool := range tools {
+		names = append(names, tool.Label)
+	}
+	return strings.Join(names, ", ")
+}
+
+// newSteps renders the progress of one command. --debug streams the tool output
+// the steps exist to hide, so it turns the animation off rather than redrawing
+// over it.
+func newSteps(cmd *cobra.Command) *terminal.Steps {
+	if localDebug {
+		return terminal.NewPlainSteps(cmd.OutOrStdout())
+	}
+	return terminal.NewSteps(cmd.OutOrStdout())
 }
 
 func newLocalStopCmd() *cobra.Command {
@@ -310,7 +446,7 @@ func newLocalStopCmd() *cobra.Command {
 				fmt.Fprintln(cmd.OutOrStdout(), "VM is not running.")
 				return nil
 			}
-			limaIO, err := openLimaIO(cmd)
+			limaIO, err := openRunLog(cmd)
 			if err != nil {
 				return err
 			}
@@ -334,6 +470,7 @@ func newLocalRestartCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
+			steps := newSteps(cmd)
 			settings := resolveInstancePorts(cfg, local.InstanceName(), cfg.InstanceSettings(local.InstanceName()))
 			instance, err := local.GetInstance()
 			if err != nil {
@@ -342,31 +479,33 @@ func newLocalRestartCmd() *cobra.Command {
 			if !instance.Exists {
 				return fmt.Errorf("no VM exists; run `agyn local start` first")
 			}
-			limaIO, err := openLimaIO(cmd)
+			limaIO, err := openRunLog(cmd)
 			if err != nil {
 				return err
 			}
 			defer limaIO.close()
 			if instance.Status == "Running" {
-				fmt.Fprintln(cmd.OutOrStdout(), "Stopping VM...")
+				step := steps.Start("Stopping the VM")
 				if err := local.Stop(limaIO.stdout, limaIO.stderr); err != nil {
+					step.Fail(err)
 					limaIO.reportFailure(cmd)
 					return err
 				}
+				step.Done("")
 			}
-			fmt.Fprintln(cmd.OutOrStdout(), "Starting VM (~30s)...")
+			step := steps.Start("Starting the VM")
 			if err := local.Start(limaIO.stdout, limaIO.stderr, vmOptions(settings)); err != nil {
+				step.Fail(err)
 				limaIO.reportFailure(cmd)
 				return err
 			}
-			fmt.Fprintln(cmd.OutOrStdout(), "VM started.")
+			step.Done("")
 			// The same finishing work as a start, because a restart is how an
 			// edited port takes effect: the forward is only half of it, and
 			// without repointing the in-VM URLs and the profile the new port
 			// would answer while sign-in bounced to the old one. Idempotent
 			// when nothing changed.
-			finishLocalStart(cmd, localStartFlags{}, settings.Port)
-			return nil
+			return finishLocalStart(cmd, steps, localStartFlags{}, settings.Port)
 		},
 	}
 }
@@ -468,7 +607,7 @@ func newLocalDeleteCmd() *cobra.Command {
 			}
 
 			if instance.Exists {
-				limaIO, err := openLimaIO(cmd)
+				limaIO, err := openRunLog(cmd)
 				if err != nil {
 					return err
 				}
@@ -512,13 +651,24 @@ func newLocalUpgradeCmd() *cobra.Command {
 			"OpenZiti stay as they were baked. To move those — or to get a clean\n" +
 			"machine — recreate the VM with 'agyn local delete' and 'agyn local start'.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// Streamed to the terminal, not the lima log: an upgrade that waits
-			// on rollouts takes minutes, and the chart versions it reports are
-			// the whole answer the user asked for.
+			// Helm's and kubectl's own output goes to the log; what reaches the
+			// terminal is which releases moved and where to, which is the whole
+			// answer the user asked for.
 			// No token to put back afterwards: the Gateway reads it from a
 			// Secret the chart reuses rather than from the Deployment spec it
 			// re-renders, so an upgrade leaves this install's token alone.
-			return local.UpgradePlatform(cmd.OutOrStdout(), cmd.ErrOrStderr(), "")
+			runLog, err := openRunLog(cmd)
+			if err != nil {
+				return err
+			}
+			defer runLog.close()
+
+			steps := newSteps(cmd)
+			if err := local.UpgradePlatform(steps, runLog.stdout, ""); err != nil {
+				runLog.reportFailure(cmd)
+				return err
+			}
+			return nil
 		},
 	}
 }
@@ -585,45 +735,96 @@ func loadImages(cmd *cobra.Command, images []string) error {
 }
 
 func newLocalDoctorCmd() *cobra.Command {
-	return &cobra.Command{
+	var fix bool
+
+	cmd := &cobra.Command{
 		Use:   "doctor",
-		Short: "Check dependencies and environment for the local VM",
+		Short: "Check host tools and environment for the local VM",
+		Long: "Runs the same preflight `agyn local start` runs: the host tools and their\n" +
+			"versions, room on disk, the ports, and whether this machine can run a VM at\n" +
+			"all. --fix installs the tools that are missing.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			runContext, err := RunContextFrom(cmd)
 			if err != nil {
 				return err
 			}
 
-			deps := local.CheckDependencies()
+			checks := local.Preflight(doctorOptions())
 			if runContext.OutputFormat != output.FormatTable {
-				return output.Print(runContext.OutputFormat, deps)
+				return output.Print(runContext.OutputFormat, checks)
 			}
 
-			rows := make([][]string, 0, len(deps))
-			ok := true
-			for _, dep := range deps {
-				state := "ok"
-				detail := dep.Version
-				if !dep.Found {
-					state = "missing"
-					detail = "install with: " + dep.Fix
-					ok = false
-				}
-				rows = append(rows, []string{dep.Name, state, detail})
-			}
-			if err := (output.Table{Headers: []string{"DEPENDENCY", "STATUS", "DETAIL"}, Rows: rows}).Render(cmd.OutOrStdout()); err != nil {
+			if err := printChecks(cmd.OutOrStdout(), checks); err != nil {
 				return err
 			}
-			if !ok {
-				return fmt.Errorf("some dependencies are missing")
+			failures := local.BlockingFailures(checks)
+			if len(failures) == 0 {
+				return nil
+			}
+
+			tools := local.InstallableTools(checks)
+			command, installable := local.InstallCommand(tools)
+			if !fix || !installable {
+				if installable {
+					fmt.Fprintf(cmd.OutOrStdout(), "\nInstall the missing tools with `agyn local doctor --fix`, or run:\n  %s\n", command)
+				}
+				return fmt.Errorf("%d check(s) failed", len(failures))
+			}
+
+			fmt.Fprintf(cmd.OutOrStdout(), "\n$ %s\n", command)
+			if err := local.InstallTools(tools, cmd.InOrStdin(), cmd.OutOrStdout(), cmd.ErrOrStderr()); err != nil {
+				return err
+			}
+			fmt.Fprintln(cmd.OutOrStdout())
+			checks = local.Preflight(doctorOptions())
+			if err := printChecks(cmd.OutOrStdout(), checks); err != nil {
+				return err
+			}
+			if remaining := local.BlockingFailures(checks); len(remaining) > 0 {
+				return fmt.Errorf("%d check(s) still failing", len(remaining))
 			}
 			return nil
 		},
 	}
+
+	cmd.Flags().BoolVar(&fix, "fix", false, "Install the host tools that are missing")
+
+	return cmd
 }
 
-// limaIO routes limactl output: to the terminal with --debug, otherwise to
-// ~/.agyn/local/lima.log with an automatic tail on failure.
+// doctorOptions checks everything a start would, minus what would report a
+// false failure: a running VM holds its own ports, and finding them taken by
+// itself is not a problem to report.
+func doctorOptions() local.PreflightOptions {
+	opts := local.PreflightOptions{Space: true}
+	cfg, err := config.Load()
+	if err != nil {
+		return opts
+	}
+	settings := resolveInstancePorts(cfg, local.InstanceName(), cfg.InstanceSettings(local.InstanceName()))
+	// GetInstance needs limactl, which is one of the things being checked; an
+	// error here means the tool check is about to report the real problem.
+	if instance, err := local.GetInstance(); err == nil && !instance.Exists {
+		opts.Ports = []int{settings.Port, settings.APIPort}
+	}
+	return opts
+}
+
+func printChecks(out io.Writer, checks []local.Check) error {
+	rows := make([][]string, 0, len(checks))
+	for _, check := range checks {
+		detail := check.Detail
+		if check.Fix != "" {
+			detail += " — fix: " + check.Fix
+		}
+		rows = append(rows, []string{check.Name, string(check.State), detail})
+	}
+	return output.Table{Headers: []string{"CHECK", "STATUS", "DETAIL"}, Rows: rows}.Render(out)
+}
+
+// limaIO routes the output of the tools a command drives — limactl, and the
+// helm and kubectl it runs inside the VM. To the terminal with --debug,
+// otherwise to ~/.agyn/local/last-run.log with an automatic tail on failure.
 type limaIO struct {
 	stdout io.Writer
 	stderr io.Writer
@@ -631,7 +832,7 @@ type limaIO struct {
 	path   string
 }
 
-func openLimaIO(cmd *cobra.Command) (*limaIO, error) {
+func openRunLog(cmd *cobra.Command) (*limaIO, error) {
 	if localDebug {
 		return &limaIO{stdout: cmd.OutOrStdout(), stderr: cmd.ErrOrStderr()}, nil
 	}
@@ -643,10 +844,10 @@ func openLimaIO(cmd *cobra.Command) (*limaIO, error) {
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return nil, fmt.Errorf("create %s: %w", dir, err)
 	}
-	path := filepath.Join(dir, "lima.log")
+	path := filepath.Join(dir, "last-run.log")
 	file, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o644)
 	if err != nil {
-		return nil, fmt.Errorf("open lima log: %w", err)
+		return nil, fmt.Errorf("open run log: %w", err)
 	}
 	return &limaIO{stdout: file, stderr: file, file: file, path: path}, nil
 }
@@ -672,7 +873,7 @@ func (l *limaIO) reportFailure(cmd *cobra.Command) {
 	if len(lines) > 15 {
 		lines = lines[len(lines)-15:]
 	}
-	fmt.Fprintf(cmd.ErrOrStderr(), "\nVM manager output (last lines; full log: %s):\n%s\n",
+	fmt.Fprintf(cmd.ErrOrStderr(), "\nTool output (last lines; full log: %s):\n%s\n",
 		l.path, strings.Join(lines, "\n"))
 	reportBootLogs(cmd)
 }
@@ -682,7 +883,7 @@ func (l *limaIO) reportFailure(cmd *cobra.Command) {
 // A VM that dies early reports only "exiting, status={Running:false …
 // Errors:[]}" and points at ha.stderr.log for the reason. That file lives in
 // the instance directory, which the failure path deletes, so local.CreateAndStart
-// copies these up beside lima.log first -- read them from there.
+// copies these up beside the run log first -- read them from there.
 func reportBootLogs(cmd *cobra.Command) {
 	dir, err := local.Dir()
 	if err != nil {
@@ -704,13 +905,6 @@ func reportBootLogs(cmd *cobra.Command) {
 		}
 		fmt.Fprintf(cmd.ErrOrStderr(), "\n%s (last lines; full log: %s):\n%s\n",
 			name, path, strings.Join(lines, "\n"))
-	}
-}
-
-func printLocalEndpoints(w interface{ Write([]byte) (int, error) }, port int) {
-	fmt.Fprintln(w, "\nPlatform endpoints:")
-	for _, endpoint := range local.Endpoints(port) {
-		fmt.Fprintf(w, "  %-8s %s\n", endpoint.Name+":", endpoint.URL)
 	}
 }
 
@@ -782,12 +976,14 @@ func checkPortAvailable(port int) error {
 	return nil
 }
 
+// isTerminal reports whether there is a human at stdin to prompt.
+//
+// A character-device check is not that check: /dev/null is a character device,
+// so a command run from cron or a CI job with stdin redirected read as
+// interactive, prompted, took EOF for the default answer and proceeded — which
+// is exactly the "no prompts without a TTY" rule it was there to enforce.
 func isTerminal() bool {
-	info, err := os.Stdin.Stat()
-	if err != nil {
-		return false
-	}
-	return info.Mode()&os.ModeCharDevice != 0
+	return terminal.IsTerminal(os.Stdin)
 }
 
 func promptYesNo(cmd *cobra.Command, question string, defaultYes bool) bool {

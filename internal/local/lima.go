@@ -121,7 +121,7 @@ func CreateAndStart(imageDir string, opts VMOptions, stdout, stderr io.Writer) e
 var BootLogNames = []string{"ha.stderr.log", "serial.log"}
 
 // preserveBootLogs copies the instance's boot logs up into the local directory,
-// beside lima.log, so they outlive the instance. Best effort throughout: this
+// beside the run log, so they outlive the instance. Best effort throughout: this
 // runs on a path that has already failed and must not fail again.
 func preserveBootLogs() {
 	limaHome, err := LimaHome()
