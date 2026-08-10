@@ -179,9 +179,10 @@ func runLocalStart(cmd *cobra.Command, flags localStartFlags) error {
 		return finishLocalStart(cmd, steps, flags, settings.Port)
 	}
 
-	if interactive && firstRun && flags.port == 0 {
-		settings.Port = promptPort(cmd, settings.Port)
-	}
+	// Asked only when the port this VM would take is not free. A first run was
+	// asked unconditionally, which put a question with one sensible answer in
+	// front of every install -- and in front of a second VM, whose port was
+	// already chosen for being free.
 	if err := checkPortAvailable(settings.Port); err != nil {
 		if !interactive {
 			return err
@@ -303,22 +304,94 @@ func handleCAAfterStart(cmd *cobra.Command, steps *terminal.Steps, flags localSt
 	}
 	step.Done("")
 
-	install := flags.installCA
-	if !install && interactive {
+	choice := caInstall
+	if !flags.installCA && interactive {
 		// Asked outside a step: sudo prompts for a password on this terminal,
 		// and a spinner redrawing over the prompt makes it unreadable.
-		install = promptYesNo(cmd, "Install the Agyn local CA into your system trust store? (asks for sudo)", true)
+		choice = promptCAChoice(cmd)
 	}
-	if !install {
+
+	switch choice {
+	case caExport:
+		path, err := exportCA()
+		if err != nil {
+			return steps.Failed("Exporting the CA", err)
+		}
+		steps.Report("Exporting the CA", path)
+		steps.Note("trust it yourself, or later with: agyn local ca install")
+		return nil
+	case caSkip:
 		steps.Skipped("Trusting the CA", "browsers will warn; install later with: agyn local ca install")
 		return nil
 	}
+
 	if err := local.InstallCA(); err != nil {
 		return steps.Failed("Trusting the CA",
 			fmt.Errorf("%w — retry with `agyn local ca install`, or start with --no-ca", err))
 	}
 	steps.Report("Trusting the CA", "installed in the system trust store")
 	return nil
+}
+
+// What to do with the CA the VM signs its certificates with.
+type caChoice int
+
+const (
+	caInstall caChoice = iota
+	caExport
+	caSkip
+)
+
+// caChoiceItems is the picker's rows, in the order the constants above index
+// them — the picker returns a position, so the two are one definition split in
+// half, and a row inserted without its constant would install a CA on a machine
+// whose owner chose to skip.
+func caChoiceItems() []terminal.PickItem {
+	items := make([]terminal.PickItem, 3)
+	items[caInstall] = terminal.PickItem{
+		Label: "Install it in the system trust store", Detail: "asks for sudo; browsers stop warning", Current: true}
+	items[caExport] = terminal.PickItem{
+		Label: "Export it to a file", Detail: "trust it yourself, wherever you need it"}
+	items[caSkip] = terminal.PickItem{
+		Label: "Skip", Detail: "browsers will warn on every platform URL"}
+	return items
+}
+
+// promptCAChoice offers the three answers there are, rather than a yes/no whose
+// no is a dead end. Someone who will not hand sudo to a CLI still needs the
+// certificate — declining used to leave them with a browser warning and no
+// file, which is the case the export exists for.
+func promptCAChoice(cmd *cobra.Command) caChoice {
+	choice, err := terminal.Pick(os.Stdin, cmd.OutOrStdout(),
+		"The VM signs its certificates with its own CA. What should happen to it?", caChoiceItems())
+	if err != nil {
+		// Cancelled, or no terminal after all: the safe reading of "no answer"
+		// is the one that changes nothing on this machine.
+		return caSkip
+	}
+	return caChoice(choice)
+}
+
+// exportCA writes the certificate beside the user, in the directory they ran
+// the command from, and returns where it went.
+func exportCA() (string, error) {
+	source, err := local.EnsureCA()
+	if err != nil {
+		return "", err
+	}
+	data, err := os.ReadFile(source)
+	if err != nil {
+		return "", fmt.Errorf("read CA: %w", err)
+	}
+	name := fmt.Sprintf("agyn-%s-ca.pem", local.InstanceName())
+	if err := os.WriteFile(name, data, 0o644); err != nil {
+		return "", fmt.Errorf("write %s: %w", name, err)
+	}
+	path, err := filepath.Abs(name)
+	if err != nil {
+		return name, nil
+	}
+	return path, nil
 }
 
 // runPreflight is the dependency and environment check `agyn local doctor`
@@ -1008,9 +1081,13 @@ func promptYesNo(cmd *cobra.Command, question string, defaultYes bool) bool {
 	}
 }
 
+// promptPort asks for the one host port the VM publishes. Named for what it
+// serves rather than for the component that terminates it: "ingress port" is
+// the answer to a question nobody outside the cluster asked.
 func promptPort(cmd *cobra.Command, suggested int) int {
+	fmt.Fprintf(cmd.OutOrStdout(), "The platform is served at https://console.%s:PORT\n", local.BaseDomain)
 	for {
-		fmt.Fprintf(cmd.OutOrStdout(), "Ingress port [%d]: ", suggested)
+		fmt.Fprintf(cmd.OutOrStdout(), "Port to serve it on [%d]: ", suggested)
 		reader := bufio.NewReader(cmd.InOrStdin())
 		line, err := reader.ReadString('\n')
 		if err != nil {
