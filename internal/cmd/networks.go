@@ -576,7 +576,7 @@ func newResourceGrantCreateCmd() *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVar(&args.privateResourceID, "resource-id", "", "Private resource ID")
-	cmd.Flags().StringVar(&args.principalType, "principal-type", "", "Principal type: agent, user, app, or group")
+	cmd.Flags().StringVar(&args.principalType, "principal-type", "", "Principal type: agent, environment, user, app, or group")
 	cmd.Flags().StringVar(&args.principalID, "principal-id", "", "Principal ID")
 	_ = cmd.MarkFlagRequired("resource-id")
 	_ = cmd.MarkFlagRequired("principal-type")
@@ -636,7 +636,7 @@ func newResourceGrantListCmd() *cobra.Command {
 	}
 	cmd.Flags().StringVar(&args.privateResourceID, "resource-id", "", "Private resource ID")
 	cmd.Flags().StringVar(&args.networkID, "network-id", "", "Network ID")
-	cmd.Flags().StringVar(&args.principalType, "principal-type", "", "Principal type: agent, user, app, or group")
+	cmd.Flags().StringVar(&args.principalType, "principal-type", "", "Principal type: agent, environment, user, app, or group")
 	cmd.Flags().StringVar(&args.principalID, "principal-id", "", "Principal ID")
 	cmd.Flags().Int32Var(&args.pageSize, "page-size", 0, "Page size")
 	cmd.Flags().StringVar(&args.pageToken, "page-token", "", "Page token")
@@ -797,8 +797,10 @@ func parsePrincipalType(value string) (networksv1.PrivateResourceAccessPrincipal
 		return networksv1.PrivateResourceAccessPrincipalType_PRIVATE_RESOURCE_ACCESS_PRINCIPAL_TYPE_APP, nil
 	case "group":
 		return networksv1.PrivateResourceAccessPrincipalType_PRIVATE_RESOURCE_ACCESS_PRINCIPAL_TYPE_GROUP, nil
+	case "environment":
+		return networksv1.PrivateResourceAccessPrincipalType_PRIVATE_RESOURCE_ACCESS_PRINCIPAL_TYPE_ENVIRONMENT, nil
 	default:
-		return networksv1.PrivateResourceAccessPrincipalType_PRIVATE_RESOURCE_ACCESS_PRINCIPAL_TYPE_UNSPECIFIED, fmt.Errorf("principal-type must be agent, user, app, or group")
+		return networksv1.PrivateResourceAccessPrincipalType_PRIVATE_RESOURCE_ACCESS_PRINCIPAL_TYPE_UNSPECIFIED, fmt.Errorf("principal-type must be agent, environment, user, app, or group")
 	}
 }
 
@@ -827,10 +829,14 @@ func principalTypeString(principalType networksv1.PrivateResourceAccessPrincipal
 		return "app"
 	case networksv1.PrivateResourceAccessPrincipalType_PRIVATE_RESOURCE_ACCESS_PRINCIPAL_TYPE_GROUP:
 		return "group"
+	case networksv1.PrivateResourceAccessPrincipalType_PRIVATE_RESOURCE_ACCESS_PRINCIPAL_TYPE_ENVIRONMENT:
+		return "environment"
 	case networksv1.PrivateResourceAccessPrincipalType_PRIVATE_RESOURCE_ACCESS_PRINCIPAL_TYPE_UNSPECIFIED:
 		return "unspecified"
 	default:
-		panic("unsupported private resource principal type " + principalType.String())
+		// A principal this build does not know is still a real grant. Naming it
+		// by its enum beats taking the process down while someone is listing.
+		return strings.ToLower(strings.TrimPrefix(principalType.String(), "PRIVATE_RESOURCE_ACCESS_PRINCIPAL_TYPE_"))
 	}
 }
 

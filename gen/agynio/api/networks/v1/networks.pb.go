@@ -237,6 +237,7 @@ const (
 	PrivateResourceAccessPrincipalType_PRIVATE_RESOURCE_ACCESS_PRINCIPAL_TYPE_USER        PrivateResourceAccessPrincipalType = 2
 	PrivateResourceAccessPrincipalType_PRIVATE_RESOURCE_ACCESS_PRINCIPAL_TYPE_APP         PrivateResourceAccessPrincipalType = 3
 	PrivateResourceAccessPrincipalType_PRIVATE_RESOURCE_ACCESS_PRINCIPAL_TYPE_GROUP       PrivateResourceAccessPrincipalType = 4
+	PrivateResourceAccessPrincipalType_PRIVATE_RESOURCE_ACCESS_PRINCIPAL_TYPE_ENVIRONMENT PrivateResourceAccessPrincipalType = 5
 )
 
 // Enum value maps for PrivateResourceAccessPrincipalType.
@@ -247,6 +248,7 @@ var (
 		2: "PRIVATE_RESOURCE_ACCESS_PRINCIPAL_TYPE_USER",
 		3: "PRIVATE_RESOURCE_ACCESS_PRINCIPAL_TYPE_APP",
 		4: "PRIVATE_RESOURCE_ACCESS_PRINCIPAL_TYPE_GROUP",
+		5: "PRIVATE_RESOURCE_ACCESS_PRINCIPAL_TYPE_ENVIRONMENT",
 	}
 	PrivateResourceAccessPrincipalType_value = map[string]int32{
 		"PRIVATE_RESOURCE_ACCESS_PRINCIPAL_TYPE_UNSPECIFIED": 0,
@@ -254,6 +256,7 @@ var (
 		"PRIVATE_RESOURCE_ACCESS_PRINCIPAL_TYPE_USER":        2,
 		"PRIVATE_RESOURCE_ACCESS_PRINCIPAL_TYPE_APP":         3,
 		"PRIVATE_RESOURCE_ACCESS_PRINCIPAL_TYPE_GROUP":       4,
+		"PRIVATE_RESOURCE_ACCESS_PRINCIPAL_TYPE_ENVIRONMENT": 5,
 	}
 )
 
@@ -2743,13 +2746,14 @@ const file_agynio_api_networks_v1_networks_proto_rawDesc = "" +
 	"%PRIVATE_RESOURCE_PROTOCOL_UNSPECIFIED\x10\x00\x12!\n" +
 	"\x1dPRIVATE_RESOURCE_PROTOCOL_TCP\x10\x01\x12\"\n" +
 	"\x1ePRIVATE_RESOURCE_PROTOCOL_HTTP\x10\x02\x12#\n" +
-	"\x1fPRIVATE_RESOURCE_PROTOCOL_HTTPS\x10\x03*\xa1\x02\n" +
+	"\x1fPRIVATE_RESOURCE_PROTOCOL_HTTPS\x10\x03*\xd9\x02\n" +
 	"\"PrivateResourceAccessPrincipalType\x126\n" +
 	"2PRIVATE_RESOURCE_ACCESS_PRINCIPAL_TYPE_UNSPECIFIED\x10\x00\x120\n" +
 	",PRIVATE_RESOURCE_ACCESS_PRINCIPAL_TYPE_AGENT\x10\x01\x12/\n" +
 	"+PRIVATE_RESOURCE_ACCESS_PRINCIPAL_TYPE_USER\x10\x02\x12.\n" +
 	"*PRIVATE_RESOURCE_ACCESS_PRINCIPAL_TYPE_APP\x10\x03\x120\n" +
-	",PRIVATE_RESOURCE_ACCESS_PRINCIPAL_TYPE_GROUP\x10\x042\xa1\x11\n" +
+	",PRIVATE_RESOURCE_ACCESS_PRINCIPAL_TYPE_GROUP\x10\x04\x126\n" +
+	"2PRIVATE_RESOURCE_ACCESS_PRINCIPAL_TYPE_ENVIRONMENT\x10\x052\xa1\x11\n" +
 	"\x0fNetworksService\x12l\n" +
 	"\rCreateNetwork\x12,.agynio.api.networks.v1.CreateNetworkRequest\x1a-.agynio.api.networks.v1.CreateNetworkResponse\x12c\n" +
 	"\n" +
