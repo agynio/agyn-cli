@@ -257,11 +257,15 @@ move_ziti_port() {
 			--version "$(chart_version ziti-controller)" \
 			--set "clientApi.advertisedPort=${PORT}" \
 			--set "managementApi.advertisedPort=${PORT}" --wait --timeout 5m >/dev/null
+		# Not waited on: repoint_router_endpoints restarts this same router a
+		# moment later to clear its cached controller endpoints, so waiting here
+		# waits for a pod that is about to be replaced. The rollout that matters
+		# is the second one.
 		log "  restarting the overlay router on ${PORT}"
 		helm upgrade ziti-router openziti/ziti-router -n ziti --reuse-values \
 			--version "$(chart_version ziti-router)" \
 			--set "edge.advertisedPort=${PORT}" \
-			--set "ctrl.endpoint=ziti.${BASE_DOMAIN}:${PORT}" --wait --timeout 5m >/dev/null
+			--set "ctrl.endpoint=ziti.${BASE_DOMAIN}:${PORT}" --timeout 5m >/dev/null
 	fi
 
 	# The passthrough routes carry the host's traffic to those Services, so they
@@ -390,13 +394,30 @@ rewrite_enrolled_identities() {
 
 log "pointing browser-facing URLs at port ${PORT}"
 patch_ingress_hostport
+
+# Started here, not below, and waited on after the overlay has moved. Keycloak
+# takes ~28s to come back and has nothing to do with the overlay, so running the
+# two side by side takes that time off the total rather than adding it.
+kubectl set env deployment/keycloak -n "${NAMESPACE}" \
+	"KC_HOSTNAME=${auth_origin}" >/dev/null
+
 move_ziti_port
 
+# Keycloak alone first, and waited on, before anything that fetches discovery
+# from it is touched.
+#
+# These were all restarted together, which meant every OIDC consumer came up
+# against an issuer that was itself restarting, exited 1, and was backed off by
+# Kubernetes at 10s, 20s, 40s. A service that failed three times then sat idle
+# well after Keycloak was healthy: the gateway took 52s to become ready, of
+# which almost none was starting up. Ordering the restarts costs one wait and
+# removes the backoff entirely.
+log "  waiting for the issuer before restarting what depends on it"
+kubectl rollout status deployment/keycloak -n "${NAMESPACE}" --timeout=300s
+
+log "  re-pointing the services that authenticate against it"
 kubectl set env deployment/chat-app -n "${NAMESPACE}" \
-	"OIDC_AUTHORITY=${issuer}" \
-	"OIDC_REDIRECT_URI=${chat_origin}/callback" \
-	"OIDC_POST_LOGOUT_REDIRECT_URI=${chat_origin}" \
-	"MEDIA_PROXY_URL=${media_origin}" >/dev/null
+	"OIDC_AUTHORITY=${issuer}" >/dev/null
 kubectl set env deployment/console-app -n "${NAMESPACE}" \
 	"OIDC_AUTHORITY=${issuer}" >/dev/null
 kubectl set env deployment/tracing-app -n "${NAMESPACE}" \
@@ -410,12 +431,10 @@ kubectl set env deployment/gateway -n "${NAMESPACE}" \
 	"OIDC_ISSUER_URL=${issuer}" >/dev/null
 kubectl set env deployment/terminal-proxy -n "${NAMESPACE}" \
 	"TERMINAL_PROXY_WEBSOCKET_URL=${terminal_url}" >/dev/null
-kubectl set env deployment/keycloak -n "${NAMESPACE}" \
-	"KC_HOSTNAME=${auth_origin}" >/dev/null
 
-# Keycloak first: the Gateway fetches discovery on start, and it has to be the
-# new issuer that answers or the Gateway comes up rejecting every token.
-kubectl rollout status deployment/keycloak -n "${NAMESPACE}" --timeout=300s
+# Done while those roll rather than before them. The realm's redirect URIs are
+# read by a browser during sign-in, not by a service at startup, so nothing
+# waiting below depends on this finishing first.
 update_keycloak_clients
 
 for deployment in chat-app console-app tracing-app sandboxes-app media-proxy gateway terminal-proxy; do
