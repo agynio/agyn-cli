@@ -84,11 +84,11 @@ func SetBootstrapToken(token string) (string, error) {
 // already be taken. Only browser-facing URLs are affected — everything inside
 // the cluster, the OpenZiti advertised addresses included, uses an internal
 // port that never changes.
-func SetIngressPort(port int) (string, error) {
+func SetIngressPort(port int, onDetail func(string)) (string, error) {
 	if port <= 0 || port > 65535 {
 		return "", fmt.Errorf("ingress port %d is out of range", port)
 	}
-	out, err := RunScript(ingressPortScript, strconv.Itoa(port))
+	out, err := RunScriptProgress(ingressPortScript, onDetail, strconv.Itoa(port))
 	if err != nil {
 		return "", fmt.Errorf("point the platform's URLs at port %d: %w", port, err)
 	}

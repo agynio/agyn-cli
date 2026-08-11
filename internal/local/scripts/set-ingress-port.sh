@@ -49,7 +49,14 @@ NAMESPACE="${AGYN_PLATFORM_NAMESPACE:-agyn-platform}"
 BASE_DOMAIN="${AGYN_BASE_DOMAIN:-agyn.dev}"
 REALM="${AGYN_KEYCLOAK_REALM:-agyn}"
 
-log() { printf '[set-ingress-port] %s\n' "$*"; }
+# Two audiences. The run log gets the full account on stderr; the CLI gets the
+# same line on stdout as a marker and shows it beside the spinner, because on a
+# non-default port this script restarts most of the platform and a static label
+# for several minutes of that is indistinguishable from a hang.
+log() {
+	printf '[set-ingress-port] %s\n' "$*" >&2
+	printf 'AGYN|detail|%s\n' "$*"
+}
 
 if [ -z "${PORT}" ]; then
 	log "no port supplied; leaving the image default in place"

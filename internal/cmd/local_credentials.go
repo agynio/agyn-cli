@@ -134,8 +134,12 @@ func provisionLocalProfile(cmd *cobra.Command, steps *terminal.Steps, flags loca
 	// The image bakes a default port into the URLs it hands a browser — the
 	// OIDC redirects and the media proxy origin. Whenever this host forwards
 	// something else, signing in would bounce back to a dead port.
+	// On a non-default port this restarts most of the platform -- the OpenZiti
+	// charts, Keycloak and its realm clients, and every workload holding a
+	// browser-facing URL -- so it reports which of them it is on rather than
+	// standing on one label for minutes.
 	step.Detail("pointing browser-facing URLs at port " + strconv.Itoa(port))
-	if _, err := local.SetIngressPort(port); err != nil {
+	if _, err := local.SetIngressPort(port, step.Detail); err != nil {
 		return step.Fail(err)
 	}
 

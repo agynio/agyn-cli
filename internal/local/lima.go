@@ -211,13 +211,55 @@ func Delete(stdout, stderr io.Writer) error {
 // lives in the image can only be corrected by building a new image and
 // recreating the VM, which is the operation `upgrade` exists to avoid.
 func RunScript(script string, args ...string) (string, error) {
+	return RunScriptProgress(script, nil, args...)
+}
+
+// RunScriptProgress runs a script that reports where it has got to, calling
+// onDetail for each AGYN|detail| line it writes. Everything else is the script's
+// own log and is returned.
+//
+// Scripts that restart the cluster take minutes, and a step with a fixed label
+// for that long cannot be told from a hang.
+func RunScriptProgress(script string, onDetail func(string), args ...string) (string, error) {
 	var out bytes.Buffer
+	stdout := io.Writer(&out)
+	if onDetail != nil {
+		stdout = &detailScanner{onDetail: onDetail, rest: &out}
+	}
 	shellArgs := append([]string{"shell", InstanceName(), "--", "sudo", "bash", "-s", "--"}, args...)
-	if err := limactlStdin(strings.NewReader(script), &out, &out, shellArgs...); err != nil {
+	if err := limactlStdin(strings.NewReader(script), stdout, &out, shellArgs...); err != nil {
 		return out.String(), fmt.Errorf("%w: %s", err, strings.TrimSpace(out.String()))
 	}
 	return out.String(), nil
 }
+
+// detailScanner splits a script's stdout into progress markers and everything
+// else, line by line as it arrives.
+type detailScanner struct {
+	onDetail func(string)
+	rest     io.Writer
+	partial  []byte
+}
+
+func (d *detailScanner) Write(data []byte) (int, error) {
+	d.partial = append(d.partial, data...)
+	for {
+		index := bytes.IndexByte(d.partial, '\n')
+		if index < 0 {
+			return len(data), nil
+		}
+		line := string(d.partial[:index])
+		d.partial = d.partial[index+1:]
+		if detail, ok := strings.CutPrefix(line, detailMarker); ok {
+			d.onDetail(detail)
+			continue
+		}
+		fmt.Fprintln(d.rest, line)
+	}
+}
+
+// detailMarker prefixes a line a script writes for the CLI to show.
+const detailMarker = "AGYN|detail|"
 
 // RunScriptWithSecret runs a script whose input is a credential.
 //

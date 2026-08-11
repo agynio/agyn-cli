@@ -773,7 +773,7 @@ func newLocalUpgradeCmd() *cobra.Command {
 // longer publishes and every sign-in breaks.
 func restoreIngressPort(cmd *cobra.Command, steps *terminal.Steps, port int, runLog *limaIO) error {
 	step := steps.Start("Restoring the browser-facing port")
-	if _, err := local.SetIngressPort(port); err != nil {
+	if _, err := local.SetIngressPort(port, step.Detail); err != nil {
 		step.Fail(err)
 		runLog.reportFailure(cmd)
 		return err
