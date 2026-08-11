@@ -933,7 +933,7 @@ func printChecks(out io.Writer, checks []local.Check) error {
 
 // limaIO routes the output of the tools a command drives — limactl, and the
 // helm and kubectl it runs inside the VM. To the terminal with --debug,
-// otherwise to ~/.agyn/local/last-run.log with an automatic tail on failure.
+// otherwise to ~/.agyn/local/logs/<vm>.log with an automatic tail on failure.
 type limaIO struct {
 	stdout io.Writer
 	stderr io.Writer
@@ -950,10 +950,15 @@ func openRunLog(cmd *cobra.Command) (*limaIO, error) {
 	if err != nil {
 		return nil, err
 	}
+	// One log per VM. A single shared file is truncated by whichever command
+	// opens it next, so two commands running at once write into each other's:
+	// an upgrade's failure printed the tail of a delete running beside it,
+	// which reads as the upgrade having shut the VM down.
+	dir = filepath.Join(dir, "logs")
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return nil, fmt.Errorf("create %s: %w", dir, err)
 	}
-	path := filepath.Join(dir, "last-run.log")
+	path := filepath.Join(dir, local.InstanceName()+".log")
 	file, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o644)
 	if err != nil {
 		return nil, fmt.Errorf("open run log: %w", err)
