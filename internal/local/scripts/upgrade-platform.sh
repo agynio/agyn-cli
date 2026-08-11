@@ -184,8 +184,18 @@ upgrade() {
 	# on its own empty defaults: keycloak arrived this way and looked for its
 	# database on localhost. Resetting first takes the new chart's defaults and
 	# then reapplies what the release actually set.
+	#
+	# Deliberately not --wait. An upgrade rewrites the browser-facing URLs back
+	# to the chart's default port, and on a VM serving any other port the
+	# workloads holding those URLs cannot start until they are pointed back --
+	# which the CLI does after this returns. Waiting here waits for pods that
+	# are waiting for the repair that is waiting for this: on a non-default port
+	# the upgrade deadlocked until Helm's timeout, every time.
+	#
+	# --timeout still bounds the chart's hooks. The rollout is waited on by the
+	# CLI afterwards, where it can also say which workloads are behind.
 	set -- upgrade "${release}" "${chart}" -n "${NAMESPACE}" \
-		--reset-then-reuse-values --wait --timeout "${HELM_TIMEOUT}"
+		--reset-then-reuse-values --timeout "${HELM_TIMEOUT}"
 	# Overlaid on top of the reused values, so the caller's file changes only
 	# what it names and everything the bake configured survives.
 	if [ -n "${extra_values}" ]; then

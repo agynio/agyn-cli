@@ -754,7 +754,20 @@ func newLocalUpgradeCmd() *cobra.Command {
 				return nil
 			}
 
-			return restoreIngressPort(cmd, steps, settings.Port, runLog)
+			if err := restoreIngressPort(cmd, steps, settings.Port, runLog); err != nil {
+				return err
+			}
+
+			// The rollout is waited on here rather than by Helm, because it can
+			// only succeed after the repair above: an upgrade reverts the
+			// browser-facing URLs to the chart's port, and the workloads holding
+			// them do not start until they are pointed back.
+			step := steps.Start("Waiting for the platform")
+			if _, err := local.WaitForReady(settings.Port, platformReadyTimeout, step.Detail); err != nil {
+				return step.Fail(err)
+			}
+			step.Done("")
+			return nil
 		},
 	}
 
