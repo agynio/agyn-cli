@@ -201,10 +201,16 @@ update_keycloak_clients() {
 		return 0
 	fi
 
+	# Every kcadm call starts a JVM, so the ids are fetched once rather than
+	# once per client -- four launches saved out of nine.
+	local listing
+	listing="$(${kcadm} get clients -r "${REALM}" --fields id,clientId \
+		--format csv --noquotes 2>/dev/null | tr -d '\r')"
+
 	for client in console chat tracing sandboxes; do
 		origin="https://${client}.${BASE_DOMAIN}:${PORT}"
-		id="$(${kcadm} get clients -r "${REALM}" -q "clientId=agyn-${client}" \
-			--fields id --format csv --noquotes 2>/dev/null | tr -d '\r' | head -1)"
+		id="$(printf '%s\n' "${listing}" | awk -F, -v want="agyn-${client}" \
+			'$2 == want { print $1; exit }')"
 		if [ -z "${id}" ]; then
 			log "  client agyn-${client} is not in the realm; skipped"
 			continue
@@ -246,10 +252,12 @@ move_ziti_port() {
 	if [ "${current}" != "${PORT}" ]; then
 		log "moving the OpenZiti overlay from port ${current} to ${PORT}"
 		ziti_repo
+		log "  restarting the overlay controller on ${PORT}"
 		helm upgrade ziti-controller openziti/ziti-controller -n ziti --reuse-values \
 			--version "$(chart_version ziti-controller)" \
 			--set "clientApi.advertisedPort=${PORT}" \
 			--set "managementApi.advertisedPort=${PORT}" --wait --timeout 5m >/dev/null
+		log "  restarting the overlay router on ${PORT}"
 		helm upgrade ziti-router openziti/ziti-router -n ziti --reuse-values \
 			--version "$(chart_version ziti-router)" \
 			--set "edge.advertisedPort=${PORT}" \
