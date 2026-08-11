@@ -39,18 +39,24 @@ NAMESPACE="${AGYN_PLATFORM_NAMESPACE:-agyn-platform}"
 PLATFORM_CHART="${AGYN_PLATFORM_CHART:-oci://ghcr.io/agynio/charts/agyn-platform}"
 APPS_CHART="${AGYN_APPS_CHART:-oci://ghcr.io/agynio/charts/agyn-apps}"
 HELM_TIMEOUT="${AGYN_HELM_TIMEOUT:-15m}"
+BASE_DOMAIN="${AGYN_BASE_DOMAIN:-agyn.dev}"
 
 # Named rather than positional: a values path and a chart version are easy to
 # transpose, and the failure would be a silent no-op or a wrong chart.
 platform_version=""
 apps_version=""
 extra_values=""
+ingress_port=""
 resume=0
 while [ "$#" -gt 0 ]; do
 	case "${1}" in
 	--resume)
 		resume=1
 		shift
+		;;
+	--ingress-port)
+		ingress_port="${2:-}"
+		shift 2
 		;;
 	--values)
 		extra_values="${2:-}"
@@ -135,6 +141,47 @@ available_version() {
 	{ helm "$@" 2>/dev/null | sed -n 's/^version: *//p' | head -1; } || true
 }
 
+# The release's values still name the port the image was baked with, because
+# nothing has ever written the host's choice into them: `agyn local start`
+# patched the rendered Deployments instead. So every upgrade faithfully restores
+# the baked port, the workloads holding those URLs crash-loop against a port
+# that publishes nothing, and something has to patch them back afterwards --
+# a second rollout of most of the platform, and a window in between long enough
+# for Kubernetes to back off to five-minute retries.
+#
+# Correcting the values means the upgrade renders the host's port to begin with:
+# one rollout, no window, and the release finally knows what port it is on.
+#
+# Derived from the release's own values rather than from a list of keys kept
+# here, because there are eighteen of them across the services and a nineteenth
+# added upstream would be missed silently.
+port_overlay() {
+	release="${1}"
+	[ -n "${ingress_port}" ] || return 0
+
+	current="$(helm get values "${release}" -n "${NAMESPACE}" -o yaml 2>/dev/null || true)"
+	case "${current}" in
+	"" | null) return 0 ;;
+	esac
+
+	# The port the values currently name, taken from the URLs themselves. Every
+	# rewrite below replaces that exact number and nothing else, so a service
+	# port that happens to appear -- 50051, 5432 -- is never touched.
+	stale="$(printf '%s\n' "${current}" |
+		sed -nE "s#.*://[A-Za-z0-9.-]*${BASE_DOMAIN}:([0-9]+).*#\1#p" | head -1)"
+	if [ -z "${stale}" ] || [ "${stale}" = "${ingress_port}" ]; then
+		return 0
+	fi
+
+	# Two shapes carry it: the URLs, and keycloak's ingressHostPort.port, which
+	# is a plain number the chart models on its own.
+	file="/run/agyn-values-${release}.yaml"
+	printf '%s\n' "${current}" | sed -E \
+		-e "s#(://[A-Za-z0-9.-]*${BASE_DOMAIN}):${stale}#\1:${ingress_port}#g" \
+		-e "s#(^[[:space:]]*port:[[:space:]]*)${stale}[[:space:]]*\$#\1${ingress_port}#" >"${file}"
+	printf '%s' "${file}"
+}
+
 upgrade() {
 	release="${1}"
 	chart="${2}"
@@ -166,10 +213,17 @@ upgrade() {
 	before="$(installed_version "${release}")"
 	target="$(available_version "${chart}" "${want}")"
 
+	overlay="$(port_overlay "${release}")"
+
 	# An upgrade to the version already installed still rewrites every workload
 	# the chart owns and reports a new revision, so "nothing to do" and
 	# "everything was replaced" would read alike. Say the first one instead.
-	if [ -z "${extra_values}" ] && [ -n "${before}" ] && [ "${before}" = "${target}" ]; then
+	#
+	# Values that name the wrong port are their own reason to upgrade, chart
+	# version or not: until they are corrected the release is one re-render away
+	# from reverting to a port this VM does not serve.
+	if [ -z "${extra_values}" ] && [ -z "${overlay}" ] &&
+		[ -n "${before}" ] && [ "${before}" = "${target}" ]; then
 		step "${release}"
 		skip "already at ${before}"
 		return 0
@@ -177,7 +231,11 @@ upgrade() {
 
 	upgraded=1
 
-	step "${release}" "${before:-unknown} → ${target:-latest}"
+	if [ -n "${overlay}" ] && [ "${before}" = "${target}" ]; then
+		step "${release}" "${before}, correcting the port to ${ingress_port}"
+	else
+		step "${release}" "${before:-unknown} → ${target:-latest}"
+	fi
 
 	# --reuse-values would carry the old values forward but ignore defaults the
 	# newer chart introduces, so a subchart added since the last release starts
@@ -196,6 +254,11 @@ upgrade() {
 	# CLI afterwards, where it can also say which workloads are behind.
 	set -- upgrade "${release}" "${chart}" -n "${NAMESPACE}" \
 		--reset-then-reuse-values --timeout "${HELM_TIMEOUT}"
+	# The host's port first, then the caller's file, so an explicit --values
+	# can still override what this derived.
+	if [ -n "${overlay}" ]; then
+		set -- "$@" -f "${overlay}"
+	fi
 	# Overlaid on top of the reused values, so the caller's file changes only
 	# what it names and everything the bake configured survives.
 	if [ -n "${extra_values}" ]; then
@@ -208,7 +271,11 @@ upgrade() {
 	helm "$@" >&2
 
 	after="$(installed_version "${release}")"
-	done_ "${before:-unknown} → ${after:-unknown}"
+	if [ -n "${overlay}" ] && [ "${before}" = "${after}" ]; then
+		done_ "${after}, now on port ${ingress_port}"
+	else
+		done_ "${before:-unknown} → ${after:-unknown}"
+	fi
 }
 
 # Clears the revision an interrupted upgrade left in flight, so the upgrade that

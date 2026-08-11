@@ -5,6 +5,7 @@ import (
 	_ "embed"
 	"fmt"
 	"io"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -41,8 +42,13 @@ const marker = "AGYN|"
 // that were pointed at this host's port outside the release.
 // resume clears the revision an interrupted upgrade left in flight before
 // upgrading, which is what stops Helm refusing it.
-func UpgradePlatform(steps *terminal.Steps, log io.Writer, platformVersion string, resume bool) (bool, error) {
+func UpgradePlatform(steps *terminal.Steps, log io.Writer, platformVersion string, resume bool, ingressPort int) (bool, error) {
 	args := []string{}
+	// The host's port, so the upgrade renders the URLs this VM is actually
+	// reachable on instead of the ones the image was baked with.
+	if ingressPort > 0 {
+		args = append(args, "--ingress-port", strconv.Itoa(ingressPort))
+	}
 	if resume {
 		args = append(args, "--resume")
 	}

@@ -745,7 +745,7 @@ func newLocalUpgradeCmd() *cobra.Command {
 			defer runLog.close()
 
 			steps := newSteps(cmd)
-			changed, err := local.UpgradePlatform(steps, runLog.stdout, "", resume)
+			changed, err := local.UpgradePlatform(steps, runLog.stdout, "", resume, settings.Port)
 			if err != nil {
 				runLog.reportFailure(cmd)
 				return err
