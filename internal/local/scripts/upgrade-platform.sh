@@ -14,10 +14,10 @@ set -euo pipefail
 # OpenFGA endpoints), and `agyn local start` has since rewritten the bootstrap
 # token. Re-rendering would silently revert it.
 #
-# Reusing values does NOT preserve the browser-facing port, because
-# set-ingress-port.sh wrote that with `kubectl set env` rather than through the
-# release. Helm rewrites those Deployments from chart values, so the port is
-# re-applied at the end of this script.
+# Reusing values does NOT preserve the browser-facing port: it was written with
+# `kubectl set env` rather than through the release, so Helm rewrites those
+# Deployments from chart values. This script reports that something moved and
+# the CLI points them back afterwards.
 #
 # --values overlays a file on top of the reused values, for settings the image
 # cannot know: an external OIDC issuer instead of the bundled Keycloak, say. It
@@ -45,8 +45,13 @@ HELM_TIMEOUT="${AGYN_HELM_TIMEOUT:-15m}"
 platform_version=""
 apps_version=""
 extra_values=""
+resume=0
 while [ "$#" -gt 0 ]; do
 	case "${1}" in
+	--resume)
+		resume=1
+		shift
+		;;
 	--values)
 		extra_values="${2:-}"
 		shift 2
@@ -77,6 +82,7 @@ step() { printf 'AGYN|step|%s|%s\n' "${1}" "${2:-}"; }
 done_() { printf 'AGYN|done|%s\n' "${1:-}"; }
 skip() { printf 'AGYN|skip|%s\n' "${1:-}"; }
 note() { printf 'AGYN|note|%s\n' "${1}"; }
+fail() { printf 'AGYN|fail|%s\n' "${1}"; }
 
 if ! kubectl get --raw=/readyz >/dev/null 2>&1; then
 	step "Waiting for the cluster" ""
@@ -95,9 +101,26 @@ if kubectl -n "${NAMESPACE}" get deploy -o jsonpath='{range .items[*]}{.spec.tem
 	note "services running from source (devspace) will be reset to their chart images"
 fi
 
+# The release's own status, which is where a pending or failed state shows.
+# `helm list` hides pending releases entirely, so it cannot be asked this.
+#
+# Every reader here ends in `|| true`. Under `set -e` with `pipefail` a
+# substitution whose pipeline fails takes the whole script down, and these
+# pipelines fail routinely and harmlessly: helm status errors for a release that
+# is not installed, and helm show needs a network. Empty is the answer in both
+# cases, and each caller already handles empty.
+release_status() {
+	{
+		helm status "${1}" -n "${NAMESPACE}" -o json 2>/dev/null |
+			sed -n 's/.*"info":{[^}]*"status":"\([a-z-]*\)".*/\1/p' | head -1
+	} || true
+}
+
 installed_version() {
-	helm list -n "${NAMESPACE}" --filter "^${1}\$" -o json 2>/dev/null |
-		sed -n 's/.*"chart":"[^"]*-\([0-9][^"]*\)".*/\1/p' | head -1
+	{
+		helm list -n "${NAMESPACE}" --filter "^${1}\$" -o json 2>/dev/null |
+			sed -n 's/.*"chart":"[^"]*-\([0-9][^"]*\)".*/\1/p' | head -1
+	} || true
 }
 
 # The version the chart repository would install, so an upgrade can say where it
@@ -109,7 +132,7 @@ available_version() {
 	if [ -n "${want}" ]; then
 		set -- "$@" --version "${want}"
 	fi
-	helm "$@" 2>/dev/null | sed -n 's/^version: *//p' | head -1
+	{ helm "$@" 2>/dev/null | sed -n 's/^version: *//p' | head -1; } || true
 }
 
 upgrade() {
@@ -120,6 +143,25 @@ upgrade() {
 	if ! helm status "${release}" -n "${NAMESPACE}" >/dev/null 2>&1; then
 		return 0
 	fi
+
+	# An upgrade that was interrupted -- a laptop closed, a terminal killed --
+	# leaves the release mid-flight, and Helm refuses every later attempt with
+	# "another operation is in progress". That is true and unactionable, and the
+	# state is invisible to `helm list`, which hides pending releases.
+	# --resume is the caller saying they know: it has just cleared the in-flight
+	# revision, and refusing here would refuse the recovery itself. Checked
+	# against the flag rather than re-reading the status, so the recovery does
+	# not depend on a second read agreeing with the first.
+	status="$(release_status "${release}")"
+	case "${status}" in
+	pending-*)
+		if [ "${resume}" -eq 0 ]; then
+			step "${release}"
+			fail "an earlier upgrade was interrupted and left it ${status}; continue it with: agyn local upgrade --resume"
+			exit 70
+		fi
+		;;
+	esac
 
 	before="$(installed_version "${release}")"
 	target="$(available_version "${chart}" "${want}")"
@@ -159,36 +201,55 @@ upgrade() {
 	done_ "${before:-unknown} → ${after:-unknown}"
 }
 
+# Clears the revision an interrupted upgrade left in flight, so the upgrade that
+# follows is not refused.
+#
+# Forward rather than back. Helm's own remedy is a rollback to the last deployed
+# revision, and that is wrong here: an interruption leaves some workloads on the
+# new chart already, and rolling those back moves them by however many versions
+# the upgrade spanned. The platform's migrations are forward-only and guarantee
+# one version of backward compatibility (see the database-migrations spec), so a
+# ten-version step backwards is outside what any service promises to survive.
+# Completing the upgrade is the direction the data has already gone.
+#
+# The in-flight revision is dropped by deleting its release record; the last
+# deployed revision becomes current again in Helm's account, no workload is
+# touched, and the upgrade below reconciles everything to the target.
+clear_interrupted() {
+	release="${1}"
+	status="$(release_status "${release}")"
+	case "${status}" in
+	pending-*) ;;
+	*) return 0 ;;
+	esac
+
+	revision="$({
+		helm history "${release}" -n "${NAMESPACE}" -o json 2>/dev/null |
+			sed -n 's/.*"revision":\([0-9]*\)[^0-9].*/\1/p' | tail -1
+	} || true)"
+	if [ -z "${revision}" ]; then
+		return 0
+	fi
+	step "Clearing the interrupted upgrade of ${release}" "revision ${revision}, ${status}"
+	kubectl delete secret "sh.helm.release.v1.${release}.v${revision}" -n "${NAMESPACE}" >&2
+	done_ ""
+}
+
+if [ "${resume}" -eq 1 ]; then
+	clear_interrupted agyn-platform
+	clear_interrupted agyn-apps
+fi
+
 upgraded=0
 upgrade agyn-platform "${PLATFORM_CHART}" "${platform_version}"
 upgrade agyn-apps "${APPS_CHART}" "${apps_version}"
 
-# Helm rewrites every Deployment it owns back to what the chart says, and the
-# browser-facing URLs are not in the chart: set-ingress-port.sh wrote them with
-# `kubectl set env` when the host chose a port. An upgrade reverts them to the
-# chart's default port, which now includes the OIDC issuer — leaving the Gateway
-# fetching discovery from a port the ingress no longer publishes, and every
-# login broken.
-#
-# The port itself survives, because it lives on the istio-ingressgateway
-# Service and no chart owns that. So it is read back from there and re-applied.
-# Idempotent: on a VM still using the default port this changes nothing.
-#
-# Skipped when nothing was upgraded, because then nothing reverted it: an
-# upgrade that did nothing should say so in one line and stop, not perform
-# repair work on a cluster it did not touch.
-if [ "${upgraded}" -eq 0 ]; then
-	exit 0
-fi
-
-host_port="$(kubectl -n istio-gateway get svc istio-ingressgateway \
-	-o jsonpath='{.spec.ports[?(@.name=="https-hostport")].port}' 2>/dev/null || true)"
-if [ -n "${host_port}" ] && [ -x /opt/agyn/set-ingress-port.sh ]; then
-	step "Restoring the browser-facing port" ""
-	/opt/agyn/set-ingress-port.sh "${host_port}" >&2
-	done_ "${host_port}"
-elif [ -n "${host_port}" ]; then
-	note "WARNING: /opt/agyn/set-ingress-port.sh is missing, so browser-facing URLs now point at the chart's default port instead of ${host_port}"
+# Whether anything moved. The browser-facing URLs are rewritten from chart
+# values by any upgrade, so they have to be pointed back at the host's port
+# afterwards -- but only then. The CLI owns that step, because it is the side
+# that knows which port this host forwards.
+if [ "${upgraded}" -eq 1 ]; then
+	printf 'AGYN|changed|\n'
 fi
 
 helm list -n "${NAMESPACE}" >&2

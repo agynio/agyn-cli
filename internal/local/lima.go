@@ -203,6 +203,50 @@ func Delete(stdout, stderr io.Writer) error {
 	return limactl(stdout, stderr, "delete", "--force", InstanceName())
 }
 
+// RunScript pipes a script the CLI carries into the guest and runs it there,
+// returning its combined output.
+//
+// Nothing is installed in the VM and no copy is left behind to drift from this
+// caller. That is the whole reason these scripts live with the CLI: one that
+// lives in the image can only be corrected by building a new image and
+// recreating the VM, which is the operation `upgrade` exists to avoid.
+func RunScript(script string, args ...string) (string, error) {
+	var out bytes.Buffer
+	shellArgs := append([]string{"shell", InstanceName(), "--", "sudo", "bash", "-s", "--"}, args...)
+	if err := limactlStdin(strings.NewReader(script), &out, &out, shellArgs...); err != nil {
+		return out.String(), fmt.Errorf("%w: %s", err, strings.TrimSpace(out.String()))
+	}
+	return out.String(), nil
+}
+
+// RunScriptWithSecret runs a script whose input is a credential.
+//
+// The script is staged into the guest first, because stdin is the one channel
+// that carries a secret without putting it in an argument list -- and the
+// script itself would otherwise be occupying it. An argument list is readable
+// by any user of the guest, and by anyone running ps on the host while the CLI
+// works. The staged copy is mode 0700 under /run, which is tmpfs, and is
+// removed whether or not the run succeeds.
+func RunScriptWithSecret(script string, secret io.Reader, args ...string) (string, error) {
+	path := "/run/agyn-" + InstanceName() + ".sh"
+
+	var staged bytes.Buffer
+	stage := []string{"shell", InstanceName(), "--", "sudo", "sh", "-c", "umask 077 && cat > " + path}
+	if err := limactlStdin(strings.NewReader(script), &staged, &staged, stage...); err != nil {
+		return "", fmt.Errorf("stage the script in the VM: %w: %s", err, strings.TrimSpace(staged.String()))
+	}
+	defer func() {
+		_ = limactl(io.Discard, io.Discard, "shell", InstanceName(), "--", "sudo", "rm", "-f", path)
+	}()
+
+	var out bytes.Buffer
+	runArgs := append([]string{"shell", InstanceName(), "--", "sudo", "bash", path}, args...)
+	if err := limactlStdin(secret, &out, &out, runArgs...); err != nil {
+		return out.String(), fmt.Errorf("%w: %s", err, strings.TrimSpace(out.String()))
+	}
+	return out.String(), nil
+}
+
 // Shell runs a command inside the guest and returns its stdout.
 func Shell(args ...string) (string, error) {
 	env, err := limaEnv()

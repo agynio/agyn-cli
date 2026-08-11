@@ -61,6 +61,41 @@ func TestUpgradeRendererMarksAnAlreadyCurrentReleaseAsSkipped(t *testing.T) {
 	}
 }
 
+// The port repair runs only when something moved, and the script is the only
+// side that knows whether anything did.
+func TestUpgradeRendererReportsWhetherAnythingChanged(t *testing.T) {
+	var out, log bytes.Buffer
+	renderer := &upgradeRenderer{steps: terminal.NewPlainSteps(&out), log: &log}
+	renderer.consume(strings.NewReader("AGYN|step|agyn-platform|\nAGYN|skip|already at 0.52.0\n"))
+	if renderer.changed {
+		t.Fatal("expected a skipped upgrade to report nothing changed")
+	}
+
+	renderer = &upgradeRenderer{steps: terminal.NewPlainSteps(&out), log: &log}
+	renderer.consume(strings.NewReader("AGYN|step|agyn-platform|\nAGYN|done|0.42.1 → 0.52.0\nAGYN|changed|\n"))
+	if !renderer.changed {
+		t.Fatal("expected an upgrade that moved a release to report a change")
+	}
+}
+
+// An interrupted upgrade is the one failure whose Helm error states the lock
+// and not the way out, so the script's own sentence has to survive to the user
+// instead of being replaced by an exit status.
+func TestUpgradeRendererKeepsTheScriptsFailureMessage(t *testing.T) {
+	var out, log bytes.Buffer
+	renderer := &upgradeRenderer{steps: terminal.NewPlainSteps(&out), log: &log}
+
+	renderer.consume(strings.NewReader(
+		"AGYN|step|agyn-platform|\nAGYN|fail|an earlier upgrade was interrupted and left it pending-upgrade; recover with: agyn local upgrade --resume\n"))
+
+	if !strings.Contains(renderer.failure, "--resume") {
+		t.Fatalf("expected the recovery command to be kept, got %q", renderer.failure)
+	}
+	if !strings.Contains(out.String(), "pending-upgrade") {
+		t.Fatalf("expected the reason on the step's line:\n%s", out.String())
+	}
+}
+
 // A step the script leaves open — the last one before the process exits — still
 // has to be closed, or the run ends on a line that reads as still running.
 func TestUpgradeRendererClosesATrailingStep(t *testing.T) {

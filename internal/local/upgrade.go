@@ -36,24 +36,37 @@ const marker = "AGYN|"
 // kubectl say to log: a Helm upgrade that waits on rollouts takes minutes, and
 // what the user asked was which versions moved, not what the admission webhook
 // thinks of the release's AuthorizationPolicies.
-func UpgradePlatform(steps *terminal.Steps, log io.Writer, platformVersion string) error {
-	instance, err := GetInstance()
-	if err != nil {
-		return err
+// Returns whether any release moved. The caller acts on that: an upgrade
+// rewrites every Deployment the charts own, including the browser-facing URLs
+// that were pointed at this host's port outside the release.
+// resume clears the revision an interrupted upgrade left in flight before
+// upgrading, which is what stops Helm refusing it.
+func UpgradePlatform(steps *terminal.Steps, log io.Writer, platformVersion string, resume bool) (bool, error) {
+	args := []string{}
+	if resume {
+		args = append(args, "--resume")
 	}
-	if !instance.Exists {
-		return fmt.Errorf("no local VM; create one with 'agyn local start'")
-	}
-	if instance.Status != "Running" {
-		return fmt.Errorf("the local VM is not running (%s); start it with 'agyn local start'", instance.Status)
-	}
-
-	// Piped to a shell rather than written into the VM: nothing to install, and
-	// no baked copy left behind to drift from this caller. Empty means "latest".
-	args := []string{"shell", InstanceName(), "--", "sudo", "bash", "-s", "--"}
 	if platformVersion != "" {
 		args = append(args, "--platform-version", platformVersion)
 	}
+	return runUpgradeScript(steps, log, args)
+}
+
+func runUpgradeScript(steps *terminal.Steps, log io.Writer, scriptArgs []string) (bool, error) {
+	instance, err := GetInstance()
+	if err != nil {
+		return false, err
+	}
+	if !instance.Exists {
+		return false, fmt.Errorf("no local VM; create one with 'agyn local start'")
+	}
+	if instance.Status != "Running" {
+		return false, fmt.Errorf("the local VM is not running (%s); start it with 'agyn local start'", instance.Status)
+	}
+
+	// Piped to a shell rather than written into the VM: nothing to install, and
+	// no baked copy left behind to drift from this caller.
+	args := append([]string{"shell", InstanceName(), "--", "sudo", "bash", "-s", "--"}, scriptArgs...)
 
 	reader, writer := io.Pipe()
 	render := &upgradeRenderer{steps: steps, log: log}
@@ -69,10 +82,15 @@ func UpgradePlatform(steps *terminal.Steps, log io.Writer, platformVersion strin
 	wg.Wait()
 
 	if runErr != nil {
-		return render.fail(fmt.Errorf("upgrade the platform in the VM: %w", runErr))
+		// The script's own account of what went wrong, when it gave one: an
+		// exit status says nothing a user can act on.
+		if render.failure != "" {
+			return false, fmt.Errorf("%s", render.failure)
+		}
+		return false, render.fail(fmt.Errorf("upgrade the platform in the VM: %w", runErr))
 	}
 	render.finish()
-	return nil
+	return render.changed, nil
 }
 
 // upgradeRenderer turns the script's markers into steps, and everything else
@@ -85,6 +103,8 @@ type upgradeRenderer struct {
 	step    *terminal.Step
 	detail  string
 	stopped chan struct{}
+	changed bool
+	failure string
 }
 
 func (r *upgradeRenderer) consume(reader io.Reader) {
@@ -108,6 +128,11 @@ func (r *upgradeRenderer) consume(reader io.Reader) {
 			r.skip(field(fields, 1))
 		case "note":
 			r.steps.Note(field(fields, 1))
+		case "changed":
+			r.changed = true
+		case "fail":
+			r.failure = field(fields, 1)
+			r.fail(fmt.Errorf("%s", r.failure))
 		}
 	}
 }

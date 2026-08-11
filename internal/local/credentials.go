@@ -2,11 +2,23 @@ package local
 
 import (
 	"crypto/rand"
+	_ "embed"
 	"encoding/base64"
 	"fmt"
 	"strconv"
 	"strings"
 )
+
+// The scripts that act on a running VM ship with the CLI rather than in the
+// image. Both carry a value the image cannot know -- a token generated per
+// install, and whatever port the host had free -- and both have to be fixable
+// without rebuilding an image and recreating every VM booted from one.
+//
+//go:embed scripts/set-bootstrap-token.sh
+var bootstrapTokenScript string
+
+//go:embed scripts/set-ingress-port.sh
+var ingressPortScript string
 
 const (
 	// BootstrapTokenPrefix marks a token this CLI minted for a local VM, so a
@@ -17,16 +29,6 @@ const (
 	// bootstrapTokenBytes is the entropy behind a generated token. 32 bytes is
 	// what the rest of the platform uses for service tokens.
 	bootstrapTokenBytes = 32
-
-	// bootstrapTokenScript ships in the image. It installs a host-supplied
-	// token into the Gateway's environment and restarts the deployment, and is
-	// idempotent: handing it the token already in place changes nothing.
-	bootstrapTokenScript = "/opt/agyn/set-bootstrap-token.sh"
-
-	// ingressPortScript ships in the image. It points the browser-facing URLs
-	// (the OIDC redirects, the media proxy origin, its CORS allowlist) at the
-	// port this host forwards, and like the token script is idempotent.
-	ingressPortScript = "/opt/agyn/set-ingress-port.sh"
 
 	// platformNamespace holds the platform workloads inside the VM.
 	platformNamespace = "agyn-platform"
@@ -62,12 +64,13 @@ func IsBootstrapToken(token string) bool {
 // SetBootstrapToken installs the token this host holds into the running VM and
 // returns the script's log output. The value travels over the limactl channel,
 // never the network, and is never read back: the host keeps the copy it
-// generated.
+// generated. It is handed over on stdin rather than as an argument, so it is in
+// neither machine's process list.
 func SetBootstrapToken(token string) (string, error) {
 	if strings.TrimSpace(token) == "" {
 		return "", fmt.Errorf("bootstrap token must not be empty")
 	}
-	out, err := Shell("sudo", bootstrapTokenScript, token)
+	out, err := RunScriptWithSecret(bootstrapTokenScript, strings.NewReader(token))
 	if err != nil {
 		return "", fmt.Errorf("install the bootstrap token in the VM: %w", err)
 	}
@@ -85,9 +88,9 @@ func SetIngressPort(port int) (string, error) {
 	if port <= 0 || port > 65535 {
 		return "", fmt.Errorf("ingress port %d is out of range", port)
 	}
-	out, err := Shell("sudo", ingressPortScript, strconv.Itoa(port))
+	out, err := RunScript(ingressPortScript, strconv.Itoa(port))
 	if err != nil {
-		return "", fmt.Errorf("set the ingress port in the VM: %w", err)
+		return "", fmt.Errorf("point the platform's URLs at port %d: %w", port, err)
 	}
 	return strings.TrimSpace(out), nil
 }

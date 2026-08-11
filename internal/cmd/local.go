@@ -715,7 +715,9 @@ func newLocalDeleteCmd() *cobra.Command {
 }
 
 func newLocalUpgradeCmd() *cobra.Command {
-	return &cobra.Command{
+	var resume bool
+
+	cmd := &cobra.Command{
 		Use:   "upgrade",
 		Short: "Upgrade the platform in the running VM to the latest charts",
 		Long: "Upgrades the agyn-platform Helm release inside the VM to\n" +
@@ -730,6 +732,12 @@ func newLocalUpgradeCmd() *cobra.Command {
 			// No token to put back afterwards: the Gateway reads it from a
 			// Secret the chart reuses rather than from the Deployment spec it
 			// re-renders, so an upgrade leaves this install's token alone.
+			cfg, err := config.Load()
+			if err != nil {
+				return err
+			}
+			settings := resolveInstancePorts(cfg, local.InstanceName(), cfg.InstanceSettings(local.InstanceName()))
+
 			runLog, err := openRunLog(cmd)
 			if err != nil {
 				return err
@@ -737,13 +745,41 @@ func newLocalUpgradeCmd() *cobra.Command {
 			defer runLog.close()
 
 			steps := newSteps(cmd)
-			if err := local.UpgradePlatform(steps, runLog.stdout, ""); err != nil {
+			changed, err := local.UpgradePlatform(steps, runLog.stdout, "", resume)
+			if err != nil {
 				runLog.reportFailure(cmd)
 				return err
 			}
-			return nil
+			if !changed {
+				return nil
+			}
+
+			return restoreIngressPort(cmd, steps, settings.Port, runLog)
 		},
 	}
+
+	cmd.Flags().BoolVar(&resume, "resume", false,
+		"Continue an upgrade that was interrupted, rather than being refused by the release it left in flight")
+
+	return cmd
+}
+
+// restoreIngressPort points the browser-facing URLs back at the port this host
+// forwards.
+//
+// Helm rewrites every Deployment the charts own, and those URLs are not in the
+// charts: they were set with `kubectl set env` when the host chose a port. Left
+// reverted, the Gateway fetches OIDC discovery from a port the ingress no
+// longer publishes and every sign-in breaks.
+func restoreIngressPort(cmd *cobra.Command, steps *terminal.Steps, port int, runLog *limaIO) error {
+	step := steps.Start("Restoring the browser-facing port")
+	if _, err := local.SetIngressPort(port); err != nil {
+		step.Fail(err)
+		runLog.reportFailure(cmd)
+		return err
+	}
+	step.Done(strconv.Itoa(port))
+	return nil
 }
 
 func newLocalLoadImageCmd() *cobra.Command {
