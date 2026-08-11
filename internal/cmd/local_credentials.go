@@ -95,13 +95,35 @@ func newLocalCredentialsCmd() *cobra.Command {
 // finished starting. Empty means read it here.
 func provisionLocalProfile(cmd *cobra.Command, steps *terminal.Steps, flags localProfileFlags, port int, recordCA bool, organization string) error {
 	name := flags.targetProfile()
-	step := steps.Start("Configuring profile " + name)
 
 	token, err := localBootstrapToken(name)
 	if err != nil {
-		return step.Fail(err)
+		return err
 	}
 
+	// Three steps, because these are three things. Two of them change the VM
+	// and take as long as the workloads they restart; the third writes a file
+	// on this machine. Reporting all of it as "configuring a profile" put
+	// minutes of cluster reconfiguration under the name of the fastest part,
+	// and left the overlay being moved reading as something a profile does.
+	step := steps.Start("Installing the Gateway bootstrap token")
+	if _, err := local.SetBootstrapToken(token, step.Detail); err != nil {
+		return step.Fail(err)
+	}
+	step.Done("")
+
+	// The image bakes a default port into the URLs it hands a browser — the
+	// OIDC redirects and the media proxy origin. Whenever this host forwards
+	// something else, signing in would bounce back to a dead port. On a
+	// non-default port this restarts most of the platform, so it says which
+	// part it is on.
+	step = steps.Start("Pointing the platform at port " + strconv.Itoa(port))
+	if _, err := local.SetIngressPort(port, step.Detail); err != nil {
+		return step.Fail(err)
+	}
+	step.Done("")
+
+	step = steps.Start("Configuring profile " + name)
 	profile := config.Profile{GatewayURL: local.GatewayURL(port), Organization: organization}
 	if recordCA {
 		// Extracted afresh rather than reused from the cache: a recreated or
@@ -116,7 +138,6 @@ func provisionLocalProfile(cmd *cobra.Command, steps *terminal.Steps, flags loca
 		}
 		profile.CAFile = shortenHomePath(caFile)
 	}
-
 	if profile.Organization == "" {
 		profile.Organization, err = local.OrganizationID()
 		if err != nil {
@@ -124,31 +145,12 @@ func provisionLocalProfile(cmd *cobra.Command, steps *terminal.Steps, flags loca
 		}
 	}
 
-	// Last of the VM work, and the only part that changes the VM: the reads
-	// above fail fast, while these restart workloads when a value differs.
-	step.Detail("installing the Gateway bootstrap token")
-	if _, err := local.SetBootstrapToken(token); err != nil {
-		return step.Fail(err)
-	}
-
-	// The image bakes a default port into the URLs it hands a browser — the
-	// OIDC redirects and the media proxy origin. Whenever this host forwards
-	// something else, signing in would bounce back to a dead port.
-	// On a non-default port this restarts most of the platform -- the OpenZiti
-	// charts, Keycloak and its realm clients, and every workload holding a
-	// browser-facing URL -- so it reports which of them it is on rather than
-	// standing on one label for minutes.
-	step.Detail("pointing browser-facing URLs at port " + strconv.Itoa(port))
-	if _, err := local.SetIngressPort(port, step.Detail); err != nil {
-		return step.Fail(err)
-	}
-
 	current, err := writeLocalProfile(name, profile, token)
 	if err != nil {
 		return step.Fail(err)
 	}
-
 	step.Done("organization " + profile.Organization)
+
 	if current != name {
 		steps.Note(fmt.Sprintf("commands still run under profile %s; switch with: agyn profile use %s", current, name))
 	}

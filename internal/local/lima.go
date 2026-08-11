@@ -269,7 +269,7 @@ const detailMarker = "AGYN|detail|"
 // by any user of the guest, and by anyone running ps on the host while the CLI
 // works. The staged copy is mode 0700 under /run, which is tmpfs, and is
 // removed whether or not the run succeeds.
-func RunScriptWithSecret(script string, secret io.Reader, args ...string) (string, error) {
+func RunScriptWithSecret(script string, secret io.Reader, onDetail func(string), args ...string) (string, error) {
 	path := "/run/agyn-" + InstanceName() + ".sh"
 
 	var staged bytes.Buffer
@@ -282,8 +282,12 @@ func RunScriptWithSecret(script string, secret io.Reader, args ...string) (strin
 	}()
 
 	var out bytes.Buffer
+	stdout := io.Writer(&out)
+	if onDetail != nil {
+		stdout = &detailScanner{onDetail: onDetail, rest: &out}
+	}
 	runArgs := append([]string{"shell", InstanceName(), "--", "sudo", "bash", path}, args...)
-	if err := limactlStdin(secret, &out, &out, runArgs...); err != nil {
+	if err := limactlStdin(secret, stdout, &out, runArgs...); err != nil {
 		return out.String(), fmt.Errorf("%w: %s", err, strings.TrimSpace(out.String()))
 	}
 	return out.String(), nil

@@ -22,7 +22,13 @@ NAMESPACE="${AGYN_PLATFORM_NAMESPACE:-agyn-platform}"
 SECRET="${AGYN_BOOTSTRAP_TOKEN_SECRET:-gateway-bootstrap-token}"
 KEY="${AGYN_BOOTSTRAP_TOKEN_KEY:-token}"
 
-log() { printf '[set-bootstrap-token] %s\n' "$*"; }
+# stderr carries the account for the run log; stdout carries the same line as a
+# marker for the CLI, because a token that changed restarts the Gateway and
+# waits on its rollout.
+log() {
+	printf '[set-bootstrap-token] %s\n' "$*" >&2
+	printf 'AGYN|detail|%s\n' "$*"
+}
 
 # Loud rather than quiet. The token now always arrives from the CLI on stdin, so
 # an empty read is a broken channel, not a caller declining to set one -- and

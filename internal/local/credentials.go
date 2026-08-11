@@ -66,11 +66,11 @@ func IsBootstrapToken(token string) bool {
 // never the network, and is never read back: the host keeps the copy it
 // generated. It is handed over on stdin rather than as an argument, so it is in
 // neither machine's process list.
-func SetBootstrapToken(token string) (string, error) {
+func SetBootstrapToken(token string, onDetail func(string)) (string, error) {
 	if strings.TrimSpace(token) == "" {
 		return "", fmt.Errorf("bootstrap token must not be empty")
 	}
-	out, err := RunScriptWithSecret(bootstrapTokenScript, strings.NewReader(token))
+	out, err := RunScriptWithSecret(bootstrapTokenScript, strings.NewReader(token), onDetail)
 	if err != nil {
 		return "", fmt.Errorf("install the bootstrap token in the VM: %w", err)
 	}
