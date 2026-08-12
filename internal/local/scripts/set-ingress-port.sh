@@ -430,21 +430,11 @@ keycloak)
 		"KC_HOSTNAME=${auth_origin}" >/dev/null
 	;;
 dex)
-	# Dex holds its issuer and every redirect URI in a ConfigMap it re-reads
-	# on each start, so the port moves by rewriting that and restarting -- no
-	# admin API, and no client-by-client update.
-	dex_config="$(kubectl -n "${NAMESPACE}" get configmap dex \
-		-o jsonpath='{.data.config\.yaml}' 2>/dev/null || true)"
-	if [ -n "${dex_config}" ]; then
-		printf '%s' "${dex_config}" |
-			sed -E "s#(://[A-Za-z0-9.-]*${BASE_DOMAIN}):[0-9]+#\1:${PORT}#g" \
-				>/tmp/agyn-dex-config.yaml
-		kubectl -n "${NAMESPACE}" create configmap dex \
-			--from-file=config.yaml=/tmp/agyn-dex-config.yaml \
-			--dry-run=client -o yaml | kubectl apply -f - >/dev/null
-		rm -f /tmp/agyn-dex-config.yaml
-		kubectl -n "${NAMESPACE}" rollout restart deployment/dex >/dev/null
-	fi
+	# Nothing. Dex's issuer and redirect URIs are rendered from dex.externalUrl,
+	# a chart value, and the upgrade rewrites the port in the release's values
+	# where they live. Patching the ConfigMap here would be undone by the next
+	# render -- which is the failure this whole path exists to stop repeating.
+	log "  dex takes its port from the release; nothing to patch"
 	;;
 "")
 	log "no bundled identity provider; leaving the issuer alone"
