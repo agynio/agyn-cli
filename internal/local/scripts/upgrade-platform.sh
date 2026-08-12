@@ -204,7 +204,6 @@ release_overlay() {
 		cat >>"${file}" <<-DEX
 		dex:
 		  enabled: true
-		  externalUrl: https://auth.${BASE_DOMAIN}:${ingress_port}
 		  routing:
 		    enabled: true
 		    host: auth.${BASE_DOMAIN}
@@ -227,6 +226,19 @@ release_overlay() {
 		return 0
 	fi
 	printf '%s' "${file}"
+}
+
+# Whether the running Dex is issuing callbacks for a port this host does not
+# serve. Its redirect URIs are matched exactly, so a mismatch is a sign-in that
+# fails with nothing in the browser but "We couldn't sign you in" -- and it
+# survives a matching chart version, which is why it is asked before skipping.
+dex_port_wrong() {
+	[ -n "${ingress_port}" ] || return 1
+	ports="$({
+		kubectl -n "${NAMESPACE}" get cm dex-config -o jsonpath='{.data.config\.yaml}' 2>/dev/null |
+			sed -nE "s#.*://[a-z]+\.${BASE_DOMAIN}:([0-9]+)/callback.*#\1#p" | sort -u
+	} || true)"
+	[ -n "${ports}" ] && [ "${ports}" != "${ingress_port}" ]
 }
 
 upgrade() {
@@ -270,7 +282,8 @@ upgrade() {
 	# version or not: until they are corrected the release is one re-render away
 	# from reverting to a port this VM does not serve.
 	if [ -z "${extra_values}" ] && [ -z "${overlay}" ] &&
-		[ -n "${before}" ] && [ "${before}" = "${target}" ]; then
+		[ -n "${before}" ] && [ "${before}" = "${target}" ] &&
+		! { [ "${release}" = "agyn-platform" ] && dex_port_wrong; }; then
 		step "${release}"
 		skip "already at ${before}"
 		return 0
@@ -278,7 +291,7 @@ upgrade() {
 
 	upgraded=1
 
-	if [ -n "${overlay}" ] && [ "${before}" = "${target}" ]; then
+	if [ "${before}" = "${target}" ]; then
 		step "${release}" "${before}, correcting the port to ${ingress_port}"
 	else
 		step "${release}" "${before:-unknown} → ${target:-latest}"
@@ -305,6 +318,19 @@ upgrade() {
 	# can still override what this derived.
 	if [ -n "${overlay}" ]; then
 		set -- "$@" -f "${overlay}"
+	fi
+	# Dex matches redirect URIs exactly -- there is no wildcard form -- so an
+	# install on any port but the chart's default has every callback refused,
+	# and the browser is told only "We couldn't sign you in". Set on each
+	# upgrade rather than written once, so a VM migrated before this existed is
+	# corrected rather than left on the default port.
+	if [ "${release}" = "agyn-platform" ] && [ -n "${ingress_port}" ]; then
+		set -- "$@" \
+			--set "dex.externalUrl=https://auth.${BASE_DOMAIN}:${ingress_port}" \
+			--set "dex.appOrigins.console=https://console.${BASE_DOMAIN}:${ingress_port}" \
+			--set "dex.appOrigins.chat=https://chat.${BASE_DOMAIN}:${ingress_port}" \
+			--set "dex.appOrigins.tracing=https://tracing.${BASE_DOMAIN}:${ingress_port}" \
+			--set "dex.appOrigins.sandboxes=https://sandboxes.${BASE_DOMAIN}:${ingress_port}"
 	fi
 	# Overlaid on top of the reused values, so the caller's file changes only
 	# what it names and everything the bake configured survives.
