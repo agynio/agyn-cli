@@ -13,6 +13,6 @@ func TestPreviewFinishedStart(t *testing.T) {
 	s.Rule()
 	s.CallToAction("Open the console", "https://console.agyn.dev:2497")
 	os.Stdout.WriteString("\n")
-	s.Detail("Regular user (recommended)", "user / user")
-	s.Detail("Cluster admin", "admin / admin")
+	s.Detail("Regular user (recommended)", "user@agyn.dev / user")
+	s.Detail("Cluster admin", "admin@agyn.dev / admin")
 }

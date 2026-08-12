@@ -33,6 +33,12 @@ const (
 	// platformNamespace holds the platform workloads inside the VM.
 	platformNamespace = "agyn-platform"
 
+	// dexConfigMap holds the shipped provider's config. Named for the chart's
+	// resource, not the release: reading "dex" found nothing, and nothing is
+	// how this reports "not the shipped provider" -- so the credentials simply
+	// never printed.
+	dexConfigMap = "dex-config"
+
 	// systemOrganization is the declaration the release ships for the
 	// organization platform-provisioned resources live in. Its status carries
 	// the id the platform assigned, which is the organization every org-scoped
@@ -124,9 +130,15 @@ type Account struct {
 // are bcrypt hashes in the chart, so the plaintext cannot be read back from a
 // running VM -- it is a property of the shipped config, and printing it is only
 // right while that config is the one in place.
+//
+// Named by address, which is the only thing Dex authenticates a static user by.
+// Printing the local part instead is what sends someone into an account stored
+// under "admin", against which the cluster-admin declaration for
+// admin@<domain> has nothing to resolve -- a sign-in that works and a role that
+// never arrives.
 var bundledAccounts = []Account{
-	{Label: "Regular user (recommended)", Username: "user", Password: "user"},
-	{Label: "Cluster admin", Username: "admin", Password: "admin"},
+	{Label: "Regular user (recommended)", Username: "user@" + BaseDomain, Password: "user"},
+	{Label: "Cluster admin", Username: "admin@" + BaseDomain, Password: "admin"},
 }
 
 // BundledAccounts returns the sign-ins to print, or nothing.
@@ -138,12 +150,12 @@ var bundledAccounts = []Account{
 // for the two accounts this CLI knows the passwords of.
 func BundledAccounts() []Account {
 	config, err := Shell("sudo", "kubectl", "-n", platformNamespace,
-		"get", "configmap", "dex", "-o", `jsonpath={.data.config\.yaml}`)
+		"get", "configmap", dexConfigMap, "-o", `jsonpath={.data.config\.yaml}`)
 	if err != nil {
 		return nil
 	}
 	for _, account := range bundledAccounts {
-		if !strings.Contains(config, account.Username+"@"+BaseDomain) {
+		if !strings.Contains(config, account.Username) {
 			return nil
 		}
 	}
