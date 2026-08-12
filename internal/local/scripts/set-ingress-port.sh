@@ -494,4 +494,4 @@ fi
 for deployment in chat-app console-app tracing-app sandboxes-app media-proxy gateway terminal-proxy; do
 	kubectl rollout status "deployment/${deployment}" -n "${NAMESPACE}" --timeout=300s
 done
-log "done"
+printf '[set-ingress-port] done\n' >&2

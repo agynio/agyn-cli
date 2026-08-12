@@ -203,15 +203,18 @@ func (st *Step) Fail(err error) error {
 	return err
 }
 
+// finish closes the step with detail as its last word -- empty meaning none,
+// rather than whatever progress happened to scroll by last. A step that spent a
+// minute reporting where it had got to should not end on the final frame of
+// that: "Pointing the platform at port 2497  agyn-sandboxes -> ..." says less
+// than the title alone.
 func (st *Step) finish(detail, symbol, color string) {
 	st.steps.mu.Lock()
 	defer st.steps.mu.Unlock()
 	if st.done {
 		return
 	}
-	if detail != "" {
-		st.detail = detail
-	}
+	st.detail = detail
 	st.steps.finish(st, symbol, color)
 }
 
