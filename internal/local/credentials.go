@@ -112,3 +112,40 @@ func OrganizationID() (string, error) {
 	}
 	return id, nil
 }
+
+// Account is a sign-in the bundled provider ships with.
+type Account struct {
+	Label    string
+	Username string
+	Password string
+}
+
+// bundledAccounts are the static logins the dex subchart ships. The passwords
+// are bcrypt hashes in the chart, so the plaintext cannot be read back from a
+// running VM -- it is a property of the shipped config, and printing it is only
+// right while that config is the one in place.
+var bundledAccounts = []Account{
+	{Label: "Regular user (recommended)", Username: "user", Password: "user"},
+	{Label: "Cluster admin", Username: "admin", Password: "admin"},
+}
+
+// BundledAccounts returns the sign-ins to print, or nothing.
+//
+// Nothing unless the VM runs the shipped Dex config: Keycloak's accounts are
+// different, an install pointed at its own issuer has none of ours, and a VM
+// whose dex.users were replaced would be handed credentials that do not work.
+// Each of those is worse than printing no credentials at all, so the check is
+// for the two accounts this CLI knows the passwords of.
+func BundledAccounts() []Account {
+	config, err := Shell("sudo", "kubectl", "-n", platformNamespace,
+		"get", "configmap", "dex", "-o", `jsonpath={.data.config\.yaml}`)
+	if err != nil {
+		return nil
+	}
+	for _, account := range bundledAccounts {
+		if !strings.Contains(config, account.Username+"@"+BaseDomain) {
+			return nil
+		}
+	}
+	return bundledAccounts
+}

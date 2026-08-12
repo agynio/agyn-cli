@@ -288,7 +288,17 @@ func finishLocalStart(cmd *cobra.Command, steps *terminal.Steps, flags localStar
 		}
 	}
 
+	steps.Rule()
 	steps.CallToAction("Open the console", local.ConsoleURL(port))
+	// Only when the VM runs the accounts this CLI knows the passwords of --
+	// see local.BundledAccounts. A link with no way in is half an answer, and
+	// credentials that do not work are worse than none.
+	if accounts := local.BundledAccounts(); len(accounts) > 0 {
+		fmt.Fprintln(cmd.OutOrStdout())
+		for _, account := range accounts {
+			steps.Detail(account.Label, account.Username+" / "+account.Password)
+		}
+	}
 	return nil
 }
 

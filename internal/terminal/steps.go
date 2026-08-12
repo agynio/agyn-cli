@@ -113,7 +113,10 @@ func (s *Steps) Failed(title string, err error) error {
 func (s *Steps) instant(title, detail, symbol, color string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.finish(&Step{steps: s, title: title, detail: detail}, symbol, color)
+	// started, or the zero time is measured against now and the line ends in a
+	// duration of 153722867m -- these steps took no time, which is why they are
+	// reported rather than run.
+	s.finish(&Step{steps: s, title: title, detail: detail, started: time.Now()}, symbol, color)
 }
 
 // Note prints a line that is not a step: something the user needs to know that
@@ -122,6 +125,37 @@ func (s *Steps) Note(text string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	fmt.Fprintf(s.out, "  %s\n", text)
+}
+
+// Rule draws a divider, separating the account of what happened from what to do
+// with it.
+func (s *Steps) Rule() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	width := terminalWidth(s.out) - 4
+	if width > 56 {
+		width = 56
+	}
+	if width < 8 {
+		width = 8
+	}
+	line := "  " + strings.Repeat("─", width)
+	if s.animate {
+		line = "  \x1b[2m" + strings.Repeat("─", width) + "\x1b[0m"
+	}
+	fmt.Fprintln(s.out, "\n"+line)
+}
+
+// Detail prints a labelled line under the call to action -- what to do once the
+// link is open, which is a different question from what just happened.
+func (s *Steps) Detail(label, value string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.animate {
+		fmt.Fprintf(s.out, "  %-28s \x1b[1m%s\x1b[0m\n", label, value)
+		return
+	}
+	fmt.Fprintf(s.out, "  %-28s %s\n", label, value)
 }
 
 // CallToAction closes a successful run with the one thing to do next. A

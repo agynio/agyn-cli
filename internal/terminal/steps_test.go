@@ -81,6 +81,24 @@ func TestCallToActionIsOneLine(t *testing.T) {
 	}
 }
 
+// An instantly-reported step has no duration to show. Constructed without a
+// start time it had one anyway, measured from the zero time.
+func TestInstantStepsShowNoDuration(t *testing.T) {
+	var buf bytes.Buffer
+	steps := NewSteps(&buf)
+	steps.Report("Trusting the CA", "installed in the system trust store")
+	steps.Skipped("Image 0.3.0", "already downloaded")
+
+	for _, line := range strings.Split(strings.TrimRight(buf.String(), "\n"), "\n") {
+		if strings.Contains(line, "m") && strings.Contains(line, "s  ") {
+			t.Errorf("expected no elapsed time on an instant step: %q", line)
+		}
+		if strings.Contains(line, "1537") {
+			t.Errorf("expected no duration measured from the zero time: %q", line)
+		}
+	}
+}
+
 func TestTruncateCountsPrintableColumnsOnly(t *testing.T) {
 	line := "\x1b[36m⠋\x1b[0m Downloading"
 	if got := truncate(line, 40); got != line {
