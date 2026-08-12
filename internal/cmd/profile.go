@@ -317,9 +317,9 @@ func newProfileRemoveCmd() *cobra.Command {
 func profileOutputFor(cfg *config.Config, name, currentName string) profileOutput {
 	profile := cfg.Profile(name)
 	return profileOutput{
-		Name:         name,
-		Current:      name == currentName,
-		GatewayURL:   cfg.ResolveGatewayTargetFor(name, "").URL,
+		Name:               name,
+		Current:            name == currentName,
+		GatewayURL:         cfg.ResolveGatewayTargetFor(name, "").URL,
 		Organization:       profile.Organization,
 		CAFile:             profile.CAFile,
 		SandboxIdleTimeout: profile.SandboxIdleTimeout,

@@ -121,7 +121,7 @@ func CreateAndStart(imageDir string, opts VMOptions, stdout, stderr io.Writer) e
 var BootLogNames = []string{"ha.stderr.log", "serial.log"}
 
 // preserveBootLogs copies the instance's boot logs up into the local directory,
-// beside lima.log, so they outlive the instance. Best effort throughout: this
+// beside the run log, so they outlive the instance. Best effort throughout: this
 // runs on a path that has already failed and must not fail again.
 func preserveBootLogs() {
 	limaHome, err := LimaHome()
@@ -201,6 +201,96 @@ func Stop(stdout, stderr io.Writer) error {
 // Delete removes the instance and its disk state.
 func Delete(stdout, stderr io.Writer) error {
 	return limactl(stdout, stderr, "delete", "--force", InstanceName())
+}
+
+// RunScript pipes a script the CLI carries into the guest and runs it there,
+// returning its combined output.
+//
+// Nothing is installed in the VM and no copy is left behind to drift from this
+// caller. That is the whole reason these scripts live with the CLI: one that
+// lives in the image can only be corrected by building a new image and
+// recreating the VM, which is the operation `upgrade` exists to avoid.
+func RunScript(script string, args ...string) (string, error) {
+	return RunScriptProgress(script, nil, args...)
+}
+
+// RunScriptProgress runs a script that reports where it has got to, calling
+// onDetail for each AGYN|detail| line it writes. Everything else is the script's
+// own log and is returned.
+//
+// Scripts that restart the cluster take minutes, and a step with a fixed label
+// for that long cannot be told from a hang.
+func RunScriptProgress(script string, onDetail func(string), args ...string) (string, error) {
+	var out bytes.Buffer
+	stdout := io.Writer(&out)
+	if onDetail != nil {
+		stdout = &detailScanner{onDetail: onDetail, rest: &out}
+	}
+	shellArgs := append([]string{"shell", InstanceName(), "--", "sudo", "bash", "-s", "--"}, args...)
+	if err := limactlStdin(strings.NewReader(script), stdout, &out, shellArgs...); err != nil {
+		return out.String(), fmt.Errorf("%w: %s", err, strings.TrimSpace(out.String()))
+	}
+	return out.String(), nil
+}
+
+// detailScanner splits a script's stdout into progress markers and everything
+// else, line by line as it arrives.
+type detailScanner struct {
+	onDetail func(string)
+	rest     io.Writer
+	partial  []byte
+}
+
+func (d *detailScanner) Write(data []byte) (int, error) {
+	d.partial = append(d.partial, data...)
+	for {
+		index := bytes.IndexByte(d.partial, '\n')
+		if index < 0 {
+			return len(data), nil
+		}
+		line := string(d.partial[:index])
+		d.partial = d.partial[index+1:]
+		if detail, ok := strings.CutPrefix(line, detailMarker); ok {
+			d.onDetail(detail)
+			continue
+		}
+		fmt.Fprintln(d.rest, line)
+	}
+}
+
+// detailMarker prefixes a line a script writes for the CLI to show.
+const detailMarker = "AGYN|detail|"
+
+// RunScriptWithSecret runs a script whose input is a credential.
+//
+// The script is staged into the guest first, because stdin is the one channel
+// that carries a secret without putting it in an argument list -- and the
+// script itself would otherwise be occupying it. An argument list is readable
+// by any user of the guest, and by anyone running ps on the host while the CLI
+// works. The staged copy is mode 0700 under /run, which is tmpfs, and is
+// removed whether or not the run succeeds.
+func RunScriptWithSecret(script string, secret io.Reader, onDetail func(string), args ...string) (string, error) {
+	path := "/run/agyn-" + InstanceName() + ".sh"
+
+	var staged bytes.Buffer
+	stage := []string{"shell", InstanceName(), "--", "sudo", "sh", "-c", "umask 077 && cat > " + path}
+	if err := limactlStdin(strings.NewReader(script), &staged, &staged, stage...); err != nil {
+		return "", fmt.Errorf("stage the script in the VM: %w: %s", err, strings.TrimSpace(staged.String()))
+	}
+	defer func() {
+		_ = limactl(io.Discard, io.Discard, "shell", InstanceName(), "--", "sudo", "rm", "-f", path)
+	}()
+
+	var out bytes.Buffer
+	stdout := io.Writer(&out)
+	if onDetail != nil {
+		stdout = &detailScanner{onDetail: onDetail, rest: &out}
+	}
+	runArgs := append([]string{"shell", InstanceName(), "--", "sudo", "bash", path}, args...)
+	if err := limactlStdin(secret, stdout, &out, runArgs...); err != nil {
+		return out.String(), fmt.Errorf("%w: %s", err, strings.TrimSpace(out.String()))
+	}
+	return out.String(), nil
 }
 
 // Shell runs a command inside the guest and returns its stdout.

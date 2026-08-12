@@ -47,44 +47,60 @@ func ResolveVersion(version string) (string, error) {
 	return pointer.Version, nil
 }
 
-// EnsureImage makes sure the decompressed disk for version/arch exists locally,
-// downloading and verifying it if needed. Returns the image directory.
-// Progress messages go to progress (may be nil).
-func EnsureImage(version, arch string, progress io.Writer) (string, error) {
+// HaveImage reports whether the decompressed disk for version/arch is already
+// on this machine, and the directory it lives in either way.
+func HaveImage(version, arch string) (string, bool, error) {
+	dir, err := ImageDir(version, arch)
+	if err != nil {
+		return "", false, err
+	}
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return "", false, fmt.Errorf("create image dir: %w", err)
+	}
+	_, err = os.Stat(filepath.Join(dir, DiskFileName(arch)))
+	return dir, err == nil, nil
+}
+
+// FetchImage downloads and verifies the compressed disk and the metadata
+// beside it, reporting progress through report (which may be nil).
+//
+// Download and decompression are separate calls because they are separate
+// waits: one is minutes of network with a byte count to show, the other is
+// minutes of CPU with nothing to show but that it is running.
+func FetchImage(version, arch string, report func(detail string)) error {
+	dir, _, err := HaveImage(version, arch)
+	if err != nil {
+		return err
+	}
+
+	base := fmt.Sprintf("%s/%s/%s", BaseURL(), version, arch)
+	for _, name := range []string{"checksums.sha256", "metadata.json", "lima.yaml"} {
+		if err := download(base+"/"+name, filepath.Join(dir, name), nil); err != nil {
+			return err
+		}
+	}
+
+	name := DiskFileName(arch) + ".xz"
+	if verifyChecksum(dir, name) {
+		return nil
+	}
+	if err := download(base+"/"+name, filepath.Join(dir, name), report); err != nil {
+		return err
+	}
+	if !verifyChecksum(dir, name) {
+		return fmt.Errorf("checksum mismatch for %s after download", name)
+	}
+	return nil
+}
+
+// DecompressImage expands the downloaded archive into the qcow2 disk Lima
+// boots, and returns the image directory.
+func DecompressImage(version, arch string) (string, error) {
 	dir, err := ImageDir(version, arch)
 	if err != nil {
 		return "", err
 	}
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return "", fmt.Errorf("create image dir: %w", err)
-	}
-
-	disk := filepath.Join(dir, DiskFileName(arch))
-	if _, err := os.Stat(disk); err == nil {
-		return dir, nil
-	}
-
-	base := fmt.Sprintf("%s/%s/%s", BaseURL(), version, arch)
-	diskXZ := disk + ".xz"
-
-	for _, name := range []string{"checksums.sha256", "metadata.json", "lima.yaml"} {
-		if err := download(base+"/"+name, filepath.Join(dir, name), nil); err != nil {
-			return "", err
-		}
-	}
-
-	if !verifyChecksum(dir, filepath.Base(diskXZ)) {
-		if err := download(base+"/"+filepath.Base(diskXZ), diskXZ, progress); err != nil {
-			return "", err
-		}
-		if !verifyChecksum(dir, filepath.Base(diskXZ)) {
-			return "", fmt.Errorf("checksum mismatch for %s after download", filepath.Base(diskXZ))
-		}
-	}
-
-	if progress != nil {
-		fmt.Fprintln(progress, "Decompressing image (~4.6 GB)...")
-	}
+	diskXZ := filepath.Join(dir, DiskFileName(arch)+".xz")
 	cmd := exec.Command("xz", "--decompress", "--keep", "--force", diskXZ)
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return "", fmt.Errorf("decompress image: %w: %s", err, strings.TrimSpace(string(out)))
@@ -92,7 +108,6 @@ func EnsureImage(version, arch string, progress io.Writer) (string, error) {
 
 	// The compressed artifact is no longer needed once the disk exists.
 	_ = os.Remove(diskXZ)
-
 	return dir, nil
 }
 
@@ -131,7 +146,7 @@ func verifyChecksum(dir, name string) bool {
 
 // download fetches url into path atomically (tmp file + rename), resuming a
 // previous partial download when the server supports ranges.
-func download(url, path string, progress io.Writer) error {
+func download(url, path string, report func(detail string)) error {
 	tmp := path + ".partial"
 
 	var offset int64
@@ -170,12 +185,16 @@ func download(url, path string, progress io.Writer) error {
 	}
 
 	var writer io.Writer = out
-	if progress != nil {
+	if report != nil {
 		writer = io.MultiWriter(out, &progressWriter{
-			out:     progress,
+			report:  report,
 			total:   resp.ContentLength + offset,
 			written: offset,
-			label:   filepath.Base(path),
+			started: time.Now(),
+			// Resumed bytes were not transferred now, so they must not count
+			// toward the rate -- a resume would otherwise open by claiming a
+			// gigabyte per second and take a minute to settle.
+			resumed: offset,
 		})
 	}
 
@@ -188,32 +207,50 @@ func download(url, path string, progress io.Writer) error {
 		return fmt.Errorf("write %s: %w", tmp, closeErr)
 	}
 
-	if progress != nil {
-		fmt.Fprintln(progress)
-	}
 	if err := os.Rename(tmp, path); err != nil {
 		return fmt.Errorf("finalize %s: %w", path, err)
 	}
 	return nil
 }
 
+// progressWriter turns the byte stream into the detail line of a step: how much
+// of the image has arrived, how fast, and how much longer it will take.
 type progressWriter struct {
-	out      io.Writer
+	report   func(detail string)
 	total    int64
 	written  int64
-	label    string
+	resumed  int64
+	started  time.Time
 	lastTick time.Time
 }
 
 func (p *progressWriter) Write(data []byte) (int, error) {
 	p.written += int64(len(data))
-	if time.Since(p.lastTick) >= time.Second {
-		p.lastTick = time.Now()
-		if p.total > 0 {
-			fmt.Fprintf(p.out, "\r%s: %d%% (%d/%d MB)", p.label, p.written*100/p.total, p.written>>20, p.total>>20)
-		} else {
-			fmt.Fprintf(p.out, "\r%s: %d MB", p.label, p.written>>20)
+	if time.Since(p.lastTick) < 250*time.Millisecond {
+		return len(data), nil
+	}
+	p.lastTick = time.Now()
+
+	elapsed := time.Since(p.started).Seconds()
+	rate := float64(p.written-p.resumed) / elapsed
+	detail := formatBytes(p.written)
+	if p.total > 0 {
+		detail += " of " + formatBytes(p.total)
+	}
+	if elapsed > 1 && rate > 0 {
+		detail += fmt.Sprintf("  %s/s", formatBytes(int64(rate)))
+		if p.total > p.written {
+			remaining := time.Duration(float64(p.total-p.written)/rate) * time.Second
+			detail += "  " + formatRemaining(remaining)
 		}
 	}
+	p.report(detail)
 	return len(data), nil
+}
+
+func formatRemaining(d time.Duration) string {
+	if d < time.Minute {
+		return fmt.Sprintf("%ds left", int(d.Seconds()))
+	}
+	return fmt.Sprintf("%dm left", int(d.Minutes())+1)
 }

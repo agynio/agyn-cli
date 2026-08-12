@@ -4,11 +4,13 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/agynio/agyn-cli/internal/auth"
 	"github.com/agynio/agyn-cli/internal/config"
 	"github.com/agynio/agyn-cli/internal/local"
+	"github.com/agynio/agyn-cli/internal/terminal"
 	"github.com/spf13/cobra"
 )
 
@@ -72,7 +74,7 @@ func newLocalCredentialsCmd() *cobra.Command {
 				return fmt.Errorf("the VM is not running; start it with `agyn local start`")
 			}
 
-			return provisionLocalProfile(cmd, flags, settings.Port, true)
+			return provisionLocalProfile(cmd, newSteps(cmd), flags, settings.Port, true, "")
 		},
 	}
 
@@ -87,8 +89,11 @@ func newLocalCredentialsCmd() *cobra.Command {
 //
 // recordCA is false when the caller was told to leave certificates alone; the
 // profile then trusts whatever the system trust store holds.
-func provisionLocalProfile(cmd *cobra.Command, flags localProfileFlags, port int, recordCA bool) error {
-	stdout := cmd.OutOrStdout()
+//
+// organization is the id a caller has already read from the VM — the readiness
+// wait reads it, because it is one of the two signals that the platform has
+// finished starting. Empty means read it here.
+func provisionLocalProfile(cmd *cobra.Command, steps *terminal.Steps, flags localProfileFlags, port int, recordCA bool, organization string) error {
 	name := flags.targetProfile()
 
 	token, err := localBootstrapToken(name)
@@ -96,49 +101,58 @@ func provisionLocalProfile(cmd *cobra.Command, flags localProfileFlags, port int
 		return err
 	}
 
-	profile := config.Profile{GatewayURL: local.GatewayURL(port)}
+	// Three steps, because these are three things. Two of them change the VM
+	// and take as long as the workloads they restart; the third writes a file
+	// on this machine. Reporting all of it as "configuring a profile" put
+	// minutes of cluster reconfiguration under the name of the fastest part,
+	// and left the overlay being moved reading as something a profile does.
+	step := steps.Start("Installing the Gateway bootstrap token")
+	if _, err := local.SetBootstrapToken(token, step.Detail); err != nil {
+		return step.Fail(err)
+	}
+	step.Done("")
+
+	// The image bakes a default port into the URLs it hands a browser — the
+	// OIDC redirects and the media proxy origin. Whenever this host forwards
+	// something else, signing in would bounce back to a dead port. On a
+	// non-default port this restarts most of the platform, so it says which
+	// part it is on.
+	step = steps.Start("Pointing the platform at port " + strconv.Itoa(port))
+	if _, err := local.SetIngressPort(port, step.Detail); err != nil {
+		return step.Fail(err)
+	}
+	step.Done("")
+
+	step = steps.Start("Configuring profile " + name)
+	profile := config.Profile{GatewayURL: local.GatewayURL(port), Organization: organization}
 	if recordCA {
 		// Extracted afresh rather than reused from the cache: a recreated or
 		// upgraded VM can carry a different CA, and a stale one fails every
 		// handshake with an error that looks like a network fault.
 		if err := local.ExtractCA(); err != nil {
-			return err
+			return step.Fail(err)
 		}
 		caFile, err := local.CAPath()
 		if err != nil {
-			return err
+			return step.Fail(err)
 		}
 		profile.CAFile = shortenHomePath(caFile)
 	}
-
-	profile.Organization, err = local.OrganizationID()
-	if err != nil {
-		return err
-	}
-
-	// Last of the VM work, and the only part that changes the VM: the reads
-	// above fail fast, while these restart workloads when a value differs.
-	fmt.Fprintln(stdout, "Installing the Gateway bootstrap token (restarts the gateway if it changed)...")
-	if _, err := local.SetBootstrapToken(token); err != nil {
-		return err
-	}
-
-	// The image bakes a default port into the URLs it hands a browser — the
-	// OIDC redirects and the media proxy origin. Whenever this host forwards
-	// something else, signing in would bounce back to a dead port.
-	fmt.Fprintln(stdout, "Pointing browser-facing URLs at the forwarded port...")
-	if _, err := local.SetIngressPort(port); err != nil {
-		return err
+	if profile.Organization == "" {
+		profile.Organization, err = local.OrganizationID()
+		if err != nil {
+			return step.Fail(err)
+		}
 	}
 
 	current, err := writeLocalProfile(name, profile, token)
 	if err != nil {
-		return err
+		return step.Fail(err)
 	}
+	step.Done("organization " + profile.Organization)
 
-	fmt.Fprintf(stdout, "Configured profile %s: %s, organization %s.\n", name, profile.GatewayURL, profile.Organization)
 	if current != name {
-		fmt.Fprintf(stdout, "Commands still run under profile %s; switch with: agyn profile use %s\n", current, name)
+		steps.Note(fmt.Sprintf("commands still run under profile %s; switch with: agyn profile use %s", current, name))
 	}
 	return nil
 }

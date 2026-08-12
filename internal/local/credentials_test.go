@@ -48,9 +48,9 @@ func TestIsBootstrapTokenRecognisesOnlyItsOwn(t *testing.T) {
 }
 
 func TestSetBootstrapTokenRejectsAnEmptyValue(t *testing.T) {
-	// Empty is what the in-VM script reads as "leave the image placeholder in
-	// place" — silently provisioning nothing while reporting success.
-	if _, err := SetBootstrapToken("   "); err == nil {
+	// The script refuses an empty read too, but this check is what keeps the
+	// VM from being reached at all for a value that cannot be right.
+	if _, err := SetBootstrapToken("   ", nil); err == nil {
 		t.Fatal("expected an empty token to be rejected before touching the VM")
 	}
 }
