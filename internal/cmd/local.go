@@ -289,17 +289,25 @@ func finishLocalStart(cmd *cobra.Command, steps *terminal.Steps, flags localStar
 	}
 
 	steps.Rule()
-	steps.CallToAction("Open the console", local.ConsoleURL(port))
-	// Only when the VM runs the accounts this CLI knows the passwords of --
-	// see local.BundledAccounts. A link with no way in is half an answer, and
-	// credentials that do not work are worse than none.
-	if accounts := local.BundledAccounts(); len(accounts) > 0 {
-		fmt.Fprintln(cmd.OutOrStdout())
-		for _, account := range accounts {
-			steps.Detail(account.Label, account.Username+" / "+account.Password)
-		}
-	}
+	signInBlock(cmd, steps, port)
 	return nil
+}
+
+// signInBlock closes a run with the console and the way in.
+//
+// The accounts print only when the VM runs the ones this CLI knows the
+// passwords of -- see local.BundledAccounts. A link with no way in is half an
+// answer, and credentials that do not work are worse than none.
+func signInBlock(cmd *cobra.Command, steps *terminal.Steps, port int) {
+	steps.CallToAction("Open the console", local.ConsoleURL(port))
+	accounts := local.BundledAccounts()
+	if len(accounts) == 0 {
+		return
+	}
+	fmt.Fprintln(cmd.OutOrStdout())
+	for _, account := range accounts {
+		steps.Detail(account.Label, account.Username+" / "+account.Password)
+	}
 }
 
 // platformReadyTimeout bounds the wait. A first boot has to start every
@@ -755,12 +763,12 @@ func newLocalUpgradeCmd() *cobra.Command {
 			defer runLog.close()
 
 			steps := newSteps(cmd)
-			changed, err := local.UpgradePlatform(steps, runLog.stdout, "", resume, settings.Port)
+			result, err := local.UpgradePlatform(steps, runLog.stdout, "", resume, settings.Port)
 			if err != nil {
 				runLog.reportFailure(cmd)
 				return err
 			}
-			if !changed {
+			if !result.Changed {
 				return nil
 			}
 
@@ -777,6 +785,15 @@ func newLocalUpgradeCmd() *cobra.Command {
 				return step.Fail(err)
 			}
 			step.Done("")
+
+			// An upgrade that changed the identity provider changed how to sign
+			// in. The accounts are not the ones this install had, and nothing
+			// else on screen would say so.
+			if result.Migrated {
+				steps.Rule()
+				steps.Note("Sign-in moved to a new provider. The accounts below replace the ones this install had.")
+				signInBlock(cmd, steps, settings.Port)
+			}
 			return nil
 		},
 	}

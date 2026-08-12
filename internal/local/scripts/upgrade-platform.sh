@@ -197,6 +197,7 @@ release_overlay() {
 	# together, which is why this is one substitution over the whole file.
 	if grep -qE '^  enabled: true' <(sed -n '/^keycloak:/,/^[a-z]/p' "${file}") 2>/dev/null; then
 		note "moving this install from keycloak to dex, the provider from 0.56.0 on"
+		printf 'AGYN|migrated|\n' >&3
 		sed -i -E \
 			-e '/^keycloak:/,/^[a-z]/ s#^  enabled: true#  enabled: false#' \
 			-e "s#(https://auth\.${BASE_DOMAIN}:[0-9]+)/realms/[A-Za-z0-9._-]+#\1#g" \

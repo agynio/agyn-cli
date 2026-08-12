@@ -42,7 +42,19 @@ const marker = "AGYN|"
 // that were pointed at this host's port outside the release.
 // resume clears the revision an interrupted upgrade left in flight before
 // upgrading, which is what stops Helm refusing it.
-func UpgradePlatform(steps *terminal.Steps, log io.Writer, platformVersion string, resume bool, ingressPort int) (bool, error) {
+// UpgradeResult is what an upgrade did, for a caller deciding what to say
+// afterwards.
+type UpgradeResult struct {
+	// Changed is true when a release moved, which is what makes the
+	// browser-facing port need putting back.
+	Changed bool
+	// Migrated is true when the install was moved to a different identity
+	// provider. Whoever ran the upgrade now signs in somewhere else, with
+	// accounts that are not the ones they had.
+	Migrated bool
+}
+
+func UpgradePlatform(steps *terminal.Steps, log io.Writer, platformVersion string, resume bool, ingressPort int) (UpgradeResult, error) {
 	args := []string{}
 	// The host's port, so the upgrade renders the URLs this VM is actually
 	// reachable on instead of the ones the image was baked with.
@@ -58,16 +70,16 @@ func UpgradePlatform(steps *terminal.Steps, log io.Writer, platformVersion strin
 	return runUpgradeScript(steps, log, args)
 }
 
-func runUpgradeScript(steps *terminal.Steps, log io.Writer, scriptArgs []string) (bool, error) {
+func runUpgradeScript(steps *terminal.Steps, log io.Writer, scriptArgs []string) (UpgradeResult, error) {
 	instance, err := GetInstance()
 	if err != nil {
-		return false, err
+		return UpgradeResult{}, err
 	}
 	if !instance.Exists {
-		return false, fmt.Errorf("no local VM; create one with 'agyn local start'")
+		return UpgradeResult{}, fmt.Errorf("no local VM; create one with 'agyn local start'")
 	}
 	if instance.Status != "Running" {
-		return false, fmt.Errorf("the local VM is not running (%s); start it with 'agyn local start'", instance.Status)
+		return UpgradeResult{}, fmt.Errorf("the local VM is not running (%s); start it with 'agyn local start'", instance.Status)
 	}
 
 	// Piped to a shell rather than written into the VM: nothing to install, and
@@ -91,12 +103,12 @@ func runUpgradeScript(steps *terminal.Steps, log io.Writer, scriptArgs []string)
 		// The script's own account of what went wrong, when it gave one: an
 		// exit status says nothing a user can act on.
 		if render.failure != "" {
-			return false, fmt.Errorf("%s", render.failure)
+			return UpgradeResult{}, fmt.Errorf("%s", render.failure)
 		}
-		return false, render.fail(fmt.Errorf("upgrade the platform in the VM: %w", runErr))
+		return UpgradeResult{}, render.fail(fmt.Errorf("upgrade the platform in the VM: %w", runErr))
 	}
 	render.finish()
-	return render.changed, nil
+	return UpgradeResult{Changed: render.changed, Migrated: render.migrated}, nil
 }
 
 // upgradeRenderer turns the script's markers into steps, and everything else
@@ -105,12 +117,13 @@ type upgradeRenderer struct {
 	steps *terminal.Steps
 	log   io.Writer
 
-	mu      sync.Mutex
-	step    *terminal.Step
-	detail  string
-	stopped chan struct{}
-	changed bool
-	failure string
+	mu       sync.Mutex
+	step     *terminal.Step
+	detail   string
+	stopped  chan struct{}
+	changed  bool
+	migrated bool
+	failure  string
 }
 
 func (r *upgradeRenderer) consume(reader io.Reader) {
@@ -136,6 +149,8 @@ func (r *upgradeRenderer) consume(reader io.Reader) {
 			r.steps.Note(field(fields, 1))
 		case "changed":
 			r.changed = true
+		case "migrated":
+			r.migrated = true
 		case "fail":
 			r.failure = field(fields, 1)
 			r.fail(fmt.Errorf("%s", r.failure))
