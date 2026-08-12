@@ -82,13 +82,20 @@ if [ -n "${extra_values}" ] && [ ! -r "${extra_values}" ]; then
 	exit 66
 fi
 
-# The four markers the CLI understands. Anything else on stdout is treated as
-# tool output and logged.
-step() { printf 'AGYN|step|%s|%s\n' "${1}" "${2:-}"; }
-done_() { printf 'AGYN|done|%s\n' "${1:-}"; }
-skip() { printf 'AGYN|skip|%s\n' "${1:-}"; }
-note() { printf 'AGYN|note|%s\n' "${1}"; }
-fail() { printf 'AGYN|fail|%s\n' "${1}"; }
+# The markers the CLI understands. Anything else on stdout is treated as tool
+# output and logged.
+#
+# Written to a duplicate of stdout taken here, not to stdout itself: a function
+# that emits one from inside $(...) would otherwise have it captured as part of
+# the value. That is not hypothetical -- the migration note below was read as a
+# filename, and the upgrade failed with "open AGYN|note|moving this install...:
+# no such file or directory".
+exec 3>&1
+step() { printf 'AGYN|step|%s|%s\n' "${1}" "${2:-}" >&3; }
+done_() { printf 'AGYN|done|%s\n' "${1:-}" >&3; }
+skip() { printf 'AGYN|skip|%s\n' "${1:-}" >&3; }
+note() { printf 'AGYN|note|%s\n' "${1}" >&3; }
+fail() { printf 'AGYN|fail|%s\n' "${1}" >&3; }
 
 if ! kubectl get --raw=/readyz >/dev/null 2>&1; then
 	step "Waiting for the cluster" ""
@@ -155,7 +162,7 @@ available_version() {
 # Derived from the release's own values rather than from a list of keys kept
 # here, because there are eighteen of them across the services and a nineteenth
 # added upstream would be missed silently.
-port_overlay() {
+release_overlay() {
 	release="${1}"
 	[ -n "${ingress_port}" ] || return 0
 
@@ -164,21 +171,61 @@ port_overlay() {
 	"" | null) return 0 ;;
 	esac
 
-	# The port the values currently name, taken from the URLs themselves. Every
-	# rewrite below replaces that exact number and nothing else, so a service
-	# port that happens to appear -- 50051, 5432 -- is never touched.
+	file="/run/agyn-values-${release}.yaml"
+
+	# Every URL on the platform's domain takes this host's port. Rewritten by
+	# shape rather than by replacing one stale number, because a release can
+	# hold several: a VM moved to 2497 still had keycloak.appOrigins on 2496,
+	# and matching only the first port found left those behind.
+	#
+	# A bare `port:` line is matched against the port the URLs named, so a
+	# service port that happens to appear -- 50051, 5432 -- is never touched.
 	stale="$(printf '%s\n' "${current}" |
 		sed -nE "s#.*://[A-Za-z0-9.-]*${BASE_DOMAIN}:([0-9]+).*#\1#p" | head -1)"
-	if [ -z "${stale}" ] || [ "${stale}" = "${ingress_port}" ]; then
-		return 0
+	printf '%s\n' "${current}" | sed -E \
+		-e "s#(://[A-Za-z0-9.-]*${BASE_DOMAIN}):[0-9]+#\1:${ingress_port}#g" \
+		-e "s#(^[[:space:]]*port:[[:space:]]*)${stale:-x}[[:space:]]*\$#\1${ingress_port}#" \
+		>"${file}"
+
+	# The provider moved. A release installed before 0.56.0 names keycloak, and
+	# from 0.56.0 dex is what an install gets -- both on auth., which the chart
+	# refuses to render. Carrying the old values forward would fail every
+	# upgrade from here on, so the values are migrated instead.
+	#
+	# The issuer loses its realm path: keycloak serves auth./realms/<realm> and
+	# dex serves auth. itself. Everything configured with the issuer moves
+	# together, which is why this is one substitution over the whole file.
+	if grep -qE '^  enabled: true' <(sed -n '/^keycloak:/,/^[a-z]/p' "${file}") 2>/dev/null; then
+		note "moving this install from keycloak to dex, the provider from 0.56.0 on"
+		sed -i -E \
+			-e '/^keycloak:/,/^[a-z]/ s#^  enabled: true#  enabled: false#' \
+			-e "s#(https://auth\.${BASE_DOMAIN}:[0-9]+)/realms/[A-Za-z0-9._-]+#\1#g" \
+			"${file}"
+		cat >>"${file}" <<-DEX
+		dex:
+		  enabled: true
+		  externalUrl: https://auth.${BASE_DOMAIN}:${ingress_port}
+		  routing:
+		    enabled: true
+		    host: auth.${BASE_DOMAIN}
+		  wiring:
+		    enabled: true
+		    caBundle:
+		      enabled: true
+		    corednsRewrite:
+		      enabled: true
+		    ingressHostPort:
+		      enabled: true
+		      port: ${ingress_port}
+		DEX
 	fi
 
-	# Two shapes carry it: the URLs, and keycloak's ingressHostPort.port, which
-	# is a plain number the chart models on its own.
-	file="/run/agyn-values-${release}.yaml"
-	printf '%s\n' "${current}" | sed -E \
-		-e "s#(://[A-Za-z0-9.-]*${BASE_DOMAIN}):${stale}#\1:${ingress_port}#g" \
-		-e "s#(^[[:space:]]*port:[[:space:]]*)${stale}[[:space:]]*\$#\1${ingress_port}#" >"${file}"
+	# Nothing to say when the values already agree, so an upgrade on a VM that
+	# needs neither carries no overlay at all.
+	if printf '%s\n' "${current}" | diff -q - "${file}" >/dev/null 2>&1; then
+		rm -f "${file}"
+		return 0
+	fi
 	printf '%s' "${file}"
 }
 
@@ -213,7 +260,7 @@ upgrade() {
 	before="$(installed_version "${release}")"
 	target="$(available_version "${chart}" "${want}")"
 
-	overlay="$(port_overlay "${release}")"
+	overlay="$(release_overlay "${release}")"
 
 	# An upgrade to the version already installed still rewrites every workload
 	# the chart owns and reports a new revision, so "nothing to do" and
@@ -326,7 +373,7 @@ upgrade agyn-apps "${APPS_CHART}" "${apps_version}"
 # afterwards -- but only then. The CLI owns that step, because it is the side
 # that knows which port this host forwards.
 if [ "${upgraded}" -eq 1 ]; then
-	printf 'AGYN|changed|\n'
+	printf 'AGYN|changed|\n' >&3
 fi
 
 helm list -n "${NAMESPACE}" >&2
