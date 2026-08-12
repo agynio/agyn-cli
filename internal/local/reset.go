@@ -18,6 +18,12 @@ import (
 // Everything runs inside the VM (helm, kubectl, and the release state live
 // there); python3 is guaranteed by cloud-init. Returns the kubectl output.
 func Reset(service string) (string, error) {
+	return ResetProgress(service, nil)
+}
+
+// ResetProgress restores as Reset does, calling onDetail with each workload as
+// it is replaced.
+func ResetProgress(service string, onDetail func(string)) (string, error) {
 	// The python filter is written via a quoted heredoc to dodge nested
 	// Go/shell/python quoting; the service filter arrives via AGYN_RESET_SERVICE.
 	script := `
@@ -53,7 +59,26 @@ rm -f /tmp/agyn-reset.yaml /tmp/agyn-reset-filter.py
 	if err != nil {
 		return "", err
 	}
+	if onDetail != nil {
+		for _, line := range strings.Split(strings.TrimSpace(out), "\n") {
+			if name, ok := strings.CutSuffix(strings.TrimSpace(line), " replaced"); ok {
+				onDetail(name)
+			}
+		}
+	}
 	return strings.TrimSpace(out), nil
+}
+
+// CountReplaced is how many workloads a reset restored, for a step to report
+// instead of naming all forty.
+func CountReplaced(out string) int {
+	count := 0
+	for _, line := range strings.Split(out, "\n") {
+		if strings.HasSuffix(strings.TrimSpace(line), " replaced") {
+			count++
+		}
+	}
+	return count
 }
 
 // WaitWorkloadsReady blocks until the given deployments (or all in the

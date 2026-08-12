@@ -2,6 +2,8 @@ package cmd
 
 import (
 	"fmt"
+	"strings"
+	"time"
 
 	"github.com/agynio/agyn-cli/internal/local"
 	"github.com/spf13/cobra"
@@ -26,30 +28,55 @@ func newLocalResetCmd() *cobra.Command {
 				return fmt.Errorf("the VM is not running; start it with `agyn local start`")
 			}
 
+			steps := newSteps(cmd)
+			title := "Restoring every platform workload"
 			if service != "" {
-				fmt.Fprintf(cmd.OutOrStdout(), "Restoring %q from the agyn-platform release...\n", service)
-			} else {
-				fmt.Fprintln(cmd.OutOrStdout(), "Restoring all platform workloads from the agyn-platform release...")
+				title = "Restoring " + service
 			}
 
-			out, err := local.Reset(service)
+			// The kubectl output is one line per workload -- forty of them,
+			// each saying only that it was replaced, which the step says once
+			// with a number. What they were is worth watching while it runs.
+			step := steps.Start(title)
+			out, err := local.ResetProgress(service, step.Detail)
 			if err != nil {
-				return err
+				return step.Fail(err)
 			}
-			fmt.Fprintln(cmd.OutOrStdout(), out)
+			step.Done(fmt.Sprintf("%d workloads", local.CountReplaced(out)))
 
-			if !noWait {
-				fmt.Fprintln(cmd.OutOrStdout(), "Waiting for rollout...")
-				var names []string
-				if service != "" {
-					names = []string{service}
-				}
-				if err := local.WaitWorkloadsReady(names); err != nil {
-					return err
-				}
-				fmt.Fprintln(cmd.OutOrStdout(), "Done.")
+			if noWait {
+				return nil
 			}
 
+			// Named rather than counted here: a rollout that stalls is the
+			// thing this command is most likely to be run against, so which
+			// workload is behind is the whole answer.
+			step = steps.Start("Waiting for the rollout")
+			var names []string
+			if service != "" {
+				names = []string{service}
+			}
+			done := make(chan struct{})
+			go func() {
+				ticker := time.NewTicker(3 * time.Second)
+				defer ticker.Stop()
+				for {
+					select {
+					case <-done:
+						return
+					case <-ticker.C:
+						if rolling := local.RollingWorkloads(2); len(rolling) > 0 {
+							step.Detail("waiting on " + strings.Join(rolling, ", "))
+						}
+					}
+				}
+			}()
+			err = local.WaitWorkloadsReady(names)
+			close(done)
+			if err != nil {
+				return step.Fail(err)
+			}
+			step.Done("")
 			return nil
 		},
 	}
