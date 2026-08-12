@@ -78,11 +78,35 @@ chat_origin="https://chat.${BASE_DOMAIN}:${PORT}"
 media_origin="https://media.${BASE_DOMAIN}:${PORT}"
 terminal_url="wss://terminal.${BASE_DOMAIN}:${PORT}/terminal"
 auth_origin="https://auth.${BASE_DOMAIN}:${PORT}"
-issuer="${auth_origin}/realms/${REALM}"
 
 deployment_env() {
 	kubectl get deployment "${1}" -n "${NAMESPACE}" \
 		-o jsonpath="{.spec.template.spec.containers[0].env[?(@.name=='${2}')].value}" 2>/dev/null || true
+}
+
+# The issuer the install actually uses, with only its port moved.
+#
+# Not built from a hostname and a realm path: Keycloak serves
+# auth./realms/<realm> and Dex serves auth. with no path at all, so composing it
+# here means knowing which provider is deployed and being wrong the day a third
+# one is. The Gateway is already configured with the right string -- take that
+# and change the one part this script is for.
+issuer="$(deployment_env gateway OIDC_ISSUER_URL |
+	sed -E "s#(://[A-Za-z0-9.-]*${BASE_DOMAIN}):[0-9]+#\1:${PORT}#")"
+if [ -z "${issuer}" ]; then
+	issuer="${auth_origin}"
+	log "the gateway names no issuer; assuming ${issuer}"
+fi
+
+# Whichever provider is deployed, if either. An install pointed at an external
+# issuer has neither, and nothing here should be restarted for it.
+idp_deployment() {
+	for candidate in dex keycloak; do
+		if kubectl -n "${NAMESPACE}" get deployment "${candidate}" >/dev/null 2>&1; then
+			printf '%s' "${candidate}"
+			return 0
+		fi
+	done
 }
 
 # The OpenZiti client API Service port doubles as the advertised port, so it is
@@ -395,11 +419,37 @@ rewrite_enrolled_identities() {
 log "pointing browser-facing URLs at port ${PORT}"
 patch_ingress_hostport
 
-# Started here, not below, and waited on after the overlay has moved. Keycloak
-# takes ~28s to come back and has nothing to do with the overlay, so running the
-# two side by side takes that time off the total rather than adding it.
-kubectl set env deployment/keycloak -n "${NAMESPACE}" \
-	"KC_HOSTNAME=${auth_origin}" >/dev/null
+# Started here, not below, and waited on after the overlay has moved. The
+# provider takes ~28s to come back and has nothing to do with the overlay, so
+# running the two side by side takes that time off the total rather than adding
+# it.
+idp="$(idp_deployment)"
+case "${idp}" in
+keycloak)
+	kubectl set env deployment/keycloak -n "${NAMESPACE}" \
+		"KC_HOSTNAME=${auth_origin}" >/dev/null
+	;;
+dex)
+	# Dex holds its issuer and every redirect URI in a ConfigMap it re-reads
+	# on each start, so the port moves by rewriting that and restarting -- no
+	# admin API, and no client-by-client update.
+	dex_config="$(kubectl -n "${NAMESPACE}" get configmap dex \
+		-o jsonpath='{.data.config\.yaml}' 2>/dev/null || true)"
+	if [ -n "${dex_config}" ]; then
+		printf '%s' "${dex_config}" |
+			sed -E "s#(://[A-Za-z0-9.-]*${BASE_DOMAIN}):[0-9]+#\1:${PORT}#g" \
+				>/tmp/agyn-dex-config.yaml
+		kubectl -n "${NAMESPACE}" create configmap dex \
+			--from-file=config.yaml=/tmp/agyn-dex-config.yaml \
+			--dry-run=client -o yaml | kubectl apply -f - >/dev/null
+		rm -f /tmp/agyn-dex-config.yaml
+		kubectl -n "${NAMESPACE}" rollout restart deployment/dex >/dev/null
+	fi
+	;;
+"")
+	log "no bundled identity provider; leaving the issuer alone"
+	;;
+esac
 
 move_ziti_port
 
@@ -412,8 +462,10 @@ move_ziti_port
 # well after Keycloak was healthy: the gateway took 52s to become ready, of
 # which almost none was starting up. Ordering the restarts costs one wait and
 # removes the backoff entirely.
-log "  waiting for the issuer before restarting what depends on it"
-kubectl rollout status deployment/keycloak -n "${NAMESPACE}" --timeout=300s
+if [ -n "${idp}" ]; then
+	log "  waiting for the issuer before restarting what depends on it"
+	kubectl rollout status "deployment/${idp}" -n "${NAMESPACE}" --timeout=300s
+fi
 
 log "  re-pointing the services that authenticate against it"
 kubectl set env deployment/chat-app -n "${NAMESPACE}" \
@@ -435,7 +487,9 @@ kubectl set env deployment/terminal-proxy -n "${NAMESPACE}" \
 # Done while those roll rather than before them. The realm's redirect URIs are
 # read by a browser during sign-in, not by a service at startup, so nothing
 # waiting below depends on this finishing first.
-update_keycloak_clients
+if [ "${idp}" = "keycloak" ]; then
+	update_keycloak_clients
+fi
 
 for deployment in chat-app console-app tracing-app sandboxes-app media-proxy gateway terminal-proxy; do
 	kubectl rollout status "deployment/${deployment}" -n "${NAMESPACE}" --timeout=300s
