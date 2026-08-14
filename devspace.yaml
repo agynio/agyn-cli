@@ -1,7 +1,7 @@
 version: v2beta1
 
 vars:
-  AGYN_NAMESPACE: platform
+  AGYN_NAMESPACE: agyn-platform
   DEV_IMAGE: ghcr.io/agynio/devcontainer-go:1
 
 dev:

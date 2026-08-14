@@ -32,7 +32,7 @@ func (e *exitCodeError) ExitCode() int { return e.code }
 
 // attachToSandbox waits for the workload to run, requests a terminal ticket and
 // streams the session until the shell exits.
-func attachToSandbox(ctx context.Context, clients *sandboxClients, sandbox *agentsv1.Sandbox) error {
+func attachToSandbox(ctx context.Context, clients *sandboxClients, sandbox *agentsv1.Sandbox, shellID, shellCwd string) error {
 	if !terminal.IsTerminal(os.Stdin) || !terminal.IsTerminal(os.Stdout) {
 		return fmt.Errorf("a TTY is required; `agyn sandbox` has no non-interactive mode")
 	}
@@ -50,6 +50,8 @@ func attachToSandbox(ctx context.Context, clients *sandboxClients, sandbox *agen
 		WorkloadId:    workloadID,
 		ContainerName: sandboxMainContainer,
 		Kind:          terminalproxyv1.SessionKind_SESSION_KIND_SHELL,
+		ShellId:       shellID,
+		ShellCwd:      shellCwd,
 	}))
 	if err != nil {
 		return err
