@@ -39,10 +39,13 @@ type sandboxOutput struct {
 
 type sandboxArgs struct {
 	organizationID string
-	environment    string
-	name           string
-	all            bool
-	terminated     bool
+	// shell names which shell to return to; newShell forces a fresh one.
+	shell       string
+	newShell    bool
+	environment string
+	name        string
+	all         bool
+	terminated  bool
 	// idleTimeout overrides the profile default for this invocation only.
 	idleTimeout string
 	// sync composes start, sync, and shell attach in one invocation. The
@@ -61,6 +64,7 @@ func newSandboxCmd() *cobra.Command {
 	cmd.AddCommand(newSandboxStartCmd())
 	cmd.AddCommand(newSandboxConnectCmd())
 	cmd.AddCommand(newSandboxListCmd())
+	cmd.AddCommand(newSandboxTabsCmd())
 	cmd.AddCommand(newSandboxStopCmd())
 	cmd.AddCommand(newSandboxDeleteCmd())
 	cmd.AddCommand(newSandboxCpCmd())
@@ -124,7 +128,11 @@ func newSandboxStartCmd() *cobra.Command {
 				}
 				sandbox = running
 			}
-			return attachToSandbox(ctx, clients, sandbox)
+			shellID, shellCwd, err := resolveShell(ctx, clients, sandbox.GetMeta().GetId(), "", true)
+			if err != nil {
+				return err
+			}
+			return attachToSandbox(ctx, clients, sandbox, shellID, shellCwd)
 		},
 	}
 	cmd.Flags().StringVar(&args.organizationID, "organization-id", "", "Organization ID (defaults to the selected organization)")
@@ -168,10 +176,17 @@ func newSandboxConnectCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			return attachToSandbox(ctx, clients, ensured.Msg.GetSandbox())
+			target := ensured.Msg.GetSandbox()
+			shellID, shellCwd, err := resolveShell(ctx, clients, target.GetMeta().GetId(), args.shell, args.newShell)
+			if err != nil {
+				return err
+			}
+			return attachToSandbox(ctx, clients, target, shellID, shellCwd)
 		},
 	}
 	cmd.Flags().StringVar(&args.organizationID, "organization-id", "", "Organization ID (defaults to the selected organization)")
+	cmd.Flags().StringVar(&args.shell, "tab", "", "Shell to attach to, by number or id (defaults to the one you were last in)")
+	cmd.Flags().BoolVar(&args.newShell, "new", false, "Open a new shell instead of returning to one")
 	return cmd
 }
 
