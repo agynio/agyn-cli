@@ -134,3 +134,35 @@ func stubLog(t *testing.T) string {
 	}
 	return string(data)
 }
+
+// A failed upgrade still records the version it was reaching for, and
+// `helm list` reports that version as the installed one. Read that way, a
+// release left failed at the target answers "already at" and is never
+// repaired -- the upgrade that would fix it is the one being skipped. What is
+// installed is the newest revision that actually deployed.
+func TestUpgradeScriptRetriesAReleaseLeftFailedAtTheTargetVersion(t *testing.T) {
+	out, err := runUpgradeScriptWithStubs(t, map[string]string{
+		"helm": `case "$1" in
+			status) echo '{"info":{"status":"failed"}}' ;;
+			list) echo '[{"name":"agyn-platform","chart":"agyn-platform-0.70.3"}]' ;;
+			history) echo '[{"revision":23,"status":"superseded","chart":"agyn-platform-0.70.1"},{"revision":24,"status":"deployed","chart":"agyn-platform-0.70.2"},{"revision":25,"status":"failed","chart":"agyn-platform-0.70.3"}]' ;;
+			show) echo "version: 0.70.3" ;;
+			upgrade) echo "upgraded" ;;
+			*) exit 0 ;;
+		esac`,
+		"kubectl": `case "$*" in
+			*readyz*) echo ok ;;
+			*) exit 0 ;;
+		esac`,
+	})
+
+	if err != nil {
+		t.Fatalf("expected the script to succeed, got %v:\n%s", err, out)
+	}
+	if strings.Contains(out, "already at 0.70.3") {
+		t.Fatalf("a release left failed at the target was treated as installed:\n%s", out)
+	}
+	if !strings.Contains(out, "0.70.2 → 0.70.3") {
+		t.Fatalf("expected an upgrade from the deployed version, got:\n%s", out)
+	}
+}

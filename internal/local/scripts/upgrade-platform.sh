@@ -129,7 +129,24 @@ release_status() {
 	} || true
 }
 
+# The version actually serving, which is the newest revision that deployed --
+# not the newest revision. An upgrade that failed still records its target, and
+# `helm list` reports that: a release left failed at the version being upgraded
+# to would answer "already at" forever and never be repaired. Falls back to
+# `helm list` where no revision deployed, so a release that has only ever failed
+# still reports something.
 installed_version() {
+	deployed="$(
+		{
+			helm history "${1}" -n "${NAMESPACE}" -o json 2>/dev/null |
+				tr '{' '\n' | grep '"status":"deployed"' | tail -1 |
+				sed -n 's/.*"chart":"[^"]*-\([0-9][^"]*\)".*/\1/p' | head -1
+		} || true
+	)"
+	if [ -n "${deployed}" ]; then
+		printf '%s' "${deployed}"
+		return 0
+	fi
 	{
 		helm list -n "${NAMESPACE}" --filter "^${1}\$" -o json 2>/dev/null |
 			sed -n 's/.*"chart":"[^"]*-\([0-9][^"]*\)".*/\1/p' | head -1
