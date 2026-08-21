@@ -245,7 +245,7 @@ func runThreadsCreate(cmd *cobra.Command, args *threadsCreateArgs) error {
 	}
 
 	if args.wait > 0 {
-		return waitOutputAndAck(cmd.Context(), cmd, runContext, threadsClient, []threadTarget{{ID: threadID, Ref: args.ref}}, agentID, refs, time.Duration(args.wait)*time.Second, false)
+		return waitOutputAndAck(cmd.Context(), cmd, runContext, unreadSurfaceFor(runContext, agentID), []threadTarget{{ID: threadID, Ref: args.ref}}, refs, time.Duration(args.wait)*time.Second, false)
 	}
 
 	if runContext.OutputFormat == output.FormatTable {
@@ -318,7 +318,7 @@ func runThreadsSend(cmd *cobra.Command, args *threadsSendArgs) error {
 			return fmt.Errorf("send message: response missing thread id")
 		}
 		targets := []threadTarget{{ID: sentThreadID, Ref: refFor(refs, sentThreadID)}}
-		return waitOutputAndAck(cmd.Context(), cmd, runContext, threadsClient, targets, senderID, refs, time.Duration(args.wait)*time.Second, false)
+		return waitOutputAndAck(cmd.Context(), cmd, runContext, unreadSurfaceFor(runContext, senderID), targets, refs, time.Duration(args.wait)*time.Second, false)
 	}
 
 	if runContext.OutputFormat == output.FormatTable {
@@ -356,14 +356,15 @@ func runThreadsRead(cmd *cobra.Command, args *threadsReadArgs) error {
 		if err != nil {
 			return err
 		}
-		protoMessages, err := fetchUnreadMessages(cmd.Context(), threadsClient, threadTargets, participantID)
+		surface := unreadSurfaceFor(runContext, participantID)
+		protoMessages, err := surface.fetch(cmd.Context(), threadTargets)
 		if err != nil {
 			return err
 		}
 		if len(protoMessages) == 0 && args.wait > 0 {
-			return waitOutputAndAck(cmd.Context(), cmd, runContext, threadsClient, threadTargets, participantID, refs, time.Duration(args.wait)*time.Second, includeThreadLine)
+			return waitOutputAndAck(cmd.Context(), cmd, runContext, surface, threadTargets, refs, time.Duration(args.wait)*time.Second, includeThreadLine)
 		}
-		return outputAndAck(cmd.Context(), cmd, runContext.OutputFormat, threadsClient, participantID, protoMessages, refs, includeThreadLine)
+		return outputAndAck(cmd.Context(), cmd, runContext.OutputFormat, surface, protoMessages, refs, includeThreadLine)
 	}
 
 	messages, err := fetchMessages(cmd.Context(), threadsClient, threadTargets)
@@ -374,6 +375,7 @@ func runThreadsRead(cmd *cobra.Command, args *threadsReadArgs) error {
 		messages, err = waitForMessages(
 			cmd.Context(),
 			runContext,
+			callerRoom(),
 			threadTargets,
 			time.Duration(args.wait)*time.Second,
 			func(ctx context.Context) ([]*threadsv1.Message, error) {
@@ -754,7 +756,7 @@ func renderMessages(w io.Writer, messages []messageView, includeThreadLine bool)
 	return nil
 }
 
-func outputAndAck(ctx context.Context, cmd *cobra.Command, format output.Format, client gatewayv1connect.ThreadsGatewayClient, participantID string, messages []*threadsv1.Message, refs map[string]string, includeThreadLine bool) error {
+func outputAndAck(ctx context.Context, cmd *cobra.Command, format output.Format, surface unreadSurface, messages []*threadsv1.Message, refs map[string]string, includeThreadLine bool) error {
 	view, err := toMessageViews(messages, refs)
 	if err != nil {
 		return err
@@ -765,15 +767,15 @@ func outputAndAck(ctx context.Context, cmd *cobra.Command, format output.Format,
 	if len(view) == 0 {
 		return nil
 	}
-	return ackMessages(ctx, client, participantID, view)
+	return surface.ack(ctx, view)
 }
 
-func waitOutputAndAck(ctx context.Context, cmd *cobra.Command, runContext *RunContext, client gatewayv1connect.ThreadsGatewayClient, targets []threadTarget, participantID string, refs map[string]string, timeout time.Duration, includeThreadLine bool) error {
-	protoMessages, err := waitForUnreadMessages(ctx, runContext, targets, participantID, timeout)
+func waitOutputAndAck(ctx context.Context, cmd *cobra.Command, runContext *RunContext, surface unreadSurface, targets []threadTarget, refs map[string]string, timeout time.Duration, includeThreadLine bool) error {
+	protoMessages, err := waitForUnreadMessages(ctx, runContext, surface, targets, timeout)
 	if err != nil {
 		return err
 	}
-	return outputAndAck(ctx, cmd, runContext.OutputFormat, client, participantID, protoMessages, refs, includeThreadLine)
+	return outputAndAck(ctx, cmd, runContext.OutputFormat, surface, protoMessages, refs, includeThreadLine)
 }
 
 func ackMessages(ctx context.Context, client gatewayv1connect.ThreadsGatewayClient, participantID string, messages []messageView) error {
@@ -799,16 +801,16 @@ func ackMessages(ctx context.Context, client gatewayv1connect.ThreadsGatewayClie
 	return nil
 }
 
-func waitForUnreadMessages(ctx context.Context, runContext *RunContext, targets []threadTarget, participantID string, timeout time.Duration) ([]*threadsv1.Message, error) {
-	threadsClient := gatewayv1connect.NewThreadsGatewayClient(runContext.Clients.HTTPClient, runContext.Clients.BaseURL, runContext.Clients.ConnectOpts()...)
-	return waitForMessages(ctx, runContext, targets, timeout, func(ctx context.Context) ([]*threadsv1.Message, error) {
-		return fetchUnreadMessages(ctx, threadsClient, targets, participantID)
+func waitForUnreadMessages(ctx context.Context, runContext *RunContext, surface unreadSurface, targets []threadTarget, timeout time.Duration) ([]*threadsv1.Message, error) {
+	return waitForMessages(ctx, runContext, surface.room(), targets, timeout, func(ctx context.Context) ([]*threadsv1.Message, error) {
+		return surface.fetch(ctx, targets)
 	})
 }
 
 func waitForMessages(
 	ctx context.Context,
 	runContext *RunContext,
+	room string,
 	targets []threadTarget,
 	timeout time.Duration,
 	fetch func(context.Context) ([]*threadsv1.Message, error),
@@ -824,7 +826,7 @@ func waitForMessages(
 		waitCtx, cancel = context.WithTimeout(ctx, timeout)
 		defer cancel()
 	}
-	messages, err := waitForNotificationMessages(waitCtx, notificationsClient, threadSet, fetch)
+	messages, err := waitForNotificationMessages(waitCtx, notificationsClient, room, threadSet, fetch)
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
 			return nil, fmt.Errorf("wait timed out")
@@ -837,10 +839,11 @@ func waitForMessages(
 func waitForNotificationMessages(
 	ctx context.Context,
 	client gatewayv1connect.NotificationsGatewayClient,
+	room string,
 	targetThreads map[string]struct{},
 	fetch func(context.Context) ([]*threadsv1.Message, error),
 ) ([]*threadsv1.Message, error) {
-	events, errs, err := subscribeMessageNotifications(ctx, client, targetThreads)
+	events, errs, err := subscribeMessageNotifications(ctx, client, room, targetThreads)
 	if err != nil {
 		return nil, err
 	}
@@ -889,10 +892,11 @@ func waitForNotificationMessages(
 func subscribeMessageNotifications(
 	ctx context.Context,
 	client gatewayv1connect.NotificationsGatewayClient,
+	room string,
 	targetThreads map[string]struct{},
 ) (<-chan messageNotification, <-chan error, error) {
 	stream, err := client.Subscribe(ctx, connect.NewRequest(&notificationsv1.SubscribeRequest{
-		Rooms: []string{threadParticipantSelfRoom},
+		Rooms: []string{room},
 	}))
 	if err != nil {
 		return nil, nil, formatNotificationStreamError(err)
