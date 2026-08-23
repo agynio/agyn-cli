@@ -313,7 +313,7 @@ func bindEgressRuleInputFlags(cmd *cobra.Command, args *egressRuleArgs) {
 	cmd.Flags().StringSliceVar(&args.methods, "method", nil, "HTTP method; repeat or comma-separate")
 	cmd.Flags().StringVar(&args.path, "path", "", "Request path glob")
 	cmd.Flags().StringVar(&args.action, "action", "", "Rule action: allow or deny")
-	cmd.Flags().StringSliceVar(&args.headers, "header", nil, "Injected header NAME=VALUE, NAME=secret:ID, or NAME=bearer-secret:ID")
+	cmd.Flags().StringSliceVar(&args.headers, "header", nil, "Injected header NAME=VALUE, NAME=secret:ID, NAME=bearer-secret:ID, NAME=basic:USER:PASSWORD, or NAME=basic-secret:USER:SECRET_ID")
 }
 
 func egressGatewayClient(cmd *cobra.Command) (gatewayv1connect.EgressRulesGatewayClient, *RunContext, error) {
@@ -457,8 +457,21 @@ func parseEgressHeaders(values []string) ([]*egressv1.EgressRuleHeader, error) {
 			header.Scheme = egressv1.HeaderAuthScheme_HEADER_AUTH_SCHEME_BEARER
 			header.Credential = &egressv1.EgressRuleHeader_SecretId{SecretId: strings.TrimPrefix(credential, "bearer-secret:")}
 		case strings.HasPrefix(credential, "basic-secret:"):
+			username, secretID, ok := strings.Cut(strings.TrimPrefix(credential, "basic-secret:"), ":")
+			if !ok {
+				return nil, fmt.Errorf("header %s must use basic-secret:USERNAME:SECRET_ID", name)
+			}
 			header.Scheme = egressv1.HeaderAuthScheme_HEADER_AUTH_SCHEME_BASIC
-			header.Credential = &egressv1.EgressRuleHeader_SecretId{SecretId: strings.TrimPrefix(credential, "basic-secret:")}
+			header.Username = username
+			header.Credential = &egressv1.EgressRuleHeader_SecretId{SecretId: secretID}
+		case strings.HasPrefix(credential, "basic:"):
+			username, password, ok := strings.Cut(strings.TrimPrefix(credential, "basic:"), ":")
+			if !ok {
+				return nil, fmt.Errorf("header %s must use basic:USERNAME:PASSWORD", name)
+			}
+			header.Scheme = egressv1.HeaderAuthScheme_HEADER_AUTH_SCHEME_BASIC
+			header.Username = username
+			header.Credential = &egressv1.EgressRuleHeader_Value{Value: password}
 		case strings.HasPrefix(credential, "secret:"):
 			header.Credential = &egressv1.EgressRuleHeader_SecretId{SecretId: strings.TrimPrefix(credential, "secret:")}
 		default:

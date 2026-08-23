@@ -68,13 +68,14 @@ func TestParseEgressHeaders(t *testing.T) {
 	headers, err := parseEgressHeaders([]string{
 		"X-Static=value",
 		"Authorization=bearer-secret:secret-id",
-		"Proxy-Authorization=basic-secret:basic-secret-id",
+		"Proxy-Authorization=basic-secret:x-access-token:basic-secret-id",
+		"X-Basic=basic:user:pass",
 	})
 	if err != nil {
 		t.Fatalf("parse headers: %v", err)
 	}
-	if len(headers) != 3 {
-		t.Fatalf("expected 3 headers, got %d", len(headers))
+	if len(headers) != 4 {
+		t.Fatalf("expected 4 headers, got %d", len(headers))
 	}
 	if headers[0].GetName() != "X-Static" || headers[0].GetValue() != "value" {
 		t.Fatalf("unexpected static header %#v", headers[0])
@@ -82,14 +83,23 @@ func TestParseEgressHeaders(t *testing.T) {
 	if headers[1].GetName() != "Authorization" || headers[1].GetScheme() != egressv1.HeaderAuthScheme_HEADER_AUTH_SCHEME_BEARER || headers[1].GetSecretId() != "secret-id" {
 		t.Fatalf("unexpected bearer secret header %#v", headers[1])
 	}
-	if headers[2].GetName() != "Proxy-Authorization" || headers[2].GetScheme() != egressv1.HeaderAuthScheme_HEADER_AUTH_SCHEME_BASIC || headers[2].GetSecretId() != "basic-secret-id" {
+	if headers[2].GetName() != "Proxy-Authorization" || headers[2].GetScheme() != egressv1.HeaderAuthScheme_HEADER_AUTH_SCHEME_BASIC || headers[2].GetSecretId() != "basic-secret-id" || headers[2].GetUsername() != "x-access-token" {
 		t.Fatalf("unexpected basic secret header %#v", headers[2])
+	}
+	if headers[3].GetScheme() != egressv1.HeaderAuthScheme_HEADER_AUTH_SCHEME_BASIC || headers[3].GetUsername() != "user" || headers[3].GetValue() != "pass" {
+		t.Fatalf("unexpected basic literal header %#v", headers[3])
 	}
 }
 
 func TestParseEgressHeadersRejectsInvalidInput(t *testing.T) {
 	if _, err := parseEgressHeaders([]string{"=value"}); err == nil {
 		t.Fatalf("expected missing name error")
+	}
+	if _, err := parseEgressHeaders([]string{"Authorization=basic-secret:only-an-id"}); err == nil {
+		t.Fatalf("expected basic-secret without username to fail")
+	}
+	if _, err := parseEgressHeaders([]string{"Authorization=basic:only-a-user"}); err == nil {
+		t.Fatalf("expected basic without password to fail")
 	}
 	if _, err := parseEgressHeaders([]string{"X-Test"}); err == nil {
 		t.Fatalf("expected missing separator error")
