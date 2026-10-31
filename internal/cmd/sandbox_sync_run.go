@@ -257,8 +257,8 @@ func runSession(ctx context.Context, clients *sandboxClients, store *session.Sto
 			if err != nil {
 				return nil, err
 			}
-			// Reconnect never restarts a stopped sandbox — a background file
-			// change must not start billable compute.
+			// Reconnect never restarts a stopped sandbox or wakes a hibernated
+			// one — a background file change must not start billable compute.
 			if current.Msg.GetSandbox().GetStatus() != agentsv1.SandboxStatus_SANDBOX_STATUS_RUNNING {
 				return nil, fmt.Errorf("sandbox %s is not running", state.Sandbox)
 			}
@@ -282,6 +282,8 @@ func runSession(ctx context.Context, clients *sandboxClients, store *session.Sto
 			switch current.Msg.GetSandbox().GetStatus() {
 			case agentsv1.SandboxStatus_SANDBOX_STATUS_RUNNING:
 				return session.SandboxRunning, nil
+			case agentsv1.SandboxStatus_SANDBOX_STATUS_HIBERNATED:
+				return session.SandboxHibernated, nil
 			case agentsv1.SandboxStatus_SANDBOX_STATUS_TERMINATED:
 				return session.SandboxTerminated, nil
 			default:

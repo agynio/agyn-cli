@@ -168,8 +168,9 @@ func newSandboxConnectCmd() *cobra.Command {
 				return err
 			}
 
-			// EnsureSandboxRunning is a no-op when running, a restart when
-			// stopped, and a fresh start attempt when failed.
+			// EnsureSandboxRunning is a no-op when running, a wake when
+			// hibernated, a restart when stopped, and a fresh start attempt
+			// when failed.
 			ensured, err := clients.agents.EnsureSandboxRunning(ctx, connect.NewRequest(&agentsv1.EnsureSandboxRunningRequest{
 				Id: sandbox.GetMeta().GetId(),
 			}))
@@ -416,6 +417,8 @@ func sandboxStatusLabel(status agentsv1.SandboxStatus) string {
 		return "failed"
 	case agentsv1.SandboxStatus_SANDBOX_STATUS_TERMINATED:
 		return "terminated"
+	case agentsv1.SandboxStatus_SANDBOX_STATUS_HIBERNATED:
+		return "hibernated"
 	default:
 		return "unknown"
 	}
