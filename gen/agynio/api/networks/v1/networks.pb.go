@@ -228,6 +228,55 @@ func (PrivateResourceProtocol) EnumDescriptor() ([]byte, []int) {
 	return file_agynio_api_networks_v1_networks_proto_rawDescGZIP(), []int{3}
 }
 
+type PrivateResourceMediation int32
+
+const (
+	PrivateResourceMediation_PRIVATE_RESOURCE_MEDIATION_UNSPECIFIED    PrivateResourceMediation = 0
+	PrivateResourceMediation_PRIVATE_RESOURCE_MEDIATION_TUNNEL         PrivateResourceMediation = 1
+	PrivateResourceMediation_PRIVATE_RESOURCE_MEDIATION_EGRESS_GATEWAY PrivateResourceMediation = 2
+)
+
+// Enum value maps for PrivateResourceMediation.
+var (
+	PrivateResourceMediation_name = map[int32]string{
+		0: "PRIVATE_RESOURCE_MEDIATION_UNSPECIFIED",
+		1: "PRIVATE_RESOURCE_MEDIATION_TUNNEL",
+		2: "PRIVATE_RESOURCE_MEDIATION_EGRESS_GATEWAY",
+	}
+	PrivateResourceMediation_value = map[string]int32{
+		"PRIVATE_RESOURCE_MEDIATION_UNSPECIFIED":    0,
+		"PRIVATE_RESOURCE_MEDIATION_TUNNEL":         1,
+		"PRIVATE_RESOURCE_MEDIATION_EGRESS_GATEWAY": 2,
+	}
+)
+
+func (x PrivateResourceMediation) Enum() *PrivateResourceMediation {
+	p := new(PrivateResourceMediation)
+	*p = x
+	return p
+}
+
+func (x PrivateResourceMediation) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (PrivateResourceMediation) Descriptor() protoreflect.EnumDescriptor {
+	return file_agynio_api_networks_v1_networks_proto_enumTypes[4].Descriptor()
+}
+
+func (PrivateResourceMediation) Type() protoreflect.EnumType {
+	return &file_agynio_api_networks_v1_networks_proto_enumTypes[4]
+}
+
+func (x PrivateResourceMediation) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use PrivateResourceMediation.Descriptor instead.
+func (PrivateResourceMediation) EnumDescriptor() ([]byte, []int) {
+	return file_agynio_api_networks_v1_networks_proto_rawDescGZIP(), []int{4}
+}
+
 // Principal types eligible for private resource access.
 type PrivateResourceAccessPrincipalType int32
 
@@ -271,11 +320,11 @@ func (x PrivateResourceAccessPrincipalType) String() string {
 }
 
 func (PrivateResourceAccessPrincipalType) Descriptor() protoreflect.EnumDescriptor {
-	return file_agynio_api_networks_v1_networks_proto_enumTypes[4].Descriptor()
+	return file_agynio_api_networks_v1_networks_proto_enumTypes[5].Descriptor()
 }
 
 func (PrivateResourceAccessPrincipalType) Type() protoreflect.EnumType {
-	return &file_agynio_api_networks_v1_networks_proto_enumTypes[4]
+	return &file_agynio_api_networks_v1_networks_proto_enumTypes[5]
 }
 
 func (x PrivateResourceAccessPrincipalType) Number() protoreflect.EnumNumber {
@@ -284,7 +333,7 @@ func (x PrivateResourceAccessPrincipalType) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use PrivateResourceAccessPrincipalType.Descriptor instead.
 func (PrivateResourceAccessPrincipalType) EnumDescriptor() ([]byte, []int) {
-	return file_agynio_api_networks_v1_networks_proto_rawDescGZIP(), []int{4}
+	return file_agynio_api_networks_v1_networks_proto_rawDescGZIP(), []int{5}
 }
 
 // Metadata shared by network resources.
@@ -548,8 +597,9 @@ type PrivateResource struct {
 	TargetPorts   []int32 `protobuf:"varint,7,rep,packed,name=target_ports,json=targetPorts,proto3" json:"target_ports,omitempty"`
 	InterceptHost string  `protobuf:"bytes,8,opt,name=intercept_host,json=interceptHost,proto3" json:"intercept_host,omitempty"`
 	// Numeric intercept ports. Each value must be in the range 1..65535.
-	InterceptPorts    []int32           `protobuf:"varint,9,rep,packed,name=intercept_ports,json=interceptPorts,proto3" json:"intercept_ports,omitempty"`
-	ProvisioningState ProvisioningState `protobuf:"varint,10,opt,name=provisioning_state,json=provisioningState,proto3,enum=agynio.api.networks.v1.ProvisioningState" json:"provisioning_state,omitempty"`
+	InterceptPorts    []int32                  `protobuf:"varint,9,rep,packed,name=intercept_ports,json=interceptPorts,proto3" json:"intercept_ports,omitempty"`
+	ProvisioningState ProvisioningState        `protobuf:"varint,10,opt,name=provisioning_state,json=provisioningState,proto3,enum=agynio.api.networks.v1.ProvisioningState" json:"provisioning_state,omitempty"`
+	Mediation         PrivateResourceMediation `protobuf:"varint,11,opt,name=mediation,proto3,enum=agynio.api.networks.v1.PrivateResourceMediation" json:"mediation,omitempty"`
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache
 }
@@ -652,6 +702,13 @@ func (x *PrivateResource) GetProvisioningState() ProvisioningState {
 		return x.ProvisioningState
 	}
 	return ProvisioningState_PROVISIONING_STATE_UNSPECIFIED
+}
+
+func (x *PrivateResource) GetMediation() PrivateResourceMediation {
+	if x != nil {
+		return x.Mediation
+	}
+	return PrivateResourceMediation_PRIVATE_RESOURCE_MEDIATION_UNSPECIFIED
 }
 
 // Immutable grant authorizing a principal to dial a private resource.
@@ -2548,6 +2605,430 @@ func (x *ListPrivateResourceAccessResponse) GetNextPageToken() string {
 	return ""
 }
 
+type SetPrivateResourceMediationRequest struct {
+	state         protoimpl.MessageState   `protogen:"open.v1"`
+	Id            string                   `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Mediation     PrivateResourceMediation `protobuf:"varint,2,opt,name=mediation,proto3,enum=agynio.api.networks.v1.PrivateResourceMediation" json:"mediation,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SetPrivateResourceMediationRequest) Reset() {
+	*x = SetPrivateResourceMediationRequest{}
+	mi := &file_agynio_api_networks_v1_networks_proto_msgTypes[40]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SetPrivateResourceMediationRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SetPrivateResourceMediationRequest) ProtoMessage() {}
+
+func (x *SetPrivateResourceMediationRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_agynio_api_networks_v1_networks_proto_msgTypes[40]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SetPrivateResourceMediationRequest.ProtoReflect.Descriptor instead.
+func (*SetPrivateResourceMediationRequest) Descriptor() ([]byte, []int) {
+	return file_agynio_api_networks_v1_networks_proto_rawDescGZIP(), []int{40}
+}
+
+func (x *SetPrivateResourceMediationRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *SetPrivateResourceMediationRequest) GetMediation() PrivateResourceMediation {
+	if x != nil {
+		return x.Mediation
+	}
+	return PrivateResourceMediation_PRIVATE_RESOURCE_MEDIATION_UNSPECIFIED
+}
+
+type SetPrivateResourceMediationResponse struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	PrivateResource *PrivateResource       `protobuf:"bytes,1,opt,name=private_resource,json=privateResource,proto3" json:"private_resource,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *SetPrivateResourceMediationResponse) Reset() {
+	*x = SetPrivateResourceMediationResponse{}
+	mi := &file_agynio_api_networks_v1_networks_proto_msgTypes[41]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SetPrivateResourceMediationResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SetPrivateResourceMediationResponse) ProtoMessage() {}
+
+func (x *SetPrivateResourceMediationResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_agynio_api_networks_v1_networks_proto_msgTypes[41]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SetPrivateResourceMediationResponse.ProtoReflect.Descriptor instead.
+func (*SetPrivateResourceMediationResponse) Descriptor() ([]byte, []int) {
+	return file_agynio_api_networks_v1_networks_proto_rawDescGZIP(), []int{41}
+}
+
+func (x *SetPrivateResourceMediationResponse) GetPrivateResource() *PrivateResource {
+	if x != nil {
+		return x.PrivateResource
+	}
+	return nil
+}
+
+type ReachablePrivateResourceGrant struct {
+	state         protoimpl.MessageState             `protogen:"open.v1"`
+	PrincipalType PrivateResourceAccessPrincipalType `protobuf:"varint,1,opt,name=principal_type,json=principalType,proto3,enum=agynio.api.networks.v1.PrivateResourceAccessPrincipalType" json:"principal_type,omitempty"`
+	PrincipalId   string                             `protobuf:"bytes,2,opt,name=principal_id,json=principalId,proto3" json:"principal_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ReachablePrivateResourceGrant) Reset() {
+	*x = ReachablePrivateResourceGrant{}
+	mi := &file_agynio_api_networks_v1_networks_proto_msgTypes[42]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ReachablePrivateResourceGrant) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ReachablePrivateResourceGrant) ProtoMessage() {}
+
+func (x *ReachablePrivateResourceGrant) ProtoReflect() protoreflect.Message {
+	mi := &file_agynio_api_networks_v1_networks_proto_msgTypes[42]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ReachablePrivateResourceGrant.ProtoReflect.Descriptor instead.
+func (*ReachablePrivateResourceGrant) Descriptor() ([]byte, []int) {
+	return file_agynio_api_networks_v1_networks_proto_rawDescGZIP(), []int{42}
+}
+
+func (x *ReachablePrivateResourceGrant) GetPrincipalType() PrivateResourceAccessPrincipalType {
+	if x != nil {
+		return x.PrincipalType
+	}
+	return PrivateResourceAccessPrincipalType_PRIVATE_RESOURCE_ACCESS_PRINCIPAL_TYPE_UNSPECIFIED
+}
+
+func (x *ReachablePrivateResourceGrant) GetPrincipalId() string {
+	if x != nil {
+		return x.PrincipalId
+	}
+	return ""
+}
+
+type ReachablePrivateResource struct {
+	state          protoimpl.MessageState           `protogen:"open.v1"`
+	Id             string                           `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	InterceptHost  string                           `protobuf:"bytes,2,opt,name=intercept_host,json=interceptHost,proto3" json:"intercept_host,omitempty"`
+	InterceptPorts []int32                          `protobuf:"varint,3,rep,packed,name=intercept_ports,json=interceptPorts,proto3" json:"intercept_ports,omitempty"`
+	Grants         []*ReachablePrivateResourceGrant `protobuf:"bytes,4,rep,name=grants,proto3" json:"grants,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *ReachablePrivateResource) Reset() {
+	*x = ReachablePrivateResource{}
+	mi := &file_agynio_api_networks_v1_networks_proto_msgTypes[43]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ReachablePrivateResource) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ReachablePrivateResource) ProtoMessage() {}
+
+func (x *ReachablePrivateResource) ProtoReflect() protoreflect.Message {
+	mi := &file_agynio_api_networks_v1_networks_proto_msgTypes[43]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ReachablePrivateResource.ProtoReflect.Descriptor instead.
+func (*ReachablePrivateResource) Descriptor() ([]byte, []int) {
+	return file_agynio_api_networks_v1_networks_proto_rawDescGZIP(), []int{43}
+}
+
+func (x *ReachablePrivateResource) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *ReachablePrivateResource) GetInterceptHost() string {
+	if x != nil {
+		return x.InterceptHost
+	}
+	return ""
+}
+
+func (x *ReachablePrivateResource) GetInterceptPorts() []int32 {
+	if x != nil {
+		return x.InterceptPorts
+	}
+	return nil
+}
+
+func (x *ReachablePrivateResource) GetGrants() []*ReachablePrivateResourceGrant {
+	if x != nil {
+		return x.Grants
+	}
+	return nil
+}
+
+type ListPrivateResourcesReachableByRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Types that are valid to be assigned to Principal:
+	//
+	//	*ListPrivateResourcesReachableByRequest_AgentId
+	//	*ListPrivateResourcesReachableByRequest_EnvironmentId
+	Principal     isListPrivateResourcesReachableByRequest_Principal `protobuf_oneof:"principal"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListPrivateResourcesReachableByRequest) Reset() {
+	*x = ListPrivateResourcesReachableByRequest{}
+	mi := &file_agynio_api_networks_v1_networks_proto_msgTypes[44]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListPrivateResourcesReachableByRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListPrivateResourcesReachableByRequest) ProtoMessage() {}
+
+func (x *ListPrivateResourcesReachableByRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_agynio_api_networks_v1_networks_proto_msgTypes[44]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListPrivateResourcesReachableByRequest.ProtoReflect.Descriptor instead.
+func (*ListPrivateResourcesReachableByRequest) Descriptor() ([]byte, []int) {
+	return file_agynio_api_networks_v1_networks_proto_rawDescGZIP(), []int{44}
+}
+
+func (x *ListPrivateResourcesReachableByRequest) GetPrincipal() isListPrivateResourcesReachableByRequest_Principal {
+	if x != nil {
+		return x.Principal
+	}
+	return nil
+}
+
+func (x *ListPrivateResourcesReachableByRequest) GetAgentId() string {
+	if x != nil {
+		if x, ok := x.Principal.(*ListPrivateResourcesReachableByRequest_AgentId); ok {
+			return x.AgentId
+		}
+	}
+	return ""
+}
+
+func (x *ListPrivateResourcesReachableByRequest) GetEnvironmentId() string {
+	if x != nil {
+		if x, ok := x.Principal.(*ListPrivateResourcesReachableByRequest_EnvironmentId); ok {
+			return x.EnvironmentId
+		}
+	}
+	return ""
+}
+
+type isListPrivateResourcesReachableByRequest_Principal interface {
+	isListPrivateResourcesReachableByRequest_Principal()
+}
+
+type ListPrivateResourcesReachableByRequest_AgentId struct {
+	AgentId string `protobuf:"bytes,1,opt,name=agent_id,json=agentId,proto3,oneof"`
+}
+
+type ListPrivateResourcesReachableByRequest_EnvironmentId struct {
+	EnvironmentId string `protobuf:"bytes,2,opt,name=environment_id,json=environmentId,proto3,oneof"`
+}
+
+func (*ListPrivateResourcesReachableByRequest_AgentId) isListPrivateResourcesReachableByRequest_Principal() {
+}
+
+func (*ListPrivateResourcesReachableByRequest_EnvironmentId) isListPrivateResourcesReachableByRequest_Principal() {
+}
+
+type ListPrivateResourcesReachableByResponse struct {
+	state            protoimpl.MessageState      `protogen:"open.v1"`
+	PrivateResources []*ReachablePrivateResource `protobuf:"bytes,1,rep,name=private_resources,json=privateResources,proto3" json:"private_resources,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *ListPrivateResourcesReachableByResponse) Reset() {
+	*x = ListPrivateResourcesReachableByResponse{}
+	mi := &file_agynio_api_networks_v1_networks_proto_msgTypes[45]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListPrivateResourcesReachableByResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListPrivateResourcesReachableByResponse) ProtoMessage() {}
+
+func (x *ListPrivateResourcesReachableByResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_agynio_api_networks_v1_networks_proto_msgTypes[45]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListPrivateResourcesReachableByResponse.ProtoReflect.Descriptor instead.
+func (*ListPrivateResourcesReachableByResponse) Descriptor() ([]byte, []int) {
+	return file_agynio_api_networks_v1_networks_proto_rawDescGZIP(), []int{45}
+}
+
+func (x *ListPrivateResourcesReachableByResponse) GetPrivateResources() []*ReachablePrivateResource {
+	if x != nil {
+		return x.PrivateResources
+	}
+	return nil
+}
+
+type DeleteOrganizationResourcesRequest struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	OrganizationId string                 `protobuf:"bytes,1,opt,name=organization_id,json=organizationId,proto3" json:"organization_id,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *DeleteOrganizationResourcesRequest) Reset() {
+	*x = DeleteOrganizationResourcesRequest{}
+	mi := &file_agynio_api_networks_v1_networks_proto_msgTypes[46]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeleteOrganizationResourcesRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeleteOrganizationResourcesRequest) ProtoMessage() {}
+
+func (x *DeleteOrganizationResourcesRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_agynio_api_networks_v1_networks_proto_msgTypes[46]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeleteOrganizationResourcesRequest.ProtoReflect.Descriptor instead.
+func (*DeleteOrganizationResourcesRequest) Descriptor() ([]byte, []int) {
+	return file_agynio_api_networks_v1_networks_proto_rawDescGZIP(), []int{46}
+}
+
+func (x *DeleteOrganizationResourcesRequest) GetOrganizationId() string {
+	if x != nil {
+		return x.OrganizationId
+	}
+	return ""
+}
+
+type DeleteOrganizationResourcesResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeleteOrganizationResourcesResponse) Reset() {
+	*x = DeleteOrganizationResourcesResponse{}
+	mi := &file_agynio_api_networks_v1_networks_proto_msgTypes[47]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeleteOrganizationResourcesResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeleteOrganizationResourcesResponse) ProtoMessage() {}
+
+func (x *DeleteOrganizationResourcesResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_agynio_api_networks_v1_networks_proto_msgTypes[47]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeleteOrganizationResourcesResponse.ProtoReflect.Descriptor instead.
+func (*DeleteOrganizationResourcesResponse) Descriptor() ([]byte, []int) {
+	return file_agynio_api_networks_v1_networks_proto_rawDescGZIP(), []int{47}
+}
+
 var File_agynio_api_networks_v1_networks_proto protoreflect.FileDescriptor
 
 const file_agynio_api_networks_v1_networks_proto_rawDesc = "" +
@@ -2580,7 +3061,7 @@ const file_agynio_api_networks_v1_networks_proto_rawDesc = "" +
 	"\flast_seen_at\x18\t \x01(\v2\x1a.google.protobuf.TimestampH\x01R\n" +
 	"lastSeenAt\x88\x01\x01B\x0e\n" +
 	"\f_enrolled_atB\x0f\n" +
-	"\r_last_seen_at\"\xe0\x03\n" +
+	"\r_last_seen_at\"\xb0\x04\n" +
 	"\x0fPrivateResource\x126\n" +
 	"\x04meta\x18\x01 \x01(\v2\".agynio.api.networks.v1.EntityMetaR\x04meta\x12'\n" +
 	"\x0forganization_id\x18\x02 \x01(\tR\x0eorganizationId\x12\x1d\n" +
@@ -2594,7 +3075,8 @@ const file_agynio_api_networks_v1_networks_proto_rawDesc = "" +
 	"\x0eintercept_host\x18\b \x01(\tR\rinterceptHost\x12'\n" +
 	"\x0fintercept_ports\x18\t \x03(\x05R\x0einterceptPorts\x12X\n" +
 	"\x12provisioning_state\x18\n" +
-	" \x01(\x0e2).agynio.api.networks.v1.ProvisioningStateR\x11provisioningState\"\xdf\x02\n" +
+	" \x01(\x0e2).agynio.api.networks.v1.ProvisioningStateR\x11provisioningState\x12N\n" +
+	"\tmediation\x18\v \x01(\x0e20.agynio.api.networks.v1.PrivateResourceMediationR\tmediation\"\xdf\x02\n" +
 	"\x15PrivateResourceAccess\x126\n" +
 	"\x04meta\x18\x01 \x01(\v2\".agynio.api.networks.v1.EntityMetaR\x04meta\x12.\n" +
 	"\x13private_resource_id\x18\x02 \x01(\tR\x11privateResourceId\x12a\n" +
@@ -2728,7 +3210,29 @@ const file_agynio_api_networks_v1_networks_proto_rawDesc = "" +
 	"\r_principal_id\"\xb2\x01\n" +
 	"!ListPrivateResourceAccessResponse\x12e\n" +
 	"\x17private_resource_access\x18\x01 \x03(\v2-.agynio.api.networks.v1.PrivateResourceAccessR\x15privateResourceAccess\x12&\n" +
-	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken*\x96\x01\n" +
+	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken\"\x84\x01\n" +
+	"\"SetPrivateResourceMediationRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12N\n" +
+	"\tmediation\x18\x02 \x01(\x0e20.agynio.api.networks.v1.PrivateResourceMediationR\tmediation\"y\n" +
+	"#SetPrivateResourceMediationResponse\x12R\n" +
+	"\x10private_resource\x18\x01 \x01(\v2'.agynio.api.networks.v1.PrivateResourceR\x0fprivateResource\"\xa5\x01\n" +
+	"\x1dReachablePrivateResourceGrant\x12a\n" +
+	"\x0eprincipal_type\x18\x01 \x01(\x0e2:.agynio.api.networks.v1.PrivateResourceAccessPrincipalTypeR\rprincipalType\x12!\n" +
+	"\fprincipal_id\x18\x02 \x01(\tR\vprincipalId\"\xc9\x01\n" +
+	"\x18ReachablePrivateResource\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12%\n" +
+	"\x0eintercept_host\x18\x02 \x01(\tR\rinterceptHost\x12'\n" +
+	"\x0fintercept_ports\x18\x03 \x03(\x05R\x0einterceptPorts\x12M\n" +
+	"\x06grants\x18\x04 \x03(\v25.agynio.api.networks.v1.ReachablePrivateResourceGrantR\x06grants\"{\n" +
+	"&ListPrivateResourcesReachableByRequest\x12\x1b\n" +
+	"\bagent_id\x18\x01 \x01(\tH\x00R\aagentId\x12'\n" +
+	"\x0eenvironment_id\x18\x02 \x01(\tH\x00R\renvironmentIdB\v\n" +
+	"\tprincipal\"\x88\x01\n" +
+	"'ListPrivateResourcesReachableByResponse\x12]\n" +
+	"\x11private_resources\x18\x01 \x03(\v20.agynio.api.networks.v1.ReachablePrivateResourceR\x10privateResources\"M\n" +
+	"\"DeleteOrganizationResourcesRequest\x12'\n" +
+	"\x0forganization_id\x18\x01 \x01(\tR\x0eorganizationId\"%\n" +
+	"#DeleteOrganizationResourcesResponse*\x96\x01\n" +
 	"\x11ProvisioningState\x12\"\n" +
 	"\x1ePROVISIONING_STATE_UNSPECIFIED\x10\x00\x12\x1d\n" +
 	"\x19PROVISIONING_STATE_ACTIVE\x10\x01\x12\x1d\n" +
@@ -2746,14 +3250,18 @@ const file_agynio_api_networks_v1_networks_proto_rawDesc = "" +
 	"%PRIVATE_RESOURCE_PROTOCOL_UNSPECIFIED\x10\x00\x12!\n" +
 	"\x1dPRIVATE_RESOURCE_PROTOCOL_TCP\x10\x01\x12\"\n" +
 	"\x1ePRIVATE_RESOURCE_PROTOCOL_HTTP\x10\x02\x12#\n" +
-	"\x1fPRIVATE_RESOURCE_PROTOCOL_HTTPS\x10\x03*\xd9\x02\n" +
+	"\x1fPRIVATE_RESOURCE_PROTOCOL_HTTPS\x10\x03*\x9c\x01\n" +
+	"\x18PrivateResourceMediation\x12*\n" +
+	"&PRIVATE_RESOURCE_MEDIATION_UNSPECIFIED\x10\x00\x12%\n" +
+	"!PRIVATE_RESOURCE_MEDIATION_TUNNEL\x10\x01\x12-\n" +
+	")PRIVATE_RESOURCE_MEDIATION_EGRESS_GATEWAY\x10\x02*\xd9\x02\n" +
 	"\"PrivateResourceAccessPrincipalType\x126\n" +
 	"2PRIVATE_RESOURCE_ACCESS_PRINCIPAL_TYPE_UNSPECIFIED\x10\x00\x120\n" +
 	",PRIVATE_RESOURCE_ACCESS_PRINCIPAL_TYPE_AGENT\x10\x01\x12/\n" +
 	"+PRIVATE_RESOURCE_ACCESS_PRINCIPAL_TYPE_USER\x10\x02\x12.\n" +
 	"*PRIVATE_RESOURCE_ACCESS_PRINCIPAL_TYPE_APP\x10\x03\x120\n" +
 	",PRIVATE_RESOURCE_ACCESS_PRINCIPAL_TYPE_GROUP\x10\x04\x126\n" +
-	"2PRIVATE_RESOURCE_ACCESS_PRINCIPAL_TYPE_ENVIRONMENT\x10\x052\xa1\x11\n" +
+	"2PRIVATE_RESOURCE_ACCESS_PRINCIPAL_TYPE_ENVIRONMENT\x10\x052\xf8\x14\n" +
 	"\x0fNetworksService\x12l\n" +
 	"\rCreateNetwork\x12,.agynio.api.networks.v1.CreateNetworkRequest\x1a-.agynio.api.networks.v1.CreateNetworkResponse\x12c\n" +
 	"\n" +
@@ -2772,7 +3280,10 @@ const file_agynio_api_networks_v1_networks_proto_rawDesc = "" +
 	"\x15DeletePrivateResource\x124.agynio.api.networks.v1.DeletePrivateResourceRequest\x1a5.agynio.api.networks.v1.DeletePrivateResourceResponse\x12\x96\x01\n" +
 	"\x1bCreatePrivateResourceAccess\x12:.agynio.api.networks.v1.CreatePrivateResourceAccessRequest\x1a;.agynio.api.networks.v1.CreatePrivateResourceAccessResponse\x12\x96\x01\n" +
 	"\x1bDeletePrivateResourceAccess\x12:.agynio.api.networks.v1.DeletePrivateResourceAccessRequest\x1a;.agynio.api.networks.v1.DeletePrivateResourceAccessResponse\x12\x90\x01\n" +
-	"\x19ListPrivateResourceAccess\x128.agynio.api.networks.v1.ListPrivateResourceAccessRequest\x1a9.agynio.api.networks.v1.ListPrivateResourceAccessResponseB\xe8\x01\n" +
+	"\x19ListPrivateResourceAccess\x128.agynio.api.networks.v1.ListPrivateResourceAccessRequest\x1a9.agynio.api.networks.v1.ListPrivateResourceAccessResponse\x12\x96\x01\n" +
+	"\x1bSetPrivateResourceMediation\x12:.agynio.api.networks.v1.SetPrivateResourceMediationRequest\x1a;.agynio.api.networks.v1.SetPrivateResourceMediationResponse\x12\xa2\x01\n" +
+	"\x1fListPrivateResourcesReachableBy\x12>.agynio.api.networks.v1.ListPrivateResourcesReachableByRequest\x1a?.agynio.api.networks.v1.ListPrivateResourcesReachableByResponse\x12\x96\x01\n" +
+	"\x1bDeleteOrganizationResources\x12:.agynio.api.networks.v1.DeleteOrganizationResourcesRequest\x1a;.agynio.api.networks.v1.DeleteOrganizationResourcesResponseB\xe8\x01\n" +
 	"\x1acom.agynio.api.networks.v1B\rNetworksProtoP\x01Z@github.com/agynio/agyn-cli/gen/agynio/api/networks/v1;networksv1\xa2\x02\x03AAN\xaa\x02\x16Agynio.Api.Networks.V1\xca\x02\x16Agynio\\Api\\Networks\\V1\xe2\x02\"Agynio\\Api\\Networks\\V1\\GPBMetadata\xea\x02\x19Agynio::Api::Networks::V1b\x06proto3"
 
 var (
@@ -2787,132 +3298,153 @@ func file_agynio_api_networks_v1_networks_proto_rawDescGZIP() []byte {
 	return file_agynio_api_networks_v1_networks_proto_rawDescData
 }
 
-var file_agynio_api_networks_v1_networks_proto_enumTypes = make([]protoimpl.EnumInfo, 5)
-var file_agynio_api_networks_v1_networks_proto_msgTypes = make([]protoimpl.MessageInfo, 40)
+var file_agynio_api_networks_v1_networks_proto_enumTypes = make([]protoimpl.EnumInfo, 6)
+var file_agynio_api_networks_v1_networks_proto_msgTypes = make([]protoimpl.MessageInfo, 48)
 var file_agynio_api_networks_v1_networks_proto_goTypes = []any{
-	(ProvisioningState)(0),                      // 0: agynio.api.networks.v1.ProvisioningState
-	(TunnelEnrollmentState)(0),                  // 1: agynio.api.networks.v1.TunnelEnrollmentState
-	(TunnelConnectivity)(0),                     // 2: agynio.api.networks.v1.TunnelConnectivity
-	(PrivateResourceProtocol)(0),                // 3: agynio.api.networks.v1.PrivateResourceProtocol
-	(PrivateResourceAccessPrincipalType)(0),     // 4: agynio.api.networks.v1.PrivateResourceAccessPrincipalType
-	(*EntityMeta)(nil),                          // 5: agynio.api.networks.v1.EntityMeta
-	(*Network)(nil),                             // 6: agynio.api.networks.v1.Network
-	(*TunnelCredential)(nil),                    // 7: agynio.api.networks.v1.TunnelCredential
-	(*PrivateResource)(nil),                     // 8: agynio.api.networks.v1.PrivateResource
-	(*PrivateResourceAccess)(nil),               // 9: agynio.api.networks.v1.PrivateResourceAccess
-	(*PortListUpdate)(nil),                      // 10: agynio.api.networks.v1.PortListUpdate
-	(*CreateNetworkRequest)(nil),                // 11: agynio.api.networks.v1.CreateNetworkRequest
-	(*CreateNetworkResponse)(nil),               // 12: agynio.api.networks.v1.CreateNetworkResponse
-	(*GetNetworkRequest)(nil),                   // 13: agynio.api.networks.v1.GetNetworkRequest
-	(*GetNetworkResponse)(nil),                  // 14: agynio.api.networks.v1.GetNetworkResponse
-	(*ListNetworksRequest)(nil),                 // 15: agynio.api.networks.v1.ListNetworksRequest
-	(*ListNetworksResponse)(nil),                // 16: agynio.api.networks.v1.ListNetworksResponse
-	(*UpdateNetworkRequest)(nil),                // 17: agynio.api.networks.v1.UpdateNetworkRequest
-	(*UpdateNetworkResponse)(nil),               // 18: agynio.api.networks.v1.UpdateNetworkResponse
-	(*DeleteNetworkRequest)(nil),                // 19: agynio.api.networks.v1.DeleteNetworkRequest
-	(*DeleteNetworkResponse)(nil),               // 20: agynio.api.networks.v1.DeleteNetworkResponse
-	(*CreateTunnelCredentialRequest)(nil),       // 21: agynio.api.networks.v1.CreateTunnelCredentialRequest
-	(*CreateTunnelCredentialResponse)(nil),      // 22: agynio.api.networks.v1.CreateTunnelCredentialResponse
-	(*GetTunnelCredentialRequest)(nil),          // 23: agynio.api.networks.v1.GetTunnelCredentialRequest
-	(*GetTunnelCredentialResponse)(nil),         // 24: agynio.api.networks.v1.GetTunnelCredentialResponse
-	(*ListTunnelCredentialsRequest)(nil),        // 25: agynio.api.networks.v1.ListTunnelCredentialsRequest
-	(*ListTunnelCredentialsResponse)(nil),       // 26: agynio.api.networks.v1.ListTunnelCredentialsResponse
-	(*DeleteTunnelCredentialRequest)(nil),       // 27: agynio.api.networks.v1.DeleteTunnelCredentialRequest
-	(*DeleteTunnelCredentialResponse)(nil),      // 28: agynio.api.networks.v1.DeleteTunnelCredentialResponse
-	(*CreatePrivateResourceRequest)(nil),        // 29: agynio.api.networks.v1.CreatePrivateResourceRequest
-	(*CreatePrivateResourceResponse)(nil),       // 30: agynio.api.networks.v1.CreatePrivateResourceResponse
-	(*GetPrivateResourceRequest)(nil),           // 31: agynio.api.networks.v1.GetPrivateResourceRequest
-	(*GetPrivateResourceResponse)(nil),          // 32: agynio.api.networks.v1.GetPrivateResourceResponse
-	(*ListPrivateResourcesRequest)(nil),         // 33: agynio.api.networks.v1.ListPrivateResourcesRequest
-	(*ListPrivateResourcesResponse)(nil),        // 34: agynio.api.networks.v1.ListPrivateResourcesResponse
-	(*UpdatePrivateResourceRequest)(nil),        // 35: agynio.api.networks.v1.UpdatePrivateResourceRequest
-	(*UpdatePrivateResourceResponse)(nil),       // 36: agynio.api.networks.v1.UpdatePrivateResourceResponse
-	(*DeletePrivateResourceRequest)(nil),        // 37: agynio.api.networks.v1.DeletePrivateResourceRequest
-	(*DeletePrivateResourceResponse)(nil),       // 38: agynio.api.networks.v1.DeletePrivateResourceResponse
-	(*CreatePrivateResourceAccessRequest)(nil),  // 39: agynio.api.networks.v1.CreatePrivateResourceAccessRequest
-	(*CreatePrivateResourceAccessResponse)(nil), // 40: agynio.api.networks.v1.CreatePrivateResourceAccessResponse
-	(*DeletePrivateResourceAccessRequest)(nil),  // 41: agynio.api.networks.v1.DeletePrivateResourceAccessRequest
-	(*DeletePrivateResourceAccessResponse)(nil), // 42: agynio.api.networks.v1.DeletePrivateResourceAccessResponse
-	(*ListPrivateResourceAccessRequest)(nil),    // 43: agynio.api.networks.v1.ListPrivateResourceAccessRequest
-	(*ListPrivateResourceAccessResponse)(nil),   // 44: agynio.api.networks.v1.ListPrivateResourceAccessResponse
-	(*timestamppb.Timestamp)(nil),               // 45: google.protobuf.Timestamp
+	(ProvisioningState)(0),                          // 0: agynio.api.networks.v1.ProvisioningState
+	(TunnelEnrollmentState)(0),                      // 1: agynio.api.networks.v1.TunnelEnrollmentState
+	(TunnelConnectivity)(0),                         // 2: agynio.api.networks.v1.TunnelConnectivity
+	(PrivateResourceProtocol)(0),                    // 3: agynio.api.networks.v1.PrivateResourceProtocol
+	(PrivateResourceMediation)(0),                   // 4: agynio.api.networks.v1.PrivateResourceMediation
+	(PrivateResourceAccessPrincipalType)(0),         // 5: agynio.api.networks.v1.PrivateResourceAccessPrincipalType
+	(*EntityMeta)(nil),                              // 6: agynio.api.networks.v1.EntityMeta
+	(*Network)(nil),                                 // 7: agynio.api.networks.v1.Network
+	(*TunnelCredential)(nil),                        // 8: agynio.api.networks.v1.TunnelCredential
+	(*PrivateResource)(nil),                         // 9: agynio.api.networks.v1.PrivateResource
+	(*PrivateResourceAccess)(nil),                   // 10: agynio.api.networks.v1.PrivateResourceAccess
+	(*PortListUpdate)(nil),                          // 11: agynio.api.networks.v1.PortListUpdate
+	(*CreateNetworkRequest)(nil),                    // 12: agynio.api.networks.v1.CreateNetworkRequest
+	(*CreateNetworkResponse)(nil),                   // 13: agynio.api.networks.v1.CreateNetworkResponse
+	(*GetNetworkRequest)(nil),                       // 14: agynio.api.networks.v1.GetNetworkRequest
+	(*GetNetworkResponse)(nil),                      // 15: agynio.api.networks.v1.GetNetworkResponse
+	(*ListNetworksRequest)(nil),                     // 16: agynio.api.networks.v1.ListNetworksRequest
+	(*ListNetworksResponse)(nil),                    // 17: agynio.api.networks.v1.ListNetworksResponse
+	(*UpdateNetworkRequest)(nil),                    // 18: agynio.api.networks.v1.UpdateNetworkRequest
+	(*UpdateNetworkResponse)(nil),                   // 19: agynio.api.networks.v1.UpdateNetworkResponse
+	(*DeleteNetworkRequest)(nil),                    // 20: agynio.api.networks.v1.DeleteNetworkRequest
+	(*DeleteNetworkResponse)(nil),                   // 21: agynio.api.networks.v1.DeleteNetworkResponse
+	(*CreateTunnelCredentialRequest)(nil),           // 22: agynio.api.networks.v1.CreateTunnelCredentialRequest
+	(*CreateTunnelCredentialResponse)(nil),          // 23: agynio.api.networks.v1.CreateTunnelCredentialResponse
+	(*GetTunnelCredentialRequest)(nil),              // 24: agynio.api.networks.v1.GetTunnelCredentialRequest
+	(*GetTunnelCredentialResponse)(nil),             // 25: agynio.api.networks.v1.GetTunnelCredentialResponse
+	(*ListTunnelCredentialsRequest)(nil),            // 26: agynio.api.networks.v1.ListTunnelCredentialsRequest
+	(*ListTunnelCredentialsResponse)(nil),           // 27: agynio.api.networks.v1.ListTunnelCredentialsResponse
+	(*DeleteTunnelCredentialRequest)(nil),           // 28: agynio.api.networks.v1.DeleteTunnelCredentialRequest
+	(*DeleteTunnelCredentialResponse)(nil),          // 29: agynio.api.networks.v1.DeleteTunnelCredentialResponse
+	(*CreatePrivateResourceRequest)(nil),            // 30: agynio.api.networks.v1.CreatePrivateResourceRequest
+	(*CreatePrivateResourceResponse)(nil),           // 31: agynio.api.networks.v1.CreatePrivateResourceResponse
+	(*GetPrivateResourceRequest)(nil),               // 32: agynio.api.networks.v1.GetPrivateResourceRequest
+	(*GetPrivateResourceResponse)(nil),              // 33: agynio.api.networks.v1.GetPrivateResourceResponse
+	(*ListPrivateResourcesRequest)(nil),             // 34: agynio.api.networks.v1.ListPrivateResourcesRequest
+	(*ListPrivateResourcesResponse)(nil),            // 35: agynio.api.networks.v1.ListPrivateResourcesResponse
+	(*UpdatePrivateResourceRequest)(nil),            // 36: agynio.api.networks.v1.UpdatePrivateResourceRequest
+	(*UpdatePrivateResourceResponse)(nil),           // 37: agynio.api.networks.v1.UpdatePrivateResourceResponse
+	(*DeletePrivateResourceRequest)(nil),            // 38: agynio.api.networks.v1.DeletePrivateResourceRequest
+	(*DeletePrivateResourceResponse)(nil),           // 39: agynio.api.networks.v1.DeletePrivateResourceResponse
+	(*CreatePrivateResourceAccessRequest)(nil),      // 40: agynio.api.networks.v1.CreatePrivateResourceAccessRequest
+	(*CreatePrivateResourceAccessResponse)(nil),     // 41: agynio.api.networks.v1.CreatePrivateResourceAccessResponse
+	(*DeletePrivateResourceAccessRequest)(nil),      // 42: agynio.api.networks.v1.DeletePrivateResourceAccessRequest
+	(*DeletePrivateResourceAccessResponse)(nil),     // 43: agynio.api.networks.v1.DeletePrivateResourceAccessResponse
+	(*ListPrivateResourceAccessRequest)(nil),        // 44: agynio.api.networks.v1.ListPrivateResourceAccessRequest
+	(*ListPrivateResourceAccessResponse)(nil),       // 45: agynio.api.networks.v1.ListPrivateResourceAccessResponse
+	(*SetPrivateResourceMediationRequest)(nil),      // 46: agynio.api.networks.v1.SetPrivateResourceMediationRequest
+	(*SetPrivateResourceMediationResponse)(nil),     // 47: agynio.api.networks.v1.SetPrivateResourceMediationResponse
+	(*ReachablePrivateResourceGrant)(nil),           // 48: agynio.api.networks.v1.ReachablePrivateResourceGrant
+	(*ReachablePrivateResource)(nil),                // 49: agynio.api.networks.v1.ReachablePrivateResource
+	(*ListPrivateResourcesReachableByRequest)(nil),  // 50: agynio.api.networks.v1.ListPrivateResourcesReachableByRequest
+	(*ListPrivateResourcesReachableByResponse)(nil), // 51: agynio.api.networks.v1.ListPrivateResourcesReachableByResponse
+	(*DeleteOrganizationResourcesRequest)(nil),      // 52: agynio.api.networks.v1.DeleteOrganizationResourcesRequest
+	(*DeleteOrganizationResourcesResponse)(nil),     // 53: agynio.api.networks.v1.DeleteOrganizationResourcesResponse
+	(*timestamppb.Timestamp)(nil),                   // 54: google.protobuf.Timestamp
 }
 var file_agynio_api_networks_v1_networks_proto_depIdxs = []int32{
-	45, // 0: agynio.api.networks.v1.EntityMeta.created_at:type_name -> google.protobuf.Timestamp
-	45, // 1: agynio.api.networks.v1.EntityMeta.updated_at:type_name -> google.protobuf.Timestamp
-	5,  // 2: agynio.api.networks.v1.Network.meta:type_name -> agynio.api.networks.v1.EntityMeta
+	54, // 0: agynio.api.networks.v1.EntityMeta.created_at:type_name -> google.protobuf.Timestamp
+	54, // 1: agynio.api.networks.v1.EntityMeta.updated_at:type_name -> google.protobuf.Timestamp
+	6,  // 2: agynio.api.networks.v1.Network.meta:type_name -> agynio.api.networks.v1.EntityMeta
 	0,  // 3: agynio.api.networks.v1.Network.provisioning_state:type_name -> agynio.api.networks.v1.ProvisioningState
-	5,  // 4: agynio.api.networks.v1.TunnelCredential.meta:type_name -> agynio.api.networks.v1.EntityMeta
-	45, // 5: agynio.api.networks.v1.TunnelCredential.enrollment_jwt_expires_at:type_name -> google.protobuf.Timestamp
+	6,  // 4: agynio.api.networks.v1.TunnelCredential.meta:type_name -> agynio.api.networks.v1.EntityMeta
+	54, // 5: agynio.api.networks.v1.TunnelCredential.enrollment_jwt_expires_at:type_name -> google.protobuf.Timestamp
 	1,  // 6: agynio.api.networks.v1.TunnelCredential.enrollment_state:type_name -> agynio.api.networks.v1.TunnelEnrollmentState
 	2,  // 7: agynio.api.networks.v1.TunnelCredential.connectivity:type_name -> agynio.api.networks.v1.TunnelConnectivity
 	0,  // 8: agynio.api.networks.v1.TunnelCredential.provisioning_state:type_name -> agynio.api.networks.v1.ProvisioningState
-	45, // 9: agynio.api.networks.v1.TunnelCredential.enrolled_at:type_name -> google.protobuf.Timestamp
-	45, // 10: agynio.api.networks.v1.TunnelCredential.last_seen_at:type_name -> google.protobuf.Timestamp
-	5,  // 11: agynio.api.networks.v1.PrivateResource.meta:type_name -> agynio.api.networks.v1.EntityMeta
+	54, // 9: agynio.api.networks.v1.TunnelCredential.enrolled_at:type_name -> google.protobuf.Timestamp
+	54, // 10: agynio.api.networks.v1.TunnelCredential.last_seen_at:type_name -> google.protobuf.Timestamp
+	6,  // 11: agynio.api.networks.v1.PrivateResource.meta:type_name -> agynio.api.networks.v1.EntityMeta
 	3,  // 12: agynio.api.networks.v1.PrivateResource.protocol:type_name -> agynio.api.networks.v1.PrivateResourceProtocol
 	0,  // 13: agynio.api.networks.v1.PrivateResource.provisioning_state:type_name -> agynio.api.networks.v1.ProvisioningState
-	5,  // 14: agynio.api.networks.v1.PrivateResourceAccess.meta:type_name -> agynio.api.networks.v1.EntityMeta
-	4,  // 15: agynio.api.networks.v1.PrivateResourceAccess.principal_type:type_name -> agynio.api.networks.v1.PrivateResourceAccessPrincipalType
-	0,  // 16: agynio.api.networks.v1.PrivateResourceAccess.provisioning_state:type_name -> agynio.api.networks.v1.ProvisioningState
-	6,  // 17: agynio.api.networks.v1.CreateNetworkResponse.network:type_name -> agynio.api.networks.v1.Network
-	6,  // 18: agynio.api.networks.v1.GetNetworkResponse.network:type_name -> agynio.api.networks.v1.Network
-	6,  // 19: agynio.api.networks.v1.ListNetworksResponse.networks:type_name -> agynio.api.networks.v1.Network
-	6,  // 20: agynio.api.networks.v1.UpdateNetworkResponse.network:type_name -> agynio.api.networks.v1.Network
-	7,  // 21: agynio.api.networks.v1.CreateTunnelCredentialResponse.tunnel_credential:type_name -> agynio.api.networks.v1.TunnelCredential
-	7,  // 22: agynio.api.networks.v1.GetTunnelCredentialResponse.tunnel_credential:type_name -> agynio.api.networks.v1.TunnelCredential
-	7,  // 23: agynio.api.networks.v1.ListTunnelCredentialsResponse.tunnel_credentials:type_name -> agynio.api.networks.v1.TunnelCredential
-	3,  // 24: agynio.api.networks.v1.CreatePrivateResourceRequest.protocol:type_name -> agynio.api.networks.v1.PrivateResourceProtocol
-	8,  // 25: agynio.api.networks.v1.CreatePrivateResourceResponse.private_resource:type_name -> agynio.api.networks.v1.PrivateResource
-	8,  // 26: agynio.api.networks.v1.GetPrivateResourceResponse.private_resource:type_name -> agynio.api.networks.v1.PrivateResource
-	8,  // 27: agynio.api.networks.v1.ListPrivateResourcesResponse.private_resources:type_name -> agynio.api.networks.v1.PrivateResource
-	3,  // 28: agynio.api.networks.v1.UpdatePrivateResourceRequest.protocol:type_name -> agynio.api.networks.v1.PrivateResourceProtocol
-	10, // 29: agynio.api.networks.v1.UpdatePrivateResourceRequest.target_ports_update:type_name -> agynio.api.networks.v1.PortListUpdate
-	10, // 30: agynio.api.networks.v1.UpdatePrivateResourceRequest.intercept_ports_update:type_name -> agynio.api.networks.v1.PortListUpdate
-	8,  // 31: agynio.api.networks.v1.UpdatePrivateResourceResponse.private_resource:type_name -> agynio.api.networks.v1.PrivateResource
-	4,  // 32: agynio.api.networks.v1.CreatePrivateResourceAccessRequest.principal_type:type_name -> agynio.api.networks.v1.PrivateResourceAccessPrincipalType
-	9,  // 33: agynio.api.networks.v1.CreatePrivateResourceAccessResponse.private_resource_access:type_name -> agynio.api.networks.v1.PrivateResourceAccess
-	4,  // 34: agynio.api.networks.v1.ListPrivateResourceAccessRequest.principal_type:type_name -> agynio.api.networks.v1.PrivateResourceAccessPrincipalType
-	9,  // 35: agynio.api.networks.v1.ListPrivateResourceAccessResponse.private_resource_access:type_name -> agynio.api.networks.v1.PrivateResourceAccess
-	11, // 36: agynio.api.networks.v1.NetworksService.CreateNetwork:input_type -> agynio.api.networks.v1.CreateNetworkRequest
-	13, // 37: agynio.api.networks.v1.NetworksService.GetNetwork:input_type -> agynio.api.networks.v1.GetNetworkRequest
-	15, // 38: agynio.api.networks.v1.NetworksService.ListNetworks:input_type -> agynio.api.networks.v1.ListNetworksRequest
-	17, // 39: agynio.api.networks.v1.NetworksService.UpdateNetwork:input_type -> agynio.api.networks.v1.UpdateNetworkRequest
-	19, // 40: agynio.api.networks.v1.NetworksService.DeleteNetwork:input_type -> agynio.api.networks.v1.DeleteNetworkRequest
-	21, // 41: agynio.api.networks.v1.NetworksService.CreateTunnelCredential:input_type -> agynio.api.networks.v1.CreateTunnelCredentialRequest
-	23, // 42: agynio.api.networks.v1.NetworksService.GetTunnelCredential:input_type -> agynio.api.networks.v1.GetTunnelCredentialRequest
-	25, // 43: agynio.api.networks.v1.NetworksService.ListTunnelCredentials:input_type -> agynio.api.networks.v1.ListTunnelCredentialsRequest
-	27, // 44: agynio.api.networks.v1.NetworksService.DeleteTunnelCredential:input_type -> agynio.api.networks.v1.DeleteTunnelCredentialRequest
-	29, // 45: agynio.api.networks.v1.NetworksService.CreatePrivateResource:input_type -> agynio.api.networks.v1.CreatePrivateResourceRequest
-	31, // 46: agynio.api.networks.v1.NetworksService.GetPrivateResource:input_type -> agynio.api.networks.v1.GetPrivateResourceRequest
-	33, // 47: agynio.api.networks.v1.NetworksService.ListPrivateResources:input_type -> agynio.api.networks.v1.ListPrivateResourcesRequest
-	35, // 48: agynio.api.networks.v1.NetworksService.UpdatePrivateResource:input_type -> agynio.api.networks.v1.UpdatePrivateResourceRequest
-	37, // 49: agynio.api.networks.v1.NetworksService.DeletePrivateResource:input_type -> agynio.api.networks.v1.DeletePrivateResourceRequest
-	39, // 50: agynio.api.networks.v1.NetworksService.CreatePrivateResourceAccess:input_type -> agynio.api.networks.v1.CreatePrivateResourceAccessRequest
-	41, // 51: agynio.api.networks.v1.NetworksService.DeletePrivateResourceAccess:input_type -> agynio.api.networks.v1.DeletePrivateResourceAccessRequest
-	43, // 52: agynio.api.networks.v1.NetworksService.ListPrivateResourceAccess:input_type -> agynio.api.networks.v1.ListPrivateResourceAccessRequest
-	12, // 53: agynio.api.networks.v1.NetworksService.CreateNetwork:output_type -> agynio.api.networks.v1.CreateNetworkResponse
-	14, // 54: agynio.api.networks.v1.NetworksService.GetNetwork:output_type -> agynio.api.networks.v1.GetNetworkResponse
-	16, // 55: agynio.api.networks.v1.NetworksService.ListNetworks:output_type -> agynio.api.networks.v1.ListNetworksResponse
-	18, // 56: agynio.api.networks.v1.NetworksService.UpdateNetwork:output_type -> agynio.api.networks.v1.UpdateNetworkResponse
-	20, // 57: agynio.api.networks.v1.NetworksService.DeleteNetwork:output_type -> agynio.api.networks.v1.DeleteNetworkResponse
-	22, // 58: agynio.api.networks.v1.NetworksService.CreateTunnelCredential:output_type -> agynio.api.networks.v1.CreateTunnelCredentialResponse
-	24, // 59: agynio.api.networks.v1.NetworksService.GetTunnelCredential:output_type -> agynio.api.networks.v1.GetTunnelCredentialResponse
-	26, // 60: agynio.api.networks.v1.NetworksService.ListTunnelCredentials:output_type -> agynio.api.networks.v1.ListTunnelCredentialsResponse
-	28, // 61: agynio.api.networks.v1.NetworksService.DeleteTunnelCredential:output_type -> agynio.api.networks.v1.DeleteTunnelCredentialResponse
-	30, // 62: agynio.api.networks.v1.NetworksService.CreatePrivateResource:output_type -> agynio.api.networks.v1.CreatePrivateResourceResponse
-	32, // 63: agynio.api.networks.v1.NetworksService.GetPrivateResource:output_type -> agynio.api.networks.v1.GetPrivateResourceResponse
-	34, // 64: agynio.api.networks.v1.NetworksService.ListPrivateResources:output_type -> agynio.api.networks.v1.ListPrivateResourcesResponse
-	36, // 65: agynio.api.networks.v1.NetworksService.UpdatePrivateResource:output_type -> agynio.api.networks.v1.UpdatePrivateResourceResponse
-	38, // 66: agynio.api.networks.v1.NetworksService.DeletePrivateResource:output_type -> agynio.api.networks.v1.DeletePrivateResourceResponse
-	40, // 67: agynio.api.networks.v1.NetworksService.CreatePrivateResourceAccess:output_type -> agynio.api.networks.v1.CreatePrivateResourceAccessResponse
-	42, // 68: agynio.api.networks.v1.NetworksService.DeletePrivateResourceAccess:output_type -> agynio.api.networks.v1.DeletePrivateResourceAccessResponse
-	44, // 69: agynio.api.networks.v1.NetworksService.ListPrivateResourceAccess:output_type -> agynio.api.networks.v1.ListPrivateResourceAccessResponse
-	53, // [53:70] is the sub-list for method output_type
-	36, // [36:53] is the sub-list for method input_type
-	36, // [36:36] is the sub-list for extension type_name
-	36, // [36:36] is the sub-list for extension extendee
-	0,  // [0:36] is the sub-list for field type_name
+	4,  // 14: agynio.api.networks.v1.PrivateResource.mediation:type_name -> agynio.api.networks.v1.PrivateResourceMediation
+	6,  // 15: agynio.api.networks.v1.PrivateResourceAccess.meta:type_name -> agynio.api.networks.v1.EntityMeta
+	5,  // 16: agynio.api.networks.v1.PrivateResourceAccess.principal_type:type_name -> agynio.api.networks.v1.PrivateResourceAccessPrincipalType
+	0,  // 17: agynio.api.networks.v1.PrivateResourceAccess.provisioning_state:type_name -> agynio.api.networks.v1.ProvisioningState
+	7,  // 18: agynio.api.networks.v1.CreateNetworkResponse.network:type_name -> agynio.api.networks.v1.Network
+	7,  // 19: agynio.api.networks.v1.GetNetworkResponse.network:type_name -> agynio.api.networks.v1.Network
+	7,  // 20: agynio.api.networks.v1.ListNetworksResponse.networks:type_name -> agynio.api.networks.v1.Network
+	7,  // 21: agynio.api.networks.v1.UpdateNetworkResponse.network:type_name -> agynio.api.networks.v1.Network
+	8,  // 22: agynio.api.networks.v1.CreateTunnelCredentialResponse.tunnel_credential:type_name -> agynio.api.networks.v1.TunnelCredential
+	8,  // 23: agynio.api.networks.v1.GetTunnelCredentialResponse.tunnel_credential:type_name -> agynio.api.networks.v1.TunnelCredential
+	8,  // 24: agynio.api.networks.v1.ListTunnelCredentialsResponse.tunnel_credentials:type_name -> agynio.api.networks.v1.TunnelCredential
+	3,  // 25: agynio.api.networks.v1.CreatePrivateResourceRequest.protocol:type_name -> agynio.api.networks.v1.PrivateResourceProtocol
+	9,  // 26: agynio.api.networks.v1.CreatePrivateResourceResponse.private_resource:type_name -> agynio.api.networks.v1.PrivateResource
+	9,  // 27: agynio.api.networks.v1.GetPrivateResourceResponse.private_resource:type_name -> agynio.api.networks.v1.PrivateResource
+	9,  // 28: agynio.api.networks.v1.ListPrivateResourcesResponse.private_resources:type_name -> agynio.api.networks.v1.PrivateResource
+	3,  // 29: agynio.api.networks.v1.UpdatePrivateResourceRequest.protocol:type_name -> agynio.api.networks.v1.PrivateResourceProtocol
+	11, // 30: agynio.api.networks.v1.UpdatePrivateResourceRequest.target_ports_update:type_name -> agynio.api.networks.v1.PortListUpdate
+	11, // 31: agynio.api.networks.v1.UpdatePrivateResourceRequest.intercept_ports_update:type_name -> agynio.api.networks.v1.PortListUpdate
+	9,  // 32: agynio.api.networks.v1.UpdatePrivateResourceResponse.private_resource:type_name -> agynio.api.networks.v1.PrivateResource
+	5,  // 33: agynio.api.networks.v1.CreatePrivateResourceAccessRequest.principal_type:type_name -> agynio.api.networks.v1.PrivateResourceAccessPrincipalType
+	10, // 34: agynio.api.networks.v1.CreatePrivateResourceAccessResponse.private_resource_access:type_name -> agynio.api.networks.v1.PrivateResourceAccess
+	5,  // 35: agynio.api.networks.v1.ListPrivateResourceAccessRequest.principal_type:type_name -> agynio.api.networks.v1.PrivateResourceAccessPrincipalType
+	10, // 36: agynio.api.networks.v1.ListPrivateResourceAccessResponse.private_resource_access:type_name -> agynio.api.networks.v1.PrivateResourceAccess
+	4,  // 37: agynio.api.networks.v1.SetPrivateResourceMediationRequest.mediation:type_name -> agynio.api.networks.v1.PrivateResourceMediation
+	9,  // 38: agynio.api.networks.v1.SetPrivateResourceMediationResponse.private_resource:type_name -> agynio.api.networks.v1.PrivateResource
+	5,  // 39: agynio.api.networks.v1.ReachablePrivateResourceGrant.principal_type:type_name -> agynio.api.networks.v1.PrivateResourceAccessPrincipalType
+	48, // 40: agynio.api.networks.v1.ReachablePrivateResource.grants:type_name -> agynio.api.networks.v1.ReachablePrivateResourceGrant
+	49, // 41: agynio.api.networks.v1.ListPrivateResourcesReachableByResponse.private_resources:type_name -> agynio.api.networks.v1.ReachablePrivateResource
+	12, // 42: agynio.api.networks.v1.NetworksService.CreateNetwork:input_type -> agynio.api.networks.v1.CreateNetworkRequest
+	14, // 43: agynio.api.networks.v1.NetworksService.GetNetwork:input_type -> agynio.api.networks.v1.GetNetworkRequest
+	16, // 44: agynio.api.networks.v1.NetworksService.ListNetworks:input_type -> agynio.api.networks.v1.ListNetworksRequest
+	18, // 45: agynio.api.networks.v1.NetworksService.UpdateNetwork:input_type -> agynio.api.networks.v1.UpdateNetworkRequest
+	20, // 46: agynio.api.networks.v1.NetworksService.DeleteNetwork:input_type -> agynio.api.networks.v1.DeleteNetworkRequest
+	22, // 47: agynio.api.networks.v1.NetworksService.CreateTunnelCredential:input_type -> agynio.api.networks.v1.CreateTunnelCredentialRequest
+	24, // 48: agynio.api.networks.v1.NetworksService.GetTunnelCredential:input_type -> agynio.api.networks.v1.GetTunnelCredentialRequest
+	26, // 49: agynio.api.networks.v1.NetworksService.ListTunnelCredentials:input_type -> agynio.api.networks.v1.ListTunnelCredentialsRequest
+	28, // 50: agynio.api.networks.v1.NetworksService.DeleteTunnelCredential:input_type -> agynio.api.networks.v1.DeleteTunnelCredentialRequest
+	30, // 51: agynio.api.networks.v1.NetworksService.CreatePrivateResource:input_type -> agynio.api.networks.v1.CreatePrivateResourceRequest
+	32, // 52: agynio.api.networks.v1.NetworksService.GetPrivateResource:input_type -> agynio.api.networks.v1.GetPrivateResourceRequest
+	34, // 53: agynio.api.networks.v1.NetworksService.ListPrivateResources:input_type -> agynio.api.networks.v1.ListPrivateResourcesRequest
+	36, // 54: agynio.api.networks.v1.NetworksService.UpdatePrivateResource:input_type -> agynio.api.networks.v1.UpdatePrivateResourceRequest
+	38, // 55: agynio.api.networks.v1.NetworksService.DeletePrivateResource:input_type -> agynio.api.networks.v1.DeletePrivateResourceRequest
+	40, // 56: agynio.api.networks.v1.NetworksService.CreatePrivateResourceAccess:input_type -> agynio.api.networks.v1.CreatePrivateResourceAccessRequest
+	42, // 57: agynio.api.networks.v1.NetworksService.DeletePrivateResourceAccess:input_type -> agynio.api.networks.v1.DeletePrivateResourceAccessRequest
+	44, // 58: agynio.api.networks.v1.NetworksService.ListPrivateResourceAccess:input_type -> agynio.api.networks.v1.ListPrivateResourceAccessRequest
+	46, // 59: agynio.api.networks.v1.NetworksService.SetPrivateResourceMediation:input_type -> agynio.api.networks.v1.SetPrivateResourceMediationRequest
+	50, // 60: agynio.api.networks.v1.NetworksService.ListPrivateResourcesReachableBy:input_type -> agynio.api.networks.v1.ListPrivateResourcesReachableByRequest
+	52, // 61: agynio.api.networks.v1.NetworksService.DeleteOrganizationResources:input_type -> agynio.api.networks.v1.DeleteOrganizationResourcesRequest
+	13, // 62: agynio.api.networks.v1.NetworksService.CreateNetwork:output_type -> agynio.api.networks.v1.CreateNetworkResponse
+	15, // 63: agynio.api.networks.v1.NetworksService.GetNetwork:output_type -> agynio.api.networks.v1.GetNetworkResponse
+	17, // 64: agynio.api.networks.v1.NetworksService.ListNetworks:output_type -> agynio.api.networks.v1.ListNetworksResponse
+	19, // 65: agynio.api.networks.v1.NetworksService.UpdateNetwork:output_type -> agynio.api.networks.v1.UpdateNetworkResponse
+	21, // 66: agynio.api.networks.v1.NetworksService.DeleteNetwork:output_type -> agynio.api.networks.v1.DeleteNetworkResponse
+	23, // 67: agynio.api.networks.v1.NetworksService.CreateTunnelCredential:output_type -> agynio.api.networks.v1.CreateTunnelCredentialResponse
+	25, // 68: agynio.api.networks.v1.NetworksService.GetTunnelCredential:output_type -> agynio.api.networks.v1.GetTunnelCredentialResponse
+	27, // 69: agynio.api.networks.v1.NetworksService.ListTunnelCredentials:output_type -> agynio.api.networks.v1.ListTunnelCredentialsResponse
+	29, // 70: agynio.api.networks.v1.NetworksService.DeleteTunnelCredential:output_type -> agynio.api.networks.v1.DeleteTunnelCredentialResponse
+	31, // 71: agynio.api.networks.v1.NetworksService.CreatePrivateResource:output_type -> agynio.api.networks.v1.CreatePrivateResourceResponse
+	33, // 72: agynio.api.networks.v1.NetworksService.GetPrivateResource:output_type -> agynio.api.networks.v1.GetPrivateResourceResponse
+	35, // 73: agynio.api.networks.v1.NetworksService.ListPrivateResources:output_type -> agynio.api.networks.v1.ListPrivateResourcesResponse
+	37, // 74: agynio.api.networks.v1.NetworksService.UpdatePrivateResource:output_type -> agynio.api.networks.v1.UpdatePrivateResourceResponse
+	39, // 75: agynio.api.networks.v1.NetworksService.DeletePrivateResource:output_type -> agynio.api.networks.v1.DeletePrivateResourceResponse
+	41, // 76: agynio.api.networks.v1.NetworksService.CreatePrivateResourceAccess:output_type -> agynio.api.networks.v1.CreatePrivateResourceAccessResponse
+	43, // 77: agynio.api.networks.v1.NetworksService.DeletePrivateResourceAccess:output_type -> agynio.api.networks.v1.DeletePrivateResourceAccessResponse
+	45, // 78: agynio.api.networks.v1.NetworksService.ListPrivateResourceAccess:output_type -> agynio.api.networks.v1.ListPrivateResourceAccessResponse
+	47, // 79: agynio.api.networks.v1.NetworksService.SetPrivateResourceMediation:output_type -> agynio.api.networks.v1.SetPrivateResourceMediationResponse
+	51, // 80: agynio.api.networks.v1.NetworksService.ListPrivateResourcesReachableBy:output_type -> agynio.api.networks.v1.ListPrivateResourcesReachableByResponse
+	53, // 81: agynio.api.networks.v1.NetworksService.DeleteOrganizationResources:output_type -> agynio.api.networks.v1.DeleteOrganizationResourcesResponse
+	62, // [62:82] is the sub-list for method output_type
+	42, // [42:62] is the sub-list for method input_type
+	42, // [42:42] is the sub-list for extension type_name
+	42, // [42:42] is the sub-list for extension extendee
+	0,  // [0:42] is the sub-list for field type_name
 }
 
 func init() { file_agynio_api_networks_v1_networks_proto_init() }
@@ -2925,13 +3457,17 @@ func file_agynio_api_networks_v1_networks_proto_init() {
 	file_agynio_api_networks_v1_networks_proto_msgTypes[28].OneofWrappers = []any{}
 	file_agynio_api_networks_v1_networks_proto_msgTypes[30].OneofWrappers = []any{}
 	file_agynio_api_networks_v1_networks_proto_msgTypes[38].OneofWrappers = []any{}
+	file_agynio_api_networks_v1_networks_proto_msgTypes[44].OneofWrappers = []any{
+		(*ListPrivateResourcesReachableByRequest_AgentId)(nil),
+		(*ListPrivateResourcesReachableByRequest_EnvironmentId)(nil),
+	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_agynio_api_networks_v1_networks_proto_rawDesc), len(file_agynio_api_networks_v1_networks_proto_rawDesc)),
-			NumEnums:      5,
-			NumMessages:   40,
+			NumEnums:      6,
+			NumMessages:   48,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

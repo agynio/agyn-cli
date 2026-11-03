@@ -1456,6 +1456,86 @@ func (x *ListMemberGroupsBatchResponse) GetEntries() []*ListMemberGroupsBatchEnt
 	return nil
 }
 
+type DeleteOrganizationResourcesRequest struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	OrganizationId string                 `protobuf:"bytes,1,opt,name=organization_id,json=organizationId,proto3" json:"organization_id,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *DeleteOrganizationResourcesRequest) Reset() {
+	*x = DeleteOrganizationResourcesRequest{}
+	mi := &file_agynio_api_groups_v1_groups_proto_msgTypes[24]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeleteOrganizationResourcesRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeleteOrganizationResourcesRequest) ProtoMessage() {}
+
+func (x *DeleteOrganizationResourcesRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_agynio_api_groups_v1_groups_proto_msgTypes[24]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeleteOrganizationResourcesRequest.ProtoReflect.Descriptor instead.
+func (*DeleteOrganizationResourcesRequest) Descriptor() ([]byte, []int) {
+	return file_agynio_api_groups_v1_groups_proto_rawDescGZIP(), []int{24}
+}
+
+func (x *DeleteOrganizationResourcesRequest) GetOrganizationId() string {
+	if x != nil {
+		return x.OrganizationId
+	}
+	return ""
+}
+
+type DeleteOrganizationResourcesResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeleteOrganizationResourcesResponse) Reset() {
+	*x = DeleteOrganizationResourcesResponse{}
+	mi := &file_agynio_api_groups_v1_groups_proto_msgTypes[25]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeleteOrganizationResourcesResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeleteOrganizationResourcesResponse) ProtoMessage() {}
+
+func (x *DeleteOrganizationResourcesResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_agynio_api_groups_v1_groups_proto_msgTypes[25]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeleteOrganizationResourcesResponse.ProtoReflect.Descriptor instead.
+func (*DeleteOrganizationResourcesResponse) Descriptor() ([]byte, []int) {
+	return file_agynio_api_groups_v1_groups_proto_rawDescGZIP(), []int{25}
+}
+
 var File_agynio_api_groups_v1_groups_proto protoreflect.FileDescriptor
 
 const file_agynio_api_groups_v1_groups_proto_rawDesc = "" +
@@ -1563,7 +1643,10 @@ const file_agynio_api_groups_v1_groups_proto_rawDesc = "" +
 	"\tmember_id\x18\x02 \x01(\tR\bmemberId\x123\n" +
 	"\x06groups\x18\x03 \x03(\v2\x1b.agynio.api.groups.v1.GroupR\x06groups\"k\n" +
 	"\x1dListMemberGroupsBatchResponse\x12J\n" +
-	"\aentries\x18\x01 \x03(\v20.agynio.api.groups.v1.ListMemberGroupsBatchEntryR\aentries*]\n" +
+	"\aentries\x18\x01 \x03(\v20.agynio.api.groups.v1.ListMemberGroupsBatchEntryR\aentries\"M\n" +
+	"\"DeleteOrganizationResourcesRequest\x12'\n" +
+	"\x0forganization_id\x18\x01 \x01(\tR\x0eorganizationId\"%\n" +
+	"#DeleteOrganizationResourcesResponse*]\n" +
 	"\vGroupSource\x12\x1c\n" +
 	"\x18GROUP_SOURCE_UNSPECIFIED\x10\x00\x12\x19\n" +
 	"\x15GROUP_SOURCE_PLATFORM\x10\x01\x12\x15\n" +
@@ -1572,7 +1655,7 @@ const file_agynio_api_groups_v1_groups_proto_rawDesc = "" +
 	"\x1dGROUP_MEMBER_TYPE_UNSPECIFIED\x10\x00\x12\x1a\n" +
 	"\x16GROUP_MEMBER_TYPE_USER\x10\x01\x12\x1b\n" +
 	"\x17GROUP_MEMBER_TYPE_AGENT\x10\x02\x12\x19\n" +
-	"\x15GROUP_MEMBER_TYPE_APP\x10\x032\x96\b\n" +
+	"\x15GROUP_MEMBER_TYPE_APP\x10\x032\xab\t\n" +
 	"\rGroupsService\x12b\n" +
 	"\vCreateGroup\x12(.agynio.api.groups.v1.CreateGroupRequest\x1a).agynio.api.groups.v1.CreateGroupResponse\x12Y\n" +
 	"\bGetGroup\x12%.agynio.api.groups.v1.GetGroupRequest\x1a&.agynio.api.groups.v1.GetGroupResponse\x12_\n" +
@@ -1584,7 +1667,8 @@ const file_agynio_api_groups_v1_groups_proto_rawDesc = "" +
 	"\fRemoveMember\x12).agynio.api.groups.v1.RemoveMemberRequest\x1a*.agynio.api.groups.v1.RemoveMemberResponse\x12b\n" +
 	"\vListMembers\x12(.agynio.api.groups.v1.ListMembersRequest\x1a).agynio.api.groups.v1.ListMembersResponse\x12q\n" +
 	"\x10ListMemberGroups\x12-.agynio.api.groups.v1.ListMemberGroupsRequest\x1a..agynio.api.groups.v1.ListMemberGroupsResponse\x12\x80\x01\n" +
-	"\x15ListMemberGroupsBatch\x122.agynio.api.groups.v1.ListMemberGroupsBatchRequest\x1a3.agynio.api.groups.v1.ListMemberGroupsBatchResponseB\xd8\x01\n" +
+	"\x15ListMemberGroupsBatch\x122.agynio.api.groups.v1.ListMemberGroupsBatchRequest\x1a3.agynio.api.groups.v1.ListMemberGroupsBatchResponse\x12\x92\x01\n" +
+	"\x1bDeleteOrganizationResources\x128.agynio.api.groups.v1.DeleteOrganizationResourcesRequest\x1a9.agynio.api.groups.v1.DeleteOrganizationResourcesResponseB\xd8\x01\n" +
 	"\x18com.agynio.api.groups.v1B\vGroupsProtoP\x01Z<github.com/agynio/agyn-cli/gen/agynio/api/groups/v1;groupsv1\xa2\x02\x03AAG\xaa\x02\x14Agynio.Api.Groups.V1\xca\x02\x14Agynio\\Api\\Groups\\V1\xe2\x02 Agynio\\Api\\Groups\\V1\\GPBMetadata\xea\x02\x17Agynio::Api::Groups::V1b\x06proto3"
 
 var (
@@ -1600,39 +1684,41 @@ func file_agynio_api_groups_v1_groups_proto_rawDescGZIP() []byte {
 }
 
 var file_agynio_api_groups_v1_groups_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_agynio_api_groups_v1_groups_proto_msgTypes = make([]protoimpl.MessageInfo, 24)
+var file_agynio_api_groups_v1_groups_proto_msgTypes = make([]protoimpl.MessageInfo, 26)
 var file_agynio_api_groups_v1_groups_proto_goTypes = []any{
-	(GroupSource)(0),                      // 0: agynio.api.groups.v1.GroupSource
-	(GroupMemberType)(0),                  // 1: agynio.api.groups.v1.GroupMemberType
-	(*EntityMeta)(nil),                    // 2: agynio.api.groups.v1.EntityMeta
-	(*Group)(nil),                         // 3: agynio.api.groups.v1.Group
-	(*GroupMembership)(nil),               // 4: agynio.api.groups.v1.GroupMembership
-	(*CreateGroupRequest)(nil),            // 5: agynio.api.groups.v1.CreateGroupRequest
-	(*CreateGroupResponse)(nil),           // 6: agynio.api.groups.v1.CreateGroupResponse
-	(*GetGroupRequest)(nil),               // 7: agynio.api.groups.v1.GetGroupRequest
-	(*GetGroupResponse)(nil),              // 8: agynio.api.groups.v1.GetGroupResponse
-	(*ListGroupsRequest)(nil),             // 9: agynio.api.groups.v1.ListGroupsRequest
-	(*ListGroupsResponse)(nil),            // 10: agynio.api.groups.v1.ListGroupsResponse
-	(*UpdateGroupRequest)(nil),            // 11: agynio.api.groups.v1.UpdateGroupRequest
-	(*UpdateGroupResponse)(nil),           // 12: agynio.api.groups.v1.UpdateGroupResponse
-	(*DeleteGroupRequest)(nil),            // 13: agynio.api.groups.v1.DeleteGroupRequest
-	(*DeleteGroupResponse)(nil),           // 14: agynio.api.groups.v1.DeleteGroupResponse
-	(*AddMemberRequest)(nil),              // 15: agynio.api.groups.v1.AddMemberRequest
-	(*AddMemberResponse)(nil),             // 16: agynio.api.groups.v1.AddMemberResponse
-	(*RemoveMemberRequest)(nil),           // 17: agynio.api.groups.v1.RemoveMemberRequest
-	(*RemoveMemberResponse)(nil),          // 18: agynio.api.groups.v1.RemoveMemberResponse
-	(*ListMembersRequest)(nil),            // 19: agynio.api.groups.v1.ListMembersRequest
-	(*ListMembersResponse)(nil),           // 20: agynio.api.groups.v1.ListMembersResponse
-	(*ListMemberGroupsRequest)(nil),       // 21: agynio.api.groups.v1.ListMemberGroupsRequest
-	(*ListMemberGroupsResponse)(nil),      // 22: agynio.api.groups.v1.ListMemberGroupsResponse
-	(*ListMemberGroupsBatchRequest)(nil),  // 23: agynio.api.groups.v1.ListMemberGroupsBatchRequest
-	(*ListMemberGroupsBatchEntry)(nil),    // 24: agynio.api.groups.v1.ListMemberGroupsBatchEntry
-	(*ListMemberGroupsBatchResponse)(nil), // 25: agynio.api.groups.v1.ListMemberGroupsBatchResponse
-	(*timestamppb.Timestamp)(nil),         // 26: google.protobuf.Timestamp
+	(GroupSource)(0),                            // 0: agynio.api.groups.v1.GroupSource
+	(GroupMemberType)(0),                        // 1: agynio.api.groups.v1.GroupMemberType
+	(*EntityMeta)(nil),                          // 2: agynio.api.groups.v1.EntityMeta
+	(*Group)(nil),                               // 3: agynio.api.groups.v1.Group
+	(*GroupMembership)(nil),                     // 4: agynio.api.groups.v1.GroupMembership
+	(*CreateGroupRequest)(nil),                  // 5: agynio.api.groups.v1.CreateGroupRequest
+	(*CreateGroupResponse)(nil),                 // 6: agynio.api.groups.v1.CreateGroupResponse
+	(*GetGroupRequest)(nil),                     // 7: agynio.api.groups.v1.GetGroupRequest
+	(*GetGroupResponse)(nil),                    // 8: agynio.api.groups.v1.GetGroupResponse
+	(*ListGroupsRequest)(nil),                   // 9: agynio.api.groups.v1.ListGroupsRequest
+	(*ListGroupsResponse)(nil),                  // 10: agynio.api.groups.v1.ListGroupsResponse
+	(*UpdateGroupRequest)(nil),                  // 11: agynio.api.groups.v1.UpdateGroupRequest
+	(*UpdateGroupResponse)(nil),                 // 12: agynio.api.groups.v1.UpdateGroupResponse
+	(*DeleteGroupRequest)(nil),                  // 13: agynio.api.groups.v1.DeleteGroupRequest
+	(*DeleteGroupResponse)(nil),                 // 14: agynio.api.groups.v1.DeleteGroupResponse
+	(*AddMemberRequest)(nil),                    // 15: agynio.api.groups.v1.AddMemberRequest
+	(*AddMemberResponse)(nil),                   // 16: agynio.api.groups.v1.AddMemberResponse
+	(*RemoveMemberRequest)(nil),                 // 17: agynio.api.groups.v1.RemoveMemberRequest
+	(*RemoveMemberResponse)(nil),                // 18: agynio.api.groups.v1.RemoveMemberResponse
+	(*ListMembersRequest)(nil),                  // 19: agynio.api.groups.v1.ListMembersRequest
+	(*ListMembersResponse)(nil),                 // 20: agynio.api.groups.v1.ListMembersResponse
+	(*ListMemberGroupsRequest)(nil),             // 21: agynio.api.groups.v1.ListMemberGroupsRequest
+	(*ListMemberGroupsResponse)(nil),            // 22: agynio.api.groups.v1.ListMemberGroupsResponse
+	(*ListMemberGroupsBatchRequest)(nil),        // 23: agynio.api.groups.v1.ListMemberGroupsBatchRequest
+	(*ListMemberGroupsBatchEntry)(nil),          // 24: agynio.api.groups.v1.ListMemberGroupsBatchEntry
+	(*ListMemberGroupsBatchResponse)(nil),       // 25: agynio.api.groups.v1.ListMemberGroupsBatchResponse
+	(*DeleteOrganizationResourcesRequest)(nil),  // 26: agynio.api.groups.v1.DeleteOrganizationResourcesRequest
+	(*DeleteOrganizationResourcesResponse)(nil), // 27: agynio.api.groups.v1.DeleteOrganizationResourcesResponse
+	(*timestamppb.Timestamp)(nil),               // 28: google.protobuf.Timestamp
 }
 var file_agynio_api_groups_v1_groups_proto_depIdxs = []int32{
-	26, // 0: agynio.api.groups.v1.EntityMeta.created_at:type_name -> google.protobuf.Timestamp
-	26, // 1: agynio.api.groups.v1.EntityMeta.updated_at:type_name -> google.protobuf.Timestamp
+	28, // 0: agynio.api.groups.v1.EntityMeta.created_at:type_name -> google.protobuf.Timestamp
+	28, // 1: agynio.api.groups.v1.EntityMeta.updated_at:type_name -> google.protobuf.Timestamp
 	2,  // 2: agynio.api.groups.v1.Group.meta:type_name -> agynio.api.groups.v1.EntityMeta
 	0,  // 3: agynio.api.groups.v1.Group.source:type_name -> agynio.api.groups.v1.GroupSource
 	2,  // 4: agynio.api.groups.v1.GroupMembership.meta:type_name -> agynio.api.groups.v1.EntityMeta
@@ -1665,18 +1751,20 @@ var file_agynio_api_groups_v1_groups_proto_depIdxs = []int32{
 	19, // 31: agynio.api.groups.v1.GroupsService.ListMembers:input_type -> agynio.api.groups.v1.ListMembersRequest
 	21, // 32: agynio.api.groups.v1.GroupsService.ListMemberGroups:input_type -> agynio.api.groups.v1.ListMemberGroupsRequest
 	23, // 33: agynio.api.groups.v1.GroupsService.ListMemberGroupsBatch:input_type -> agynio.api.groups.v1.ListMemberGroupsBatchRequest
-	6,  // 34: agynio.api.groups.v1.GroupsService.CreateGroup:output_type -> agynio.api.groups.v1.CreateGroupResponse
-	8,  // 35: agynio.api.groups.v1.GroupsService.GetGroup:output_type -> agynio.api.groups.v1.GetGroupResponse
-	10, // 36: agynio.api.groups.v1.GroupsService.ListGroups:output_type -> agynio.api.groups.v1.ListGroupsResponse
-	12, // 37: agynio.api.groups.v1.GroupsService.UpdateGroup:output_type -> agynio.api.groups.v1.UpdateGroupResponse
-	14, // 38: agynio.api.groups.v1.GroupsService.DeleteGroup:output_type -> agynio.api.groups.v1.DeleteGroupResponse
-	16, // 39: agynio.api.groups.v1.GroupsService.AddMember:output_type -> agynio.api.groups.v1.AddMemberResponse
-	18, // 40: agynio.api.groups.v1.GroupsService.RemoveMember:output_type -> agynio.api.groups.v1.RemoveMemberResponse
-	20, // 41: agynio.api.groups.v1.GroupsService.ListMembers:output_type -> agynio.api.groups.v1.ListMembersResponse
-	22, // 42: agynio.api.groups.v1.GroupsService.ListMemberGroups:output_type -> agynio.api.groups.v1.ListMemberGroupsResponse
-	25, // 43: agynio.api.groups.v1.GroupsService.ListMemberGroupsBatch:output_type -> agynio.api.groups.v1.ListMemberGroupsBatchResponse
-	34, // [34:44] is the sub-list for method output_type
-	24, // [24:34] is the sub-list for method input_type
+	26, // 34: agynio.api.groups.v1.GroupsService.DeleteOrganizationResources:input_type -> agynio.api.groups.v1.DeleteOrganizationResourcesRequest
+	6,  // 35: agynio.api.groups.v1.GroupsService.CreateGroup:output_type -> agynio.api.groups.v1.CreateGroupResponse
+	8,  // 36: agynio.api.groups.v1.GroupsService.GetGroup:output_type -> agynio.api.groups.v1.GetGroupResponse
+	10, // 37: agynio.api.groups.v1.GroupsService.ListGroups:output_type -> agynio.api.groups.v1.ListGroupsResponse
+	12, // 38: agynio.api.groups.v1.GroupsService.UpdateGroup:output_type -> agynio.api.groups.v1.UpdateGroupResponse
+	14, // 39: agynio.api.groups.v1.GroupsService.DeleteGroup:output_type -> agynio.api.groups.v1.DeleteGroupResponse
+	16, // 40: agynio.api.groups.v1.GroupsService.AddMember:output_type -> agynio.api.groups.v1.AddMemberResponse
+	18, // 41: agynio.api.groups.v1.GroupsService.RemoveMember:output_type -> agynio.api.groups.v1.RemoveMemberResponse
+	20, // 42: agynio.api.groups.v1.GroupsService.ListMembers:output_type -> agynio.api.groups.v1.ListMembersResponse
+	22, // 43: agynio.api.groups.v1.GroupsService.ListMemberGroups:output_type -> agynio.api.groups.v1.ListMemberGroupsResponse
+	25, // 44: agynio.api.groups.v1.GroupsService.ListMemberGroupsBatch:output_type -> agynio.api.groups.v1.ListMemberGroupsBatchResponse
+	27, // 45: agynio.api.groups.v1.GroupsService.DeleteOrganizationResources:output_type -> agynio.api.groups.v1.DeleteOrganizationResourcesResponse
+	35, // [35:46] is the sub-list for method output_type
+	24, // [24:35] is the sub-list for method input_type
 	24, // [24:24] is the sub-list for extension type_name
 	24, // [24:24] is the sub-list for extension extendee
 	0,  // [0:24] is the sub-list for field type_name
@@ -1698,7 +1786,7 @@ func file_agynio_api_groups_v1_groups_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_agynio_api_groups_v1_groups_proto_rawDesc), len(file_agynio_api_groups_v1_groups_proto_rawDesc)),
 			NumEnums:      2,
-			NumMessages:   24,
+			NumMessages:   26,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

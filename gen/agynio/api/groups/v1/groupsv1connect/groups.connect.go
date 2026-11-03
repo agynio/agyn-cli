@@ -61,6 +61,9 @@ const (
 	// GroupsServiceListMemberGroupsBatchProcedure is the fully-qualified name of the GroupsService's
 	// ListMemberGroupsBatch RPC.
 	GroupsServiceListMemberGroupsBatchProcedure = "/agynio.api.groups.v1.GroupsService/ListMemberGroupsBatch"
+	// GroupsServiceDeleteOrganizationResourcesProcedure is the fully-qualified name of the
+	// GroupsService's DeleteOrganizationResources RPC.
+	GroupsServiceDeleteOrganizationResourcesProcedure = "/agynio.api.groups.v1.GroupsService/DeleteOrganizationResources"
 )
 
 // GroupsServiceClient is a client for the agynio.api.groups.v1.GroupsService service.
@@ -78,6 +81,7 @@ type GroupsServiceClient interface {
 	ListMemberGroups(context.Context, *connect.Request[v1.ListMemberGroupsRequest]) (*connect.Response[v1.ListMemberGroupsResponse], error)
 	// --- Internal ---
 	ListMemberGroupsBatch(context.Context, *connect.Request[v1.ListMemberGroupsBatchRequest]) (*connect.Response[v1.ListMemberGroupsBatchResponse], error)
+	DeleteOrganizationResources(context.Context, *connect.Request[v1.DeleteOrganizationResourcesRequest]) (*connect.Response[v1.DeleteOrganizationResourcesResponse], error)
 }
 
 // NewGroupsServiceClient constructs a client for the agynio.api.groups.v1.GroupsService service. By
@@ -151,21 +155,28 @@ func NewGroupsServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			connect.WithSchema(groupsServiceMethods.ByName("ListMemberGroupsBatch")),
 			connect.WithClientOptions(opts...),
 		),
+		deleteOrganizationResources: connect.NewClient[v1.DeleteOrganizationResourcesRequest, v1.DeleteOrganizationResourcesResponse](
+			httpClient,
+			baseURL+GroupsServiceDeleteOrganizationResourcesProcedure,
+			connect.WithSchema(groupsServiceMethods.ByName("DeleteOrganizationResources")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // groupsServiceClient implements GroupsServiceClient.
 type groupsServiceClient struct {
-	createGroup           *connect.Client[v1.CreateGroupRequest, v1.CreateGroupResponse]
-	getGroup              *connect.Client[v1.GetGroupRequest, v1.GetGroupResponse]
-	listGroups            *connect.Client[v1.ListGroupsRequest, v1.ListGroupsResponse]
-	updateGroup           *connect.Client[v1.UpdateGroupRequest, v1.UpdateGroupResponse]
-	deleteGroup           *connect.Client[v1.DeleteGroupRequest, v1.DeleteGroupResponse]
-	addMember             *connect.Client[v1.AddMemberRequest, v1.AddMemberResponse]
-	removeMember          *connect.Client[v1.RemoveMemberRequest, v1.RemoveMemberResponse]
-	listMembers           *connect.Client[v1.ListMembersRequest, v1.ListMembersResponse]
-	listMemberGroups      *connect.Client[v1.ListMemberGroupsRequest, v1.ListMemberGroupsResponse]
-	listMemberGroupsBatch *connect.Client[v1.ListMemberGroupsBatchRequest, v1.ListMemberGroupsBatchResponse]
+	createGroup                 *connect.Client[v1.CreateGroupRequest, v1.CreateGroupResponse]
+	getGroup                    *connect.Client[v1.GetGroupRequest, v1.GetGroupResponse]
+	listGroups                  *connect.Client[v1.ListGroupsRequest, v1.ListGroupsResponse]
+	updateGroup                 *connect.Client[v1.UpdateGroupRequest, v1.UpdateGroupResponse]
+	deleteGroup                 *connect.Client[v1.DeleteGroupRequest, v1.DeleteGroupResponse]
+	addMember                   *connect.Client[v1.AddMemberRequest, v1.AddMemberResponse]
+	removeMember                *connect.Client[v1.RemoveMemberRequest, v1.RemoveMemberResponse]
+	listMembers                 *connect.Client[v1.ListMembersRequest, v1.ListMembersResponse]
+	listMemberGroups            *connect.Client[v1.ListMemberGroupsRequest, v1.ListMemberGroupsResponse]
+	listMemberGroupsBatch       *connect.Client[v1.ListMemberGroupsBatchRequest, v1.ListMemberGroupsBatchResponse]
+	deleteOrganizationResources *connect.Client[v1.DeleteOrganizationResourcesRequest, v1.DeleteOrganizationResourcesResponse]
 }
 
 // CreateGroup calls agynio.api.groups.v1.GroupsService.CreateGroup.
@@ -218,6 +229,11 @@ func (c *groupsServiceClient) ListMemberGroupsBatch(ctx context.Context, req *co
 	return c.listMemberGroupsBatch.CallUnary(ctx, req)
 }
 
+// DeleteOrganizationResources calls agynio.api.groups.v1.GroupsService.DeleteOrganizationResources.
+func (c *groupsServiceClient) DeleteOrganizationResources(ctx context.Context, req *connect.Request[v1.DeleteOrganizationResourcesRequest]) (*connect.Response[v1.DeleteOrganizationResourcesResponse], error) {
+	return c.deleteOrganizationResources.CallUnary(ctx, req)
+}
+
 // GroupsServiceHandler is an implementation of the agynio.api.groups.v1.GroupsService service.
 type GroupsServiceHandler interface {
 	// --- Groups ---
@@ -233,6 +249,7 @@ type GroupsServiceHandler interface {
 	ListMemberGroups(context.Context, *connect.Request[v1.ListMemberGroupsRequest]) (*connect.Response[v1.ListMemberGroupsResponse], error)
 	// --- Internal ---
 	ListMemberGroupsBatch(context.Context, *connect.Request[v1.ListMemberGroupsBatchRequest]) (*connect.Response[v1.ListMemberGroupsBatchResponse], error)
+	DeleteOrganizationResources(context.Context, *connect.Request[v1.DeleteOrganizationResourcesRequest]) (*connect.Response[v1.DeleteOrganizationResourcesResponse], error)
 }
 
 // NewGroupsServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -302,6 +319,12 @@ func NewGroupsServiceHandler(svc GroupsServiceHandler, opts ...connect.HandlerOp
 		connect.WithSchema(groupsServiceMethods.ByName("ListMemberGroupsBatch")),
 		connect.WithHandlerOptions(opts...),
 	)
+	groupsServiceDeleteOrganizationResourcesHandler := connect.NewUnaryHandler(
+		GroupsServiceDeleteOrganizationResourcesProcedure,
+		svc.DeleteOrganizationResources,
+		connect.WithSchema(groupsServiceMethods.ByName("DeleteOrganizationResources")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/agynio.api.groups.v1.GroupsService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case GroupsServiceCreateGroupProcedure:
@@ -324,6 +347,8 @@ func NewGroupsServiceHandler(svc GroupsServiceHandler, opts ...connect.HandlerOp
 			groupsServiceListMemberGroupsHandler.ServeHTTP(w, r)
 		case GroupsServiceListMemberGroupsBatchProcedure:
 			groupsServiceListMemberGroupsBatchHandler.ServeHTTP(w, r)
+		case GroupsServiceDeleteOrganizationResourcesProcedure:
+			groupsServiceDeleteOrganizationResourcesHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -371,4 +396,8 @@ func (UnimplementedGroupsServiceHandler) ListMemberGroups(context.Context, *conn
 
 func (UnimplementedGroupsServiceHandler) ListMemberGroupsBatch(context.Context, *connect.Request[v1.ListMemberGroupsBatchRequest]) (*connect.Response[v1.ListMemberGroupsBatchResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("agynio.api.groups.v1.GroupsService.ListMemberGroupsBatch is not implemented"))
+}
+
+func (UnimplementedGroupsServiceHandler) DeleteOrganizationResources(context.Context, *connect.Request[v1.DeleteOrganizationResourcesRequest]) (*connect.Response[v1.DeleteOrganizationResourcesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("agynio.api.groups.v1.GroupsService.DeleteOrganizationResources is not implemented"))
 }

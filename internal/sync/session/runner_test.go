@@ -91,3 +91,49 @@ func TestSilentFailureReconnectsRatherThanHalting(t *testing.T) {
 		t.Fatal("a silent transport failure halted the session")
 	}
 }
+
+// A sandbox at rest pauses the session rather than halting it, and the pause
+// names which rest: a hibernated sandbox is asleep with everything in it kept,
+// which "stopped" would misstate.
+func TestSandboxAtRestPausesTheSession(t *testing.T) {
+	cases := []struct {
+		state SandboxState
+		note  string
+	}{
+		{state: SandboxStopped, note: "the sandbox is stopped"},
+		{state: SandboxHibernated, note: "the sandbox is hibernated"},
+	}
+	for _, testCase := range cases {
+		t.Run(string(testCase.state), func(t *testing.T) {
+			store := NewStore(t.TempDir())
+			state := &State{ID: "s", Name: "s", LocalRoot: t.TempDir(), Status: StatusIdle}
+
+			dials := 0
+			runner := &Runner{
+				State: state,
+				Store: store,
+				Dial: func(context.Context) (*Connection, error) {
+					dials++
+					return nil, errors.New("sandbox s is not running")
+				},
+				Sandbox: func(context.Context) (SandboxState, error) { return testCase.state, nil },
+			}
+
+			// Far shorter than the paused poll, so Run returns while paused.
+			ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+			defer cancel()
+			if err := runner.Run(ctx); err != nil {
+				t.Fatalf("expected a pause, got %v", err)
+			}
+			if state.Status != StatusPaused {
+				t.Fatalf("session left in %s rather than paused", state.Status)
+			}
+			if state.StatusNote != testCase.note {
+				t.Fatalf("expected note %q, got %q", testCase.note, state.StatusNote)
+			}
+			if dials != 1 {
+				t.Fatalf("expected one attempt, got %d — a paused session dialed again", dials)
+			}
+		})
+	}
+}

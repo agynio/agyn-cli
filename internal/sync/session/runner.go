@@ -26,6 +26,7 @@ type SandboxState string
 const (
 	SandboxRunning    SandboxState = "running"
 	SandboxStopped    SandboxState = "stopped"
+	SandboxHibernated SandboxState = "hibernated"
 	SandboxTerminated SandboxState = "terminated"
 )
 
@@ -97,11 +98,12 @@ func (r *Runner) Run(ctx context.Context) error {
 			r.setStatus(StatusHalted, "the sandbox was terminated")
 			r.Log("halted: the sandbox was terminated")
 			return &Halt{Reason: HaltSandboxGone, Detail: "the sandbox was terminated"}
-		case stateErr == nil && state == SandboxStopped:
-			// Pause, and never restart it. Resumes when the engineer next
-			// connects.
-			r.setStatus(StatusPaused, "the sandbox is stopped")
-			r.Log("paused: the sandbox is stopped")
+		case stateErr == nil && (state == SandboxStopped || state == SandboxHibernated):
+			// Pause, and never restart or wake it. Resumes when the engineer
+			// next connects.
+			note := "the sandbox is " + string(state)
+			r.setStatus(StatusPaused, note)
+			r.Log("paused: %s", note)
 			if !sleep(ctx, pausedPoll) {
 				return nil
 			}

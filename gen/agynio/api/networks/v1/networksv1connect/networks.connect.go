@@ -84,6 +84,15 @@ const (
 	// NetworksServiceListPrivateResourceAccessProcedure is the fully-qualified name of the
 	// NetworksService's ListPrivateResourceAccess RPC.
 	NetworksServiceListPrivateResourceAccessProcedure = "/agynio.api.networks.v1.NetworksService/ListPrivateResourceAccess"
+	// NetworksServiceSetPrivateResourceMediationProcedure is the fully-qualified name of the
+	// NetworksService's SetPrivateResourceMediation RPC.
+	NetworksServiceSetPrivateResourceMediationProcedure = "/agynio.api.networks.v1.NetworksService/SetPrivateResourceMediation"
+	// NetworksServiceListPrivateResourcesReachableByProcedure is the fully-qualified name of the
+	// NetworksService's ListPrivateResourcesReachableBy RPC.
+	NetworksServiceListPrivateResourcesReachableByProcedure = "/agynio.api.networks.v1.NetworksService/ListPrivateResourcesReachableBy"
+	// NetworksServiceDeleteOrganizationResourcesProcedure is the fully-qualified name of the
+	// NetworksService's DeleteOrganizationResources RPC.
+	NetworksServiceDeleteOrganizationResourcesProcedure = "/agynio.api.networks.v1.NetworksService/DeleteOrganizationResources"
 )
 
 // NetworksServiceClient is a client for the agynio.api.networks.v1.NetworksService service.
@@ -109,6 +118,10 @@ type NetworksServiceClient interface {
 	CreatePrivateResourceAccess(context.Context, *connect.Request[v1.CreatePrivateResourceAccessRequest]) (*connect.Response[v1.CreatePrivateResourceAccessResponse], error)
 	DeletePrivateResourceAccess(context.Context, *connect.Request[v1.DeletePrivateResourceAccessRequest]) (*connect.Response[v1.DeletePrivateResourceAccessResponse], error)
 	ListPrivateResourceAccess(context.Context, *connect.Request[v1.ListPrivateResourceAccessRequest]) (*connect.Response[v1.ListPrivateResourceAccessResponse], error)
+	// --- Internal ---
+	SetPrivateResourceMediation(context.Context, *connect.Request[v1.SetPrivateResourceMediationRequest]) (*connect.Response[v1.SetPrivateResourceMediationResponse], error)
+	ListPrivateResourcesReachableBy(context.Context, *connect.Request[v1.ListPrivateResourcesReachableByRequest]) (*connect.Response[v1.ListPrivateResourcesReachableByResponse], error)
+	DeleteOrganizationResources(context.Context, *connect.Request[v1.DeleteOrganizationResourcesRequest]) (*connect.Response[v1.DeleteOrganizationResourcesResponse], error)
 }
 
 // NewNetworksServiceClient constructs a client for the agynio.api.networks.v1.NetworksService
@@ -224,28 +237,49 @@ func NewNetworksServiceClient(httpClient connect.HTTPClient, baseURL string, opt
 			connect.WithSchema(networksServiceMethods.ByName("ListPrivateResourceAccess")),
 			connect.WithClientOptions(opts...),
 		),
+		setPrivateResourceMediation: connect.NewClient[v1.SetPrivateResourceMediationRequest, v1.SetPrivateResourceMediationResponse](
+			httpClient,
+			baseURL+NetworksServiceSetPrivateResourceMediationProcedure,
+			connect.WithSchema(networksServiceMethods.ByName("SetPrivateResourceMediation")),
+			connect.WithClientOptions(opts...),
+		),
+		listPrivateResourcesReachableBy: connect.NewClient[v1.ListPrivateResourcesReachableByRequest, v1.ListPrivateResourcesReachableByResponse](
+			httpClient,
+			baseURL+NetworksServiceListPrivateResourcesReachableByProcedure,
+			connect.WithSchema(networksServiceMethods.ByName("ListPrivateResourcesReachableBy")),
+			connect.WithClientOptions(opts...),
+		),
+		deleteOrganizationResources: connect.NewClient[v1.DeleteOrganizationResourcesRequest, v1.DeleteOrganizationResourcesResponse](
+			httpClient,
+			baseURL+NetworksServiceDeleteOrganizationResourcesProcedure,
+			connect.WithSchema(networksServiceMethods.ByName("DeleteOrganizationResources")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // networksServiceClient implements NetworksServiceClient.
 type networksServiceClient struct {
-	createNetwork               *connect.Client[v1.CreateNetworkRequest, v1.CreateNetworkResponse]
-	getNetwork                  *connect.Client[v1.GetNetworkRequest, v1.GetNetworkResponse]
-	listNetworks                *connect.Client[v1.ListNetworksRequest, v1.ListNetworksResponse]
-	updateNetwork               *connect.Client[v1.UpdateNetworkRequest, v1.UpdateNetworkResponse]
-	deleteNetwork               *connect.Client[v1.DeleteNetworkRequest, v1.DeleteNetworkResponse]
-	createTunnelCredential      *connect.Client[v1.CreateTunnelCredentialRequest, v1.CreateTunnelCredentialResponse]
-	getTunnelCredential         *connect.Client[v1.GetTunnelCredentialRequest, v1.GetTunnelCredentialResponse]
-	listTunnelCredentials       *connect.Client[v1.ListTunnelCredentialsRequest, v1.ListTunnelCredentialsResponse]
-	deleteTunnelCredential      *connect.Client[v1.DeleteTunnelCredentialRequest, v1.DeleteTunnelCredentialResponse]
-	createPrivateResource       *connect.Client[v1.CreatePrivateResourceRequest, v1.CreatePrivateResourceResponse]
-	getPrivateResource          *connect.Client[v1.GetPrivateResourceRequest, v1.GetPrivateResourceResponse]
-	listPrivateResources        *connect.Client[v1.ListPrivateResourcesRequest, v1.ListPrivateResourcesResponse]
-	updatePrivateResource       *connect.Client[v1.UpdatePrivateResourceRequest, v1.UpdatePrivateResourceResponse]
-	deletePrivateResource       *connect.Client[v1.DeletePrivateResourceRequest, v1.DeletePrivateResourceResponse]
-	createPrivateResourceAccess *connect.Client[v1.CreatePrivateResourceAccessRequest, v1.CreatePrivateResourceAccessResponse]
-	deletePrivateResourceAccess *connect.Client[v1.DeletePrivateResourceAccessRequest, v1.DeletePrivateResourceAccessResponse]
-	listPrivateResourceAccess   *connect.Client[v1.ListPrivateResourceAccessRequest, v1.ListPrivateResourceAccessResponse]
+	createNetwork                   *connect.Client[v1.CreateNetworkRequest, v1.CreateNetworkResponse]
+	getNetwork                      *connect.Client[v1.GetNetworkRequest, v1.GetNetworkResponse]
+	listNetworks                    *connect.Client[v1.ListNetworksRequest, v1.ListNetworksResponse]
+	updateNetwork                   *connect.Client[v1.UpdateNetworkRequest, v1.UpdateNetworkResponse]
+	deleteNetwork                   *connect.Client[v1.DeleteNetworkRequest, v1.DeleteNetworkResponse]
+	createTunnelCredential          *connect.Client[v1.CreateTunnelCredentialRequest, v1.CreateTunnelCredentialResponse]
+	getTunnelCredential             *connect.Client[v1.GetTunnelCredentialRequest, v1.GetTunnelCredentialResponse]
+	listTunnelCredentials           *connect.Client[v1.ListTunnelCredentialsRequest, v1.ListTunnelCredentialsResponse]
+	deleteTunnelCredential          *connect.Client[v1.DeleteTunnelCredentialRequest, v1.DeleteTunnelCredentialResponse]
+	createPrivateResource           *connect.Client[v1.CreatePrivateResourceRequest, v1.CreatePrivateResourceResponse]
+	getPrivateResource              *connect.Client[v1.GetPrivateResourceRequest, v1.GetPrivateResourceResponse]
+	listPrivateResources            *connect.Client[v1.ListPrivateResourcesRequest, v1.ListPrivateResourcesResponse]
+	updatePrivateResource           *connect.Client[v1.UpdatePrivateResourceRequest, v1.UpdatePrivateResourceResponse]
+	deletePrivateResource           *connect.Client[v1.DeletePrivateResourceRequest, v1.DeletePrivateResourceResponse]
+	createPrivateResourceAccess     *connect.Client[v1.CreatePrivateResourceAccessRequest, v1.CreatePrivateResourceAccessResponse]
+	deletePrivateResourceAccess     *connect.Client[v1.DeletePrivateResourceAccessRequest, v1.DeletePrivateResourceAccessResponse]
+	listPrivateResourceAccess       *connect.Client[v1.ListPrivateResourceAccessRequest, v1.ListPrivateResourceAccessResponse]
+	setPrivateResourceMediation     *connect.Client[v1.SetPrivateResourceMediationRequest, v1.SetPrivateResourceMediationResponse]
+	listPrivateResourcesReachableBy *connect.Client[v1.ListPrivateResourcesReachableByRequest, v1.ListPrivateResourcesReachableByResponse]
+	deleteOrganizationResources     *connect.Client[v1.DeleteOrganizationResourcesRequest, v1.DeleteOrganizationResourcesResponse]
 }
 
 // CreateNetwork calls agynio.api.networks.v1.NetworksService.CreateNetwork.
@@ -335,6 +369,24 @@ func (c *networksServiceClient) ListPrivateResourceAccess(ctx context.Context, r
 	return c.listPrivateResourceAccess.CallUnary(ctx, req)
 }
 
+// SetPrivateResourceMediation calls
+// agynio.api.networks.v1.NetworksService.SetPrivateResourceMediation.
+func (c *networksServiceClient) SetPrivateResourceMediation(ctx context.Context, req *connect.Request[v1.SetPrivateResourceMediationRequest]) (*connect.Response[v1.SetPrivateResourceMediationResponse], error) {
+	return c.setPrivateResourceMediation.CallUnary(ctx, req)
+}
+
+// ListPrivateResourcesReachableBy calls
+// agynio.api.networks.v1.NetworksService.ListPrivateResourcesReachableBy.
+func (c *networksServiceClient) ListPrivateResourcesReachableBy(ctx context.Context, req *connect.Request[v1.ListPrivateResourcesReachableByRequest]) (*connect.Response[v1.ListPrivateResourcesReachableByResponse], error) {
+	return c.listPrivateResourcesReachableBy.CallUnary(ctx, req)
+}
+
+// DeleteOrganizationResources calls
+// agynio.api.networks.v1.NetworksService.DeleteOrganizationResources.
+func (c *networksServiceClient) DeleteOrganizationResources(ctx context.Context, req *connect.Request[v1.DeleteOrganizationResourcesRequest]) (*connect.Response[v1.DeleteOrganizationResourcesResponse], error) {
+	return c.deleteOrganizationResources.CallUnary(ctx, req)
+}
+
 // NetworksServiceHandler is an implementation of the agynio.api.networks.v1.NetworksService
 // service.
 type NetworksServiceHandler interface {
@@ -359,6 +411,10 @@ type NetworksServiceHandler interface {
 	CreatePrivateResourceAccess(context.Context, *connect.Request[v1.CreatePrivateResourceAccessRequest]) (*connect.Response[v1.CreatePrivateResourceAccessResponse], error)
 	DeletePrivateResourceAccess(context.Context, *connect.Request[v1.DeletePrivateResourceAccessRequest]) (*connect.Response[v1.DeletePrivateResourceAccessResponse], error)
 	ListPrivateResourceAccess(context.Context, *connect.Request[v1.ListPrivateResourceAccessRequest]) (*connect.Response[v1.ListPrivateResourceAccessResponse], error)
+	// --- Internal ---
+	SetPrivateResourceMediation(context.Context, *connect.Request[v1.SetPrivateResourceMediationRequest]) (*connect.Response[v1.SetPrivateResourceMediationResponse], error)
+	ListPrivateResourcesReachableBy(context.Context, *connect.Request[v1.ListPrivateResourcesReachableByRequest]) (*connect.Response[v1.ListPrivateResourcesReachableByResponse], error)
+	DeleteOrganizationResources(context.Context, *connect.Request[v1.DeleteOrganizationResourcesRequest]) (*connect.Response[v1.DeleteOrganizationResourcesResponse], error)
 }
 
 // NewNetworksServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -470,6 +526,24 @@ func NewNetworksServiceHandler(svc NetworksServiceHandler, opts ...connect.Handl
 		connect.WithSchema(networksServiceMethods.ByName("ListPrivateResourceAccess")),
 		connect.WithHandlerOptions(opts...),
 	)
+	networksServiceSetPrivateResourceMediationHandler := connect.NewUnaryHandler(
+		NetworksServiceSetPrivateResourceMediationProcedure,
+		svc.SetPrivateResourceMediation,
+		connect.WithSchema(networksServiceMethods.ByName("SetPrivateResourceMediation")),
+		connect.WithHandlerOptions(opts...),
+	)
+	networksServiceListPrivateResourcesReachableByHandler := connect.NewUnaryHandler(
+		NetworksServiceListPrivateResourcesReachableByProcedure,
+		svc.ListPrivateResourcesReachableBy,
+		connect.WithSchema(networksServiceMethods.ByName("ListPrivateResourcesReachableBy")),
+		connect.WithHandlerOptions(opts...),
+	)
+	networksServiceDeleteOrganizationResourcesHandler := connect.NewUnaryHandler(
+		NetworksServiceDeleteOrganizationResourcesProcedure,
+		svc.DeleteOrganizationResources,
+		connect.WithSchema(networksServiceMethods.ByName("DeleteOrganizationResources")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/agynio.api.networks.v1.NetworksService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case NetworksServiceCreateNetworkProcedure:
@@ -506,6 +580,12 @@ func NewNetworksServiceHandler(svc NetworksServiceHandler, opts ...connect.Handl
 			networksServiceDeletePrivateResourceAccessHandler.ServeHTTP(w, r)
 		case NetworksServiceListPrivateResourceAccessProcedure:
 			networksServiceListPrivateResourceAccessHandler.ServeHTTP(w, r)
+		case NetworksServiceSetPrivateResourceMediationProcedure:
+			networksServiceSetPrivateResourceMediationHandler.ServeHTTP(w, r)
+		case NetworksServiceListPrivateResourcesReachableByProcedure:
+			networksServiceListPrivateResourcesReachableByHandler.ServeHTTP(w, r)
+		case NetworksServiceDeleteOrganizationResourcesProcedure:
+			networksServiceDeleteOrganizationResourcesHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -581,4 +661,16 @@ func (UnimplementedNetworksServiceHandler) DeletePrivateResourceAccess(context.C
 
 func (UnimplementedNetworksServiceHandler) ListPrivateResourceAccess(context.Context, *connect.Request[v1.ListPrivateResourceAccessRequest]) (*connect.Response[v1.ListPrivateResourceAccessResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("agynio.api.networks.v1.NetworksService.ListPrivateResourceAccess is not implemented"))
+}
+
+func (UnimplementedNetworksServiceHandler) SetPrivateResourceMediation(context.Context, *connect.Request[v1.SetPrivateResourceMediationRequest]) (*connect.Response[v1.SetPrivateResourceMediationResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("agynio.api.networks.v1.NetworksService.SetPrivateResourceMediation is not implemented"))
+}
+
+func (UnimplementedNetworksServiceHandler) ListPrivateResourcesReachableBy(context.Context, *connect.Request[v1.ListPrivateResourcesReachableByRequest]) (*connect.Response[v1.ListPrivateResourcesReachableByResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("agynio.api.networks.v1.NetworksService.ListPrivateResourcesReachableBy is not implemented"))
+}
+
+func (UnimplementedNetworksServiceHandler) DeleteOrganizationResources(context.Context, *connect.Request[v1.DeleteOrganizationResourcesRequest]) (*connect.Response[v1.DeleteOrganizationResourcesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("agynio.api.networks.v1.NetworksService.DeleteOrganizationResources is not implemented"))
 }

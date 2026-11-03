@@ -66,6 +66,18 @@ const (
 	// EgressRulesServiceCountRulesReferencingSecretProcedure is the fully-qualified name of the
 	// EgressRulesService's CountRulesReferencingSecret RPC.
 	EgressRulesServiceCountRulesReferencingSecretProcedure = "/agynio.api.egress.v1.EgressRulesService/CountRulesReferencingSecret"
+	// EgressRulesServiceCountRulesReferencingPrivateResourceProcedure is the fully-qualified name of
+	// the EgressRulesService's CountRulesReferencingPrivateResource RPC.
+	EgressRulesServiceCountRulesReferencingPrivateResourceProcedure = "/agynio.api.egress.v1.EgressRulesService/CountRulesReferencingPrivateResource"
+	// EgressRulesServiceListMediatedPrivateResourcesProcedure is the fully-qualified name of the
+	// EgressRulesService's ListMediatedPrivateResources RPC.
+	EgressRulesServiceListMediatedPrivateResourcesProcedure = "/agynio.api.egress.v1.EgressRulesService/ListMediatedPrivateResources"
+	// EgressRulesServiceListAttachedRuleDomainsProcedure is the fully-qualified name of the
+	// EgressRulesService's ListAttachedRuleDomains RPC.
+	EgressRulesServiceListAttachedRuleDomainsProcedure = "/agynio.api.egress.v1.EgressRulesService/ListAttachedRuleDomains"
+	// EgressRulesServiceDeleteOrganizationResourcesProcedure is the fully-qualified name of the
+	// EgressRulesService's DeleteOrganizationResources RPC.
+	EgressRulesServiceDeleteOrganizationResourcesProcedure = "/agynio.api.egress.v1.EgressRulesService/DeleteOrganizationResources"
 )
 
 // EgressRulesServiceClient is a client for the agynio.api.egress.v1.EgressRulesService service.
@@ -84,6 +96,10 @@ type EgressRulesServiceClient interface {
 	ListEgressRulesByAgent(context.Context, *connect.Request[v1.ListEgressRulesByAgentRequest]) (*connect.Response[v1.ListEgressRulesByAgentResponse], error)
 	ListEgressRulesByEnvironment(context.Context, *connect.Request[v1.ListEgressRulesByEnvironmentRequest]) (*connect.Response[v1.ListEgressRulesByEnvironmentResponse], error)
 	CountRulesReferencingSecret(context.Context, *connect.Request[v1.CountRulesReferencingSecretRequest]) (*connect.Response[v1.CountRulesReferencingSecretResponse], error)
+	CountRulesReferencingPrivateResource(context.Context, *connect.Request[v1.CountRulesReferencingPrivateResourceRequest]) (*connect.Response[v1.CountRulesReferencingPrivateResourceResponse], error)
+	ListMediatedPrivateResources(context.Context, *connect.Request[v1.ListMediatedPrivateResourcesRequest]) (*connect.Response[v1.ListMediatedPrivateResourcesResponse], error)
+	ListAttachedRuleDomains(context.Context, *connect.Request[v1.ListAttachedRuleDomainsRequest]) (*connect.Response[v1.ListAttachedRuleDomainsResponse], error)
+	DeleteOrganizationResources(context.Context, *connect.Request[v1.DeleteOrganizationResourcesRequest]) (*connect.Response[v1.DeleteOrganizationResourcesResponse], error)
 }
 
 // NewEgressRulesServiceClient constructs a client for the agynio.api.egress.v1.EgressRulesService
@@ -163,22 +179,50 @@ func NewEgressRulesServiceClient(httpClient connect.HTTPClient, baseURL string, 
 			connect.WithSchema(egressRulesServiceMethods.ByName("CountRulesReferencingSecret")),
 			connect.WithClientOptions(opts...),
 		),
+		countRulesReferencingPrivateResource: connect.NewClient[v1.CountRulesReferencingPrivateResourceRequest, v1.CountRulesReferencingPrivateResourceResponse](
+			httpClient,
+			baseURL+EgressRulesServiceCountRulesReferencingPrivateResourceProcedure,
+			connect.WithSchema(egressRulesServiceMethods.ByName("CountRulesReferencingPrivateResource")),
+			connect.WithClientOptions(opts...),
+		),
+		listMediatedPrivateResources: connect.NewClient[v1.ListMediatedPrivateResourcesRequest, v1.ListMediatedPrivateResourcesResponse](
+			httpClient,
+			baseURL+EgressRulesServiceListMediatedPrivateResourcesProcedure,
+			connect.WithSchema(egressRulesServiceMethods.ByName("ListMediatedPrivateResources")),
+			connect.WithClientOptions(opts...),
+		),
+		listAttachedRuleDomains: connect.NewClient[v1.ListAttachedRuleDomainsRequest, v1.ListAttachedRuleDomainsResponse](
+			httpClient,
+			baseURL+EgressRulesServiceListAttachedRuleDomainsProcedure,
+			connect.WithSchema(egressRulesServiceMethods.ByName("ListAttachedRuleDomains")),
+			connect.WithClientOptions(opts...),
+		),
+		deleteOrganizationResources: connect.NewClient[v1.DeleteOrganizationResourcesRequest, v1.DeleteOrganizationResourcesResponse](
+			httpClient,
+			baseURL+EgressRulesServiceDeleteOrganizationResourcesProcedure,
+			connect.WithSchema(egressRulesServiceMethods.ByName("DeleteOrganizationResources")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // egressRulesServiceClient implements EgressRulesServiceClient.
 type egressRulesServiceClient struct {
-	createEgressRule             *connect.Client[v1.CreateEgressRuleRequest, v1.CreateEgressRuleResponse]
-	getEgressRule                *connect.Client[v1.GetEgressRuleRequest, v1.GetEgressRuleResponse]
-	listEgressRules              *connect.Client[v1.ListEgressRulesRequest, v1.ListEgressRulesResponse]
-	updateEgressRule             *connect.Client[v1.UpdateEgressRuleRequest, v1.UpdateEgressRuleResponse]
-	deleteEgressRule             *connect.Client[v1.DeleteEgressRuleRequest, v1.DeleteEgressRuleResponse]
-	createEgressRuleAttachment   *connect.Client[v1.CreateEgressRuleAttachmentRequest, v1.CreateEgressRuleAttachmentResponse]
-	deleteEgressRuleAttachment   *connect.Client[v1.DeleteEgressRuleAttachmentRequest, v1.DeleteEgressRuleAttachmentResponse]
-	listEgressRuleAttachments    *connect.Client[v1.ListEgressRuleAttachmentsRequest, v1.ListEgressRuleAttachmentsResponse]
-	listEgressRulesByAgent       *connect.Client[v1.ListEgressRulesByAgentRequest, v1.ListEgressRulesByAgentResponse]
-	listEgressRulesByEnvironment *connect.Client[v1.ListEgressRulesByEnvironmentRequest, v1.ListEgressRulesByEnvironmentResponse]
-	countRulesReferencingSecret  *connect.Client[v1.CountRulesReferencingSecretRequest, v1.CountRulesReferencingSecretResponse]
+	createEgressRule                     *connect.Client[v1.CreateEgressRuleRequest, v1.CreateEgressRuleResponse]
+	getEgressRule                        *connect.Client[v1.GetEgressRuleRequest, v1.GetEgressRuleResponse]
+	listEgressRules                      *connect.Client[v1.ListEgressRulesRequest, v1.ListEgressRulesResponse]
+	updateEgressRule                     *connect.Client[v1.UpdateEgressRuleRequest, v1.UpdateEgressRuleResponse]
+	deleteEgressRule                     *connect.Client[v1.DeleteEgressRuleRequest, v1.DeleteEgressRuleResponse]
+	createEgressRuleAttachment           *connect.Client[v1.CreateEgressRuleAttachmentRequest, v1.CreateEgressRuleAttachmentResponse]
+	deleteEgressRuleAttachment           *connect.Client[v1.DeleteEgressRuleAttachmentRequest, v1.DeleteEgressRuleAttachmentResponse]
+	listEgressRuleAttachments            *connect.Client[v1.ListEgressRuleAttachmentsRequest, v1.ListEgressRuleAttachmentsResponse]
+	listEgressRulesByAgent               *connect.Client[v1.ListEgressRulesByAgentRequest, v1.ListEgressRulesByAgentResponse]
+	listEgressRulesByEnvironment         *connect.Client[v1.ListEgressRulesByEnvironmentRequest, v1.ListEgressRulesByEnvironmentResponse]
+	countRulesReferencingSecret          *connect.Client[v1.CountRulesReferencingSecretRequest, v1.CountRulesReferencingSecretResponse]
+	countRulesReferencingPrivateResource *connect.Client[v1.CountRulesReferencingPrivateResourceRequest, v1.CountRulesReferencingPrivateResourceResponse]
+	listMediatedPrivateResources         *connect.Client[v1.ListMediatedPrivateResourcesRequest, v1.ListMediatedPrivateResourcesResponse]
+	listAttachedRuleDomains              *connect.Client[v1.ListAttachedRuleDomainsRequest, v1.ListAttachedRuleDomainsResponse]
+	deleteOrganizationResources          *connect.Client[v1.DeleteOrganizationResourcesRequest, v1.DeleteOrganizationResourcesResponse]
 }
 
 // CreateEgressRule calls agynio.api.egress.v1.EgressRulesService.CreateEgressRule.
@@ -241,6 +285,29 @@ func (c *egressRulesServiceClient) CountRulesReferencingSecret(ctx context.Conte
 	return c.countRulesReferencingSecret.CallUnary(ctx, req)
 }
 
+// CountRulesReferencingPrivateResource calls
+// agynio.api.egress.v1.EgressRulesService.CountRulesReferencingPrivateResource.
+func (c *egressRulesServiceClient) CountRulesReferencingPrivateResource(ctx context.Context, req *connect.Request[v1.CountRulesReferencingPrivateResourceRequest]) (*connect.Response[v1.CountRulesReferencingPrivateResourceResponse], error) {
+	return c.countRulesReferencingPrivateResource.CallUnary(ctx, req)
+}
+
+// ListMediatedPrivateResources calls
+// agynio.api.egress.v1.EgressRulesService.ListMediatedPrivateResources.
+func (c *egressRulesServiceClient) ListMediatedPrivateResources(ctx context.Context, req *connect.Request[v1.ListMediatedPrivateResourcesRequest]) (*connect.Response[v1.ListMediatedPrivateResourcesResponse], error) {
+	return c.listMediatedPrivateResources.CallUnary(ctx, req)
+}
+
+// ListAttachedRuleDomains calls agynio.api.egress.v1.EgressRulesService.ListAttachedRuleDomains.
+func (c *egressRulesServiceClient) ListAttachedRuleDomains(ctx context.Context, req *connect.Request[v1.ListAttachedRuleDomainsRequest]) (*connect.Response[v1.ListAttachedRuleDomainsResponse], error) {
+	return c.listAttachedRuleDomains.CallUnary(ctx, req)
+}
+
+// DeleteOrganizationResources calls
+// agynio.api.egress.v1.EgressRulesService.DeleteOrganizationResources.
+func (c *egressRulesServiceClient) DeleteOrganizationResources(ctx context.Context, req *connect.Request[v1.DeleteOrganizationResourcesRequest]) (*connect.Response[v1.DeleteOrganizationResourcesResponse], error) {
+	return c.deleteOrganizationResources.CallUnary(ctx, req)
+}
+
 // EgressRulesServiceHandler is an implementation of the agynio.api.egress.v1.EgressRulesService
 // service.
 type EgressRulesServiceHandler interface {
@@ -258,6 +325,10 @@ type EgressRulesServiceHandler interface {
 	ListEgressRulesByAgent(context.Context, *connect.Request[v1.ListEgressRulesByAgentRequest]) (*connect.Response[v1.ListEgressRulesByAgentResponse], error)
 	ListEgressRulesByEnvironment(context.Context, *connect.Request[v1.ListEgressRulesByEnvironmentRequest]) (*connect.Response[v1.ListEgressRulesByEnvironmentResponse], error)
 	CountRulesReferencingSecret(context.Context, *connect.Request[v1.CountRulesReferencingSecretRequest]) (*connect.Response[v1.CountRulesReferencingSecretResponse], error)
+	CountRulesReferencingPrivateResource(context.Context, *connect.Request[v1.CountRulesReferencingPrivateResourceRequest]) (*connect.Response[v1.CountRulesReferencingPrivateResourceResponse], error)
+	ListMediatedPrivateResources(context.Context, *connect.Request[v1.ListMediatedPrivateResourcesRequest]) (*connect.Response[v1.ListMediatedPrivateResourcesResponse], error)
+	ListAttachedRuleDomains(context.Context, *connect.Request[v1.ListAttachedRuleDomainsRequest]) (*connect.Response[v1.ListAttachedRuleDomainsResponse], error)
+	DeleteOrganizationResources(context.Context, *connect.Request[v1.DeleteOrganizationResourcesRequest]) (*connect.Response[v1.DeleteOrganizationResourcesResponse], error)
 }
 
 // NewEgressRulesServiceHandler builds an HTTP handler from the service implementation. It returns
@@ -333,6 +404,30 @@ func NewEgressRulesServiceHandler(svc EgressRulesServiceHandler, opts ...connect
 		connect.WithSchema(egressRulesServiceMethods.ByName("CountRulesReferencingSecret")),
 		connect.WithHandlerOptions(opts...),
 	)
+	egressRulesServiceCountRulesReferencingPrivateResourceHandler := connect.NewUnaryHandler(
+		EgressRulesServiceCountRulesReferencingPrivateResourceProcedure,
+		svc.CountRulesReferencingPrivateResource,
+		connect.WithSchema(egressRulesServiceMethods.ByName("CountRulesReferencingPrivateResource")),
+		connect.WithHandlerOptions(opts...),
+	)
+	egressRulesServiceListMediatedPrivateResourcesHandler := connect.NewUnaryHandler(
+		EgressRulesServiceListMediatedPrivateResourcesProcedure,
+		svc.ListMediatedPrivateResources,
+		connect.WithSchema(egressRulesServiceMethods.ByName("ListMediatedPrivateResources")),
+		connect.WithHandlerOptions(opts...),
+	)
+	egressRulesServiceListAttachedRuleDomainsHandler := connect.NewUnaryHandler(
+		EgressRulesServiceListAttachedRuleDomainsProcedure,
+		svc.ListAttachedRuleDomains,
+		connect.WithSchema(egressRulesServiceMethods.ByName("ListAttachedRuleDomains")),
+		connect.WithHandlerOptions(opts...),
+	)
+	egressRulesServiceDeleteOrganizationResourcesHandler := connect.NewUnaryHandler(
+		EgressRulesServiceDeleteOrganizationResourcesProcedure,
+		svc.DeleteOrganizationResources,
+		connect.WithSchema(egressRulesServiceMethods.ByName("DeleteOrganizationResources")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/agynio.api.egress.v1.EgressRulesService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case EgressRulesServiceCreateEgressRuleProcedure:
@@ -357,6 +452,14 @@ func NewEgressRulesServiceHandler(svc EgressRulesServiceHandler, opts ...connect
 			egressRulesServiceListEgressRulesByEnvironmentHandler.ServeHTTP(w, r)
 		case EgressRulesServiceCountRulesReferencingSecretProcedure:
 			egressRulesServiceCountRulesReferencingSecretHandler.ServeHTTP(w, r)
+		case EgressRulesServiceCountRulesReferencingPrivateResourceProcedure:
+			egressRulesServiceCountRulesReferencingPrivateResourceHandler.ServeHTTP(w, r)
+		case EgressRulesServiceListMediatedPrivateResourcesProcedure:
+			egressRulesServiceListMediatedPrivateResourcesHandler.ServeHTTP(w, r)
+		case EgressRulesServiceListAttachedRuleDomainsProcedure:
+			egressRulesServiceListAttachedRuleDomainsHandler.ServeHTTP(w, r)
+		case EgressRulesServiceDeleteOrganizationResourcesProcedure:
+			egressRulesServiceDeleteOrganizationResourcesHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -408,4 +511,20 @@ func (UnimplementedEgressRulesServiceHandler) ListEgressRulesByEnvironment(conte
 
 func (UnimplementedEgressRulesServiceHandler) CountRulesReferencingSecret(context.Context, *connect.Request[v1.CountRulesReferencingSecretRequest]) (*connect.Response[v1.CountRulesReferencingSecretResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("agynio.api.egress.v1.EgressRulesService.CountRulesReferencingSecret is not implemented"))
+}
+
+func (UnimplementedEgressRulesServiceHandler) CountRulesReferencingPrivateResource(context.Context, *connect.Request[v1.CountRulesReferencingPrivateResourceRequest]) (*connect.Response[v1.CountRulesReferencingPrivateResourceResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("agynio.api.egress.v1.EgressRulesService.CountRulesReferencingPrivateResource is not implemented"))
+}
+
+func (UnimplementedEgressRulesServiceHandler) ListMediatedPrivateResources(context.Context, *connect.Request[v1.ListMediatedPrivateResourcesRequest]) (*connect.Response[v1.ListMediatedPrivateResourcesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("agynio.api.egress.v1.EgressRulesService.ListMediatedPrivateResources is not implemented"))
+}
+
+func (UnimplementedEgressRulesServiceHandler) ListAttachedRuleDomains(context.Context, *connect.Request[v1.ListAttachedRuleDomainsRequest]) (*connect.Response[v1.ListAttachedRuleDomainsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("agynio.api.egress.v1.EgressRulesService.ListAttachedRuleDomains is not implemented"))
+}
+
+func (UnimplementedEgressRulesServiceHandler) DeleteOrganizationResources(context.Context, *connect.Request[v1.DeleteOrganizationResourcesRequest]) (*connect.Response[v1.DeleteOrganizationResourcesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("agynio.api.egress.v1.EgressRulesService.DeleteOrganizationResources is not implemented"))
 }

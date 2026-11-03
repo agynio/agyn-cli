@@ -9,7 +9,9 @@ plugins:
     out: gen
     opt:
       - paths=source_relative
-  - remote: buf.build/connectrpc/go
+  # Pinned: v2 generates for connectrpc.com/connect/v2, which this module
+  # does not use.
+  - remote: buf.build/connectrpc/go:v1.21.0
     out: gen
     opt:
       - paths=source_relative

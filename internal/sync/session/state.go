@@ -63,8 +63,9 @@ type Status string
 const (
 	StatusIdle    Status = "idle"
 	StatusSyncing Status = "syncing"
-	// StatusPaused is a sandbox that stopped. Automatic resumption never
-	// restarts it — a background file change must not start billable compute.
+	// StatusPaused is a sandbox that stopped or hibernated. Automatic
+	// resumption never restarts or wakes it — a background file change must
+	// not start billable compute.
 	StatusPaused Status = "paused"
 	// StatusHalted is durable and safe to remain in indefinitely, which is what
 	// makes it acceptable for a background process nobody may be watching.
